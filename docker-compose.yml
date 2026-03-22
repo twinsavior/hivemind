@@ -1,0 +1,96 @@
+# ============================================================================
+# HIVEMIND Docker Compose
+# ============================================================================
+# Usage:
+#   docker compose up              Start all services
+#   docker compose up -d           Start in background
+#   docker compose up hivemind     Start only the core service
+#   docker compose logs -f         Follow logs
+#   docker compose down            Stop all services
+# ============================================================================
+
+services:
+  # ── HIVEMIND core service ──────────────────────────────────────────────────
+
+  hivemind:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hivemind
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"   # Dashboard
+      - "${WEBHOOK_PORT:-9090}:9090"     # Webhook connector
+    volumes:
+      - ./hivemind.yaml:/app/hivemind.yaml:ro
+      - ./skills:/app/skills:ro
+      - hivemind-data:/app/data
+      - hivemind-logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      redis:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+
+  # ── Redis (optional, for distributed mode) ─────────────────────────────────
+
+  redis:
+    image: redis:7-alpine
+    container_name: hivemind-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - distributed
+
+  # ── Dashboard (optional standalone) ────────────────────────────────────────
+  # Uncomment if you want to run the dashboard as a separate service
+  # with its own scaling and lifecycle.
+
+  # dashboard:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: hivemind-dashboard
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${DASHBOARD_PORT:-3001}:3000"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - NODE_ENV=production
+  #     - DASHBOARD_ONLY=true
+  #   depends_on:
+  #     - hivemind
+  #   profiles:
+  #     - dashboard
+
+volumes:
+  hivemind-data:
+    driver: local
+  hivemind-logs:
+    driver: local
+  redis-data:
+    driver: local

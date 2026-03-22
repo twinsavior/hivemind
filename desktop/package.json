@@ -1,0 +1,14 @@
+{
+  "name": "hivemind-desktop",
+  "version": "1.0.0",
+  "description": "HIVEMIND Desktop – multi-agent AI swarm",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

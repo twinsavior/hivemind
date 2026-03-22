@@ -1,0 +1,250 @@
+# ============================================================================
+# HIVEMIND Configuration
+# ============================================================================
+# This is the main configuration file for your HIVEMIND agent swarm.
+# Copy this file to hivemind.yaml and customize it for your project.
+#
+# Environment variables can be referenced with ${ENV_VAR} syntax.
+# ============================================================================
+
+# Project metadata
+name: "my-hivemind"
+version: "1.0.0"
+
+# ── LLM Providers ──────────────────────────────────────────────────────────────
+# Configure one or more LLM providers. The primary provider is used by default;
+# the fallback chain is tried in order if the primary fails.
+
+llm:
+  primary:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    apiKey: ${ANTHROPIC_API_KEY}
+    maxTokens: 4096
+    temperature: 0.7
+
+  fallback:
+    - provider: openai
+      model: gpt-4o
+      apiKey: ${OPENAI_API_KEY}
+      maxTokens: 4096
+
+    - provider: ollama
+      model: llama3.2
+      baseUrl: http://localhost:11434
+      maxTokens: 4096
+
+  # Provider-specific settings
+  providers:
+    anthropic:
+      apiKey: ${ANTHROPIC_API_KEY}
+      maxRetries: 3
+      timeoutMs: 120000
+
+    openai:
+      apiKey: ${OPENAI_API_KEY}
+      organization: ${OPENAI_ORG_ID}
+      maxRetries: 3
+      timeoutMs: 60000
+
+    google:
+      apiKey: ${GOOGLE_API_KEY}
+      timeoutMs: 60000
+
+    ollama:
+      baseUrl: http://localhost:11434
+      timeoutMs: 300000
+
+  # Rate limiting (per provider)
+  rateLimits:
+    anthropic:
+      requestsPerMinute: 60
+      tokensPerMinute: 100000
+    openai:
+      requestsPerMinute: 60
+      tokensPerMinute: 150000
+
+# ── Agents ─────────────────────────────────────────────────────────────────────
+# Define the agents in your swarm. Each agent has a role, model, and set of
+# skills that determine what it can do.
+
+agents:
+  coordinator:
+    role: coordinator
+    description: "Orchestrates tasks across the swarm, delegates work, and synthesizes results"
+    model: anthropic/claude-sonnet-4-20250514
+    systemPrompt: |
+      You are the coordinator agent. Your job is to:
+      1. Break down complex tasks into subtasks
+      2. Delegate subtasks to specialized agents
+      3. Monitor progress and handle failures
+      4. Synthesize results into coherent outputs
+    skills:
+      - task-planning
+      - delegation
+      - summarization
+    maxConcurrentTasks: 5
+
+  researcher:
+    role: researcher
+    description: "Gathers and synthesizes information from various sources"
+    model: anthropic/claude-sonnet-4-20250514
+    skills:
+      - web-search
+      - summarization
+      - fact-checking
+    maxConcurrentTasks: 3
+
+  coder:
+    role: coder
+    description: "Writes, reviews, and debugs code"
+    model: anthropic/claude-sonnet-4-20250514
+    skills:
+      - code-generation
+      - code-review
+      - debugging
+      - code-exec
+    maxConcurrentTasks: 2
+
+  writer:
+    role: writer
+    description: "Creates and edits written content"
+    model: anthropic/claude-sonnet-4-20250514
+    skills:
+      - content-generation
+      - editing
+      - formatting
+    maxConcurrentTasks: 3
+
+# ── Skills ─────────────────────────────────────────────────────────────────────
+# Skills are modular capabilities that agents can use. They can come from
+# the built-in registry, npm packages, git repos, or local directories.
+
+skills:
+  - name: web-search
+    source: registry
+    config:
+      maxResults: 10
+      safeSearch: true
+
+  - name: code-exec
+    source: registry
+    config:
+      runtime: node
+      timeout: 30000
+      sandboxed: true
+
+  - name: file-manager
+    source: registry
+    config:
+      allowedPaths:
+        - ./workspace
+        - ./output
+      maxFileSize: 10485760  # 10MB
+
+  - name: custom-skill
+    source: ./skills/custom-skill
+    config:
+      apiEndpoint: https://api.example.com
+
+# ── Connectors ─────────────────────────────────────────────────────────────────
+# Connectors link your swarm to external platforms. Messages flow in and out
+# through connectors.
+
+connectors:
+  - type: slack
+    name: team-slack
+    config:
+      token: ${SLACK_BOT_TOKEN}
+      appToken: ${SLACK_APP_TOKEN}
+      channels:
+        - C01234ABCDE
+        - C05678FGHIJ
+      socketMode: true
+
+  - type: discord
+    name: community-discord
+    config:
+      token: ${DISCORD_BOT_TOKEN}
+      guildIds:
+        - "123456789012345678"
+      channelIds:
+        - "987654321098765432"
+
+  - type: telegram
+    name: support-bot
+    config:
+      token: ${TELEGRAM_BOT_TOKEN}
+      allowedChatIds:
+        - 123456789
+
+  - type: webhook
+    name: ci-webhook
+    config:
+      inbound:
+        port: 9090
+        path: /webhook
+        secret: ${WEBHOOK_SECRET}
+      outbound:
+        url: https://hooks.example.com/hivemind
+        headers:
+          Authorization: "Bearer ${WEBHOOK_AUTH_TOKEN}"
+        retries: 3
+        timeoutMs: 10000
+
+# ── Dashboard ──────────────────────────────────────────────────────────────────
+# Web-based dashboard for monitoring and controlling the swarm.
+
+dashboard:
+  enabled: true
+  port: 3000
+  host: "0.0.0.0"
+  # Optional basic auth
+  auth:
+    username: admin
+    password: ${DASHBOARD_PASSWORD}
+
+# ── Storage ────────────────────────────────────────────────────────────────────
+# Data storage configuration. SQLite is the default for local-first operation.
+
+storage:
+  type: sqlite
+  path: ./data/hivemind.db
+  # Enable WAL mode for better concurrent read performance
+  walMode: true
+  # Backup settings
+  backup:
+    enabled: true
+    intervalMinutes: 60
+    maxBackups: 24
+    path: ./data/backups
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+
+logging:
+  level: info  # debug, info, warn, error
+  format: pretty  # pretty, json
+  file:
+    enabled: true
+    path: ./logs/hivemind.log
+    maxSize: 10485760  # 10MB
+    maxFiles: 5
+
+# ── Advanced ───────────────────────────────────────────────────────────────────
+
+advanced:
+  # Maximum number of agents that can run concurrently
+  maxAgents: 10
+  # Task queue settings
+  taskQueue:
+    maxSize: 1000
+    processingTimeout: 300000  # 5 minutes
+  # Memory settings for agent context
+  memory:
+    maxContextTokens: 32000
+    summarizeAfterTokens: 24000
+  # Inter-agent communication
+  messaging:
+    protocol: "internal"  # internal, redis
+    redis:
+      url: ${REDIS_URL}

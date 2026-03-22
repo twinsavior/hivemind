@@ -1,0 +1,6 @@
+cron:
+  jobs:
+    - name: daily-review
+      schedule: "0 9 * * *"
+      employee: jinn-dev
+      task: "Review open PRs"

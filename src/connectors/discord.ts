@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events";
 import {
   BaseConnector,
   type ConnectorConfig,

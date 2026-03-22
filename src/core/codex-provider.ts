@@ -16,7 +16,7 @@ import { SAFE_DEFAULT_TOOL_LIST } from './trust.js';
  */
 export class CodexProvider implements LLMProvider {
   readonly name = 'codex';
-  readonly supportedModels = ['codex', 'o4-mini', 'o3', 'gpt-4.1', 'gpt-5.4'];
+  readonly supportedModels = ['codex', 'o4-mini', 'o3'];
 
   private readonly codexPath: string;
   private readonly timeoutMs: number;

@@ -13,7 +13,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-63%20passing-brightgreen)](src/)
+[![CI](https://github.com/twinsavior/hivemind/actions/workflows/ci.yml/badge.svg)](https://github.com/twinsavior/hivemind/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 
 [Quick Start](#-quick-start) · [Agent Roster](#-the-agent-roster) · [Architecture](#-architecture) · [Skills](#-skills-system) · [Configuration](#%EF%B8%8F-configuration)
@@ -41,7 +41,7 @@ HIVEMIND runs locally on your machine via a desktop Electron app or CLI, connect
 | 🔨 **Builder** | Construction | Writes code, generates documents, creates build artifacts. Supports Vercel, Railway, Docker, and local targets with full CI/CD pipeline tracking. |
 | 🛡 **Sentinel** | Protection | Monitors agent health, validates outputs, runs security audits. Tracks alerts by severity (info, warning, critical) and enforces quality gates. |
 | 🔮 **Oracle** | Analysis | Deep data analysis, trend detection, and forecasting. Identifies patterns, generates statistical models, and recommends strategies with confidence intervals. |
-| 📬 **Courier** | Delivery | Routes messages across Slack, Discord, Telegram, WhatsApp, and email. Manages priority levels, rate limiting, and delivery confirmation. |
+| 📬 **Courier** | Delivery | Routes messages across Slack, Discord, Telegram, and webhooks. Manages priority levels, rate limiting, and delivery confirmation. |
 
 Agents coordinate automatically -- a Scout discovers context, passes it to a Builder, the Sentinel validates the output, an Oracle analyzes results, and a Courier delivers the final product.
 
@@ -105,7 +105,7 @@ graph TB
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/hivemind-swarm/hivemind.git
+git clone https://github.com/twinsavior/hivemind.git
 cd hivemind
 pnpm install
 
@@ -145,7 +145,7 @@ The `init` command walks you through project setup interactively -- project name
 - **Event-driven messaging** -- EventEmitter-based inter-agent communication with typed messages (task, result, query, broadcast, heartbeat)
 - **Task journaling** -- Full audit trail of task execution with adaptive strategy and learning loops
 - **Multimodal support** -- Scout handles images, audio, and document extraction via pluggable vision providers
-- **Platform connectors** -- Slack, Discord, Telegram, WhatsApp, email, and webhook integrations
+- **Platform connectors** -- Slack, Discord, Telegram, and webhook integrations
 - **Local-first** -- Runs entirely on your machine, SQLite for storage, no cloud infrastructure required
 
 ---
@@ -278,11 +278,6 @@ pnpm test
 # Run tests in watch mode
 pnpm test:watch
 
-# Lint
-pnpm lint
-
-# Format
-pnpm format
 ```
 
 ### Project Structure
@@ -326,7 +321,7 @@ HIVEMIND is [MIT licensed](LICENSE).
 
 <div align="center">
 
-**Built by the [HIVEMIND community](https://github.com/hivemind-swarm/hivemind/graphs/contributors).**
+**Built by the [HIVEMIND community](https://github.com/twinsavior/hivemind/graphs/contributors).**
 
 [Back to top](#)
 

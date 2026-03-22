@@ -12,17 +12,20 @@ WORKDIR /app
 # Install build dependencies for native modules (better-sqlite3)
 RUN apk add --no-cache python3 make g++
 
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+
 # Copy package files and install dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY tsconfig.json ./
 COPY src/ ./src/
-RUN npm run build
+RUN pnpm build
 
 # Prune dev dependencies
-RUN npm prune --production
+RUN pnpm prune --prod
 
 # ── Stage 2: Production ───────────────────────────────────────────────────────
 

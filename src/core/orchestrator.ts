@@ -883,7 +883,10 @@ export class Orchestrator extends EventEmitter {
   }
 
   private decompose(objective: string): string[] {
-    // Placeholder — in production, the LLM decomposes objectives into subtasks.
+    // TODO(#decompose): Replace with LLM-based decomposition.
+    // Currently returns a generic 4-phase template. This is a stub —
+    // real decomposition requires an LLM call to analyze the objective
+    // and produce task-specific subtasks.
     return [
       `Research and gather context for: ${objective}`,
       `Plan implementation approach for: ${objective}`,

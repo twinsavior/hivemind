@@ -1648,7 +1648,7 @@
           <div class="swarm-legend-item"><div class="swarm-legend-dot" style="background:#ef4444"></div>Sentinel</div>
           <div class="swarm-legend-item"><div class="swarm-legend-dot" style="background:#a855f7"></div>Oracle</div>
           <div class="swarm-legend-item"><div class="swarm-legend-dot" style="background:#f97316"></div>Courier</div>
-          <div class="swarm-legend-item"><div class="swarm-legend-dot" style="background:#6366f1"></div>Nova</div>
+          <div class="swarm-legend-item" id="swarm-legend-nova"><div class="swarm-legend-dot" style="background:#6366f1"></div>Nova</div>
         </div>
         <div class="swarm-tooltip" id="swarm-tooltip"></div>
       </div>
@@ -1718,6 +1718,62 @@
       'oracle-1':   { name: 'Oracle Vision',   role: 'Strategy & Prediction', provider: 'Claude',  icon: 'O' },
       'courier-1':  { name: 'Courier Swift',   role: 'Communication',         provider: 'Claude',  icon: 'C' },
     };
+
+    // ── Profile-based personalization ────────────────────────────────────
+    let hivemindProfile = null;
+
+    function getCofounderName() {
+      return hivemindProfile?.cofounder?.name || 'Nova';
+    }
+
+    function getCofounderEmoji() {
+      return hivemindProfile?.cofounder?.emoji || '';
+    }
+
+    /** Apply loaded profile to agentMeta and UI elements */
+    function applyProfile(profile) {
+      if (!profile || !profile.agents) return;
+      hivemindProfile = profile;
+
+      // Update agentMeta from profile agents
+      for (const [agentId, agent] of Object.entries(profile.agents)) {
+        if (agentMeta[agentId]) {
+          agentMeta[agentId].name = agent.name || agentMeta[agentId].name;
+          agentMeta[agentId].role = agent.roleLabel || agentMeta[agentId].role;
+          if (agent.icon && agent.icon.length <= 2) {
+            agentMeta[agentId].icon = agent.icon;
+          }
+        }
+      }
+
+      // Update the co-founder button text in the agent selector
+      const novaBtn = document.getElementById('btn-nova');
+      if (novaBtn) novaBtn.textContent = getCofounderName();
+
+      // Update the swarm legend label for the co-founder
+      const legendNova = document.getElementById('swarm-legend-nova');
+      if (legendNova) {
+        const dot = legendNova.querySelector('.swarm-legend-dot');
+        if (dot) {
+          legendNova.textContent = '';
+          legendNova.appendChild(dot);
+          legendNova.appendChild(document.createTextNode(getCofounderName()));
+        }
+      }
+    }
+
+    /** Fetch profile from server and apply */
+    async function loadProfile() {
+      try {
+        const res = await fetch('http://localhost:4000/api/profile');
+        if (res.ok) {
+          const profile = await res.json();
+          applyProfile(profile);
+        }
+      } catch {
+        // Profile not available — keep defaults
+      }
+    }
 
     // ── DOM helpers (must be first) ──────────────────────────────────────
     const $ = (s) => document.querySelector(s);
@@ -3106,8 +3162,7 @@
                 } else if (msg.text) {
                   // Track agent transitions — insert header when a different agent starts streaming
                   if (msg.agentId && msg.agentId !== rt.lastAgentId) {
-                    const agentNames = { 'nova-1': 'Nova', 'builder-1': 'Builder Prime', 'scout-1': 'Scout Alpha', 'sentinel-1': 'Sentinel Watch', 'oracle-1': 'Oracle Insight', 'courier-1': 'Courier Express' };
-                    const name = agentNames[msg.agentId] || msg.agentId;
+                    const name = agentMeta[msg.agentId]?.name || msg.agentId;
                     const providerBadge = ['builder-1', 'sentinel-1'].includes(msg.agentId) ? 'Codex' : 'Claude';
                     if (rt.lastAgentId) {
                       rt.buffer += `\n\n---\n**${name}** \`${providerBadge}\`\n\n`;
@@ -3240,7 +3295,7 @@
               }
             }
 
-            // Nova coordinator events — always buffer, only update DOM if visible
+            // Coordinator events — always buffer, only update DOM if visible
             if (msg.type === 'nova:delegating') {
               const rt = runningTasks.get(msg.taskId);
               const agentNames = (msg.agents || []).map(a => {
@@ -3267,7 +3322,7 @@
             }
             if (msg.type === 'nova:hiring') {
               const rt = runningTasks.get(msg.taskId);
-              const text = `\n\n> **Nova recommends hiring:** ${msg.role} — ${msg.description}\n`;
+              const text = `\n\n> **${getCofounderName()} recommends hiring:** ${msg.role} — ${msg.description}\n`;
               if (rt) rt.buffer += text;
               if (streamingTextEl) {
                 streamBuffer += text;
@@ -3277,7 +3332,7 @@
             if (msg.type === 'nova:firing') {
               const rt = runningTasks.get(msg.taskId);
               const meta = agentMeta[msg.agentId];
-              const text = `\n\n> **Nova recommends sunsetting:** ${meta?.name || msg.agentId} — ${msg.reason}\n`;
+              const text = `\n\n> **${getCofounderName()} recommends sunsetting:** ${meta?.name || msg.agentId} — ${msg.reason}\n`;
               if (rt) rt.buffer += text;
               if (streamingTextEl) {
                 streamBuffer += text;
@@ -3291,7 +3346,7 @@
                 const meta = agentMeta[id];
                 return meta ? meta.name : id;
               });
-              const text = `\n\n---\n⚠️ *Post-mortem: ${failedNames.join(', ')} failed or returned empty. Nova is diagnosing and recovering...*\n\n`;
+              const text = `\n\n---\n⚠️ *Post-mortem: ${failedNames.join(', ')} failed or returned empty. ${getCofounderName()} is diagnosing and recovering...*\n\n`;
               if (rt) rt.buffer += text;
               if (isTaskVisible(msg.taskId) && streamingTextEl) {
                 streamBuffer += text;
@@ -3303,8 +3358,7 @@
             // ── Review loop progress ──
             if (msg.type === 'review:round') {
               if (isTaskVisible(msg.taskId) && streamingTextEl) {
-                const agentNames = { 'nova-1': 'Nova', 'builder-1': 'Builder Prime' };
-                const agent = agentNames[msg.agent] || msg.agent;
+                const agent = agentMeta[msg.agent]?.name || msg.agent;
                 const phase = msg.phase === 'reviewing' ? 'reviewing code' : 'revising based on feedback';
                 let banner = streamingTextEl.querySelector('.review-banner');
                 if (!banner) {
@@ -3333,8 +3387,7 @@
             // ── Delegation progress ──
             if (msg.type === 'delegation:progress') {
               if (isTaskVisible(msg.taskId) && streamingTextEl) {
-                const agentNames = { 'builder-1': 'Builder Prime', 'scout-1': 'Scout Alpha', 'sentinel-1': 'Sentinel Watch', 'oracle-1': 'Oracle Insight', 'courier-1': 'Courier Express' };
-                const name = agentNames[msg.agentId] || msg.agentId;
+                const name = agentMeta[msg.agentId]?.name || msg.agentId;
                 if (msg.phase === 'working') {
                   const el = document.createElement('div');
                   el.className = 'delegation-status';
@@ -3654,6 +3707,7 @@
       if (status === 'ready') {
         pollStatus();
         connectWebSocket();
+        loadProfile();
       }
     });
 
@@ -3664,6 +3718,7 @@
     // ── Init ──────────────────────────────────────────────────────────────
     pollStatus();
     connectWebSocket();
+    loadProfile();
     setInterval(pollStatus, 10000);
 
     // Initialize conversations

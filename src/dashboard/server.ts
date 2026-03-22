@@ -404,7 +404,7 @@ async function loadMemoryContext(taskDescription: string): Promise<string> {
 
 // ─── Express App ─────────────────────────────────────────────────────────────
 
-const app = express();
+const app: ReturnType<typeof express> = express();
 app.use(express.json({ limit: '1mb' }));
 
 // ─── Security headers + CORS ─────────────────────────────────────────────────
@@ -2218,7 +2218,7 @@ const PORT = Number(process.env["HIVEMIND_DASHBOARD_PORT"]) || 4000;
 
 const HOST = process.env["HIVEMIND_DASHBOARD_HOST"] || '127.0.0.1';
 
-export function startDashboard() {
+export function startDashboard(): { server: ReturnType<typeof createServer>; app: ReturnType<typeof express>; bus: typeof bus; wss: typeof wss } {
   server.listen(PORT, HOST, () => {
     console.log(`[HIVEMIND] Dashboard running at http://localhost:${PORT}`);
   });

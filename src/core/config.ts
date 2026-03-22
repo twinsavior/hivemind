@@ -19,7 +19,7 @@ export interface SwarmConfig {
 }
 
 export interface StorageConfig {
-  type: "sqlite" | "postgres" | "redis";
+  type: "sqlite";
   connectionString: string;
   poolSize: number;
 }

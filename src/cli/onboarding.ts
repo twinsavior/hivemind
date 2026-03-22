@@ -4,14 +4,30 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as readline from "node:readline/promises";
 
+import {
+  ONBOARDING_BANNER,
+  WELCOME_INTRO,
+  PHASE_HEADER,
+  PHASE1_TITLE,
+  PHASE2_TITLE,
+  PHASE3_TITLE,
+  PHASE4_TITLE,
+  PHASE2_INTRO,
+  TOOL_DETECTION,
+  TOOL_SUMMARY,
+  CONFIG_MESSAGES,
+  LAUNCH_MESSAGE,
+  FIRST_TASK_SUGGESTIONS,
+  PERSONALITY_PROMPTS,
+  PROMPTS_PHASE2,
+  ERRORS,
+} from "./onboarding-copy.js";
+
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
 const CYAN = "\x1b[36m";
-const GREEN = "\x1b[32m";
 const YELLOW = "\x1b[33m";
-const RED = "\x1b[31m";
-const MAGENTA = "\x1b[35m";
 
 const PROFILE_VERSION = 1;
 
@@ -114,32 +130,29 @@ const PERSONALITY_OPTIONS: Array<{ value: PersonalityStyle; label: string; promp
   {
     value: "direct",
     label: "Direct & strategic",
-    prompt: "Direct, strategic, and candid. Prioritize clear tradeoffs, momentum, and decisive judgment.",
+    prompt: PERSONALITY_PROMPTS["direct"]!,
   },
   {
     value: "warm",
     label: "Warm & encouraging",
-    prompt: "Warm, collaborative, and encouraging. Keep guidance clear while staying supportive.",
+    prompt: PERSONALITY_PROMPTS["warm"]!,
   },
   {
     value: "technical",
     label: "Technical & precise",
-    prompt: "Technical, precise, and rigorous. Explain decisions concretely and avoid hand-waving.",
+    prompt: PERSONALITY_PROMPTS["technical"]!,
   },
   {
     value: "casual",
     label: "Casual & fun",
-    prompt: "Casual, approachable, and action-oriented. Keep the tone relaxed without losing competence.",
+    prompt: PERSONALITY_PROMPTS["casual"]!,
   },
   {
     value: "no-nonsense",
     label: "No-nonsense",
-    prompt: "No-nonsense, concise, and execution-focused. Cut fluff and get to the point.",
+    prompt: PERSONALITY_PROMPTS["no-nonsense"]!,
   },
 ];
-
-const COFOUNDER_SUGGESTIONS = ["Nova", "Aria", "Kai", "Atlas", "Sage", "Orion", "Vex", "Echo"] as const;
-const EMOJI_SUGGESTIONS = ["🐝", "🧠", "⚡", "🔮", "🤖", "👁️", "🌀", "💀"] as const;
 
 const DEFAULT_AGENTS: Record<AgentId, AgentProfile> = {
   "nova-1": { id: "nova-1", name: "Nova", icon: "🐝", roleLabel: "Co-Founder & CEO" },
@@ -404,25 +417,18 @@ export async function runOnboarding(options: RunOnboardingOptions = {}): Promise
   const draft = getDefaultProfile(defaultUserName());
 
   try {
-    write(output, `${CYAN}${BOLD}
-██╗  ██╗██╗██╗   ██╗███████╗███╗   ███╗██╗███╗   ██╗██████╗
-██║  ██║██║██║   ██║██╔════╝████╗ ████║██║████╗  ██║██╔══██╗
-███████║██║██║   ██║█████╗  ██╔████╔██║██║██╔██╗ ██║██║  ██║
-██╔══██║██║╚██╗ ██╔╝██╔══╝  ██║╚██╔╝██║██║██║╚██╗██║██║  ██║
-██║  ██║██║ ╚████╔╝ ███████╗██║ ╚═╝ ██║██║██║ ╚████║██████╔╝
-╚═╝  ╚═╝╚═╝  ╚═══╝  ╚══════╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═════╝${RESET}
-${DIM}You're about to set up your own autonomous agent swarm.${RESET}
-${DIM}First-run onboarding. This takes about 2 minutes.${RESET}
-`);
+    write(output, ONBOARDING_BANNER);
+    write(output, WELCOME_INTRO);
 
-    writeStep(output, 1, 4, "Identity");
+    write(output, PHASE_HEADER(1, 4, PHASE1_TITLE));
     draft.user.name = await askRequiredText(rl, output, "What should the swarm call you?", draft.user.name);
     draft.user.role = await askMenu(rl, output, "What's your role?", ROLE_OPTIONS, draft.user.role);
     draft.user.project = await askRequiredText(rl, output, "What are you building?", draft.user.project);
     draft.user.projectStage = await askMenu(rl, output, "Where are you at with it?", STAGE_OPTIONS, draft.user.projectStage);
     draft.user.workStyle = await askMenu(rl, output, "How do you like to work?", WORK_STYLE_OPTIONS, draft.user.workStyle, true);
 
-    writeStep(output, 2, 4, "Co-Founder");
+    write(output, PHASE_HEADER(2, 4, PHASE2_TITLE));
+    write(output, PHASE2_INTRO);
     draft.cofounder.name = await askCofounderName(rl, output, draft.cofounder.name);
     const personality = await askMenu(rl, output, "How should they communicate?", PERSONALITY_OPTIONS, draft.cofounder.personality, true);
     const personalityMeta = PERSONALITY_OPTIONS.find((option) => option.value === personality) ?? PERSONALITY_OPTIONS[0]!;
@@ -436,11 +442,11 @@ ${DIM}First-run onboarding. This takes about 2 minutes.${RESET}
       icon: draft.cofounder.emoji,
     };
 
-    writeStep(output, 3, 4, "CLI Setup");
+    write(output, PHASE_HEADER(3, 4, PHASE3_TITLE));
     const statuses = await detectProviderStatuses();
     renderStatusBoard(output, statuses);
 
-    writeStep(output, 4, 4, "Config");
+    write(output, PHASE_HEADER(4, 4, PHASE4_TITLE));
     const savedProfile = saveProfile(draft, profilePath);
     const wroteConfig = ensurePersonalizedConfig(savedProfile, configPath);
     renderConfigSummary(output, profilePath, configPath, wroteConfig);
@@ -560,26 +566,32 @@ async function askCofounderName(
   output: NodeJS.WritableStream,
   defaultValue: string,
 ): Promise<string> {
-  write(output, `${BOLD}Name your AI co-founder${RESET}`);
-  COFOUNDER_SUGGESTIONS.forEach((name, index) => {
-    const selected = name === defaultValue ? ` ${DIM}(default)${RESET}` : "";
-    write(output, `  ${index + 1}. ${name}${selected}`);
-  });
-  write(output, `  ${COFOUNDER_SUGGESTIONS.length + 1}. Custom name`);
+  const suggestions = PROMPTS_PHASE2.cofounderName.suggestions;
+  write(output, PROMPTS_PHASE2.cofounderName.question);
+  write(output, suggestions.map((s, i) =>
+    `    ${i + 1}) ${BOLD}${s.name}${RESET}  ${DIM}— ${s.vibe}${RESET}`
+  ).join("\n"));
+  write(output, `    ${suggestions.length + 1}) Custom name`);
+  write(output, `\n    ${DIM}Or type any name you want.${RESET}`);
 
   while (true) {
-    const answer = (await rl.question(`${CYAN}?${RESET} Choose 1-${COFOUNDER_SUGGESTIONS.length + 1}: `)).trim();
+    const answer = (await rl.question(`${CYAN}?${RESET} Choose 1-${suggestions.length + 1}, or type a name: `)).trim();
     if (!answer) return defaultValue;
 
     const index = Number.parseInt(answer, 10);
-    if (Number.isInteger(index) && index >= 1 && index <= COFOUNDER_SUGGESTIONS.length) {
-      return COFOUNDER_SUGGESTIONS[index - 1]!;
+    if (Number.isInteger(index) && index >= 1 && index <= suggestions.length) {
+      return suggestions[index - 1]!.name;
     }
-    if (index === COFOUNDER_SUGGESTIONS.length + 1) {
+    if (index === suggestions.length + 1) {
       return await askRequiredText(rl, output, "Custom co-founder name", defaultValue);
     }
 
-    write(output, `${YELLOW}Enter a valid number.${RESET}`);
+    // If they typed a non-numeric string, treat it as a custom name
+    if (Number.isNaN(index) && answer.length > 0) {
+      return answer;
+    }
+
+    write(output, ERRORS.invalidChoice(suggestions.length + 1));
   }
 }
 
@@ -588,42 +600,59 @@ async function askEmoji(
   output: NodeJS.WritableStream,
   defaultValue: string,
 ): Promise<string> {
-  write(output, `${BOLD}Pick an icon${RESET}`);
-  EMOJI_SUGGESTIONS.forEach((emoji, index) => {
-    const selected = emoji === defaultValue ? ` ${DIM}(default)${RESET}` : "";
-    write(output, `  ${index + 1}. ${emoji}${selected}`);
-  });
-  write(output, `  ${EMOJI_SUGGESTIONS.length + 1}. Custom emoji`);
+  const emojiOptions = PROMPTS_PHASE2.emoji.options;
+  write(output, PROMPTS_PHASE2.emoji.question);
+  write(output, PROMPTS_PHASE2.emoji.format(emojiOptions));
+  write(output, PROMPTS_PHASE2.emoji.followUp);
 
   while (true) {
-    const answer = (await rl.question(`${CYAN}?${RESET} Choose 1-${EMOJI_SUGGESTIONS.length + 1}: `)).trim();
+    const answer = (await rl.question(`${CYAN}?${RESET} Choose 1-${emojiOptions.length}, or paste an emoji: `)).trim();
     if (!answer) return defaultValue;
 
     const index = Number.parseInt(answer, 10);
-    if (Number.isInteger(index) && index >= 1 && index <= EMOJI_SUGGESTIONS.length) {
-      return EMOJI_SUGGESTIONS[index - 1]!;
-    }
-    if (index === EMOJI_SUGGESTIONS.length + 1) {
-      return await askRequiredText(rl, output, "Paste any emoji", defaultValue);
+    if (Number.isInteger(index) && index >= 1 && index <= emojiOptions.length) {
+      return emojiOptions[index - 1]!.emoji;
     }
 
-    write(output, `${YELLOW}Enter a valid number.${RESET}`);
+    // If they pasted a non-numeric string, treat it as a custom emoji
+    if (Number.isNaN(index) && answer.length > 0) {
+      return answer.slice(0, 2);
+    }
+
+    write(output, ERRORS.invalidChoice(emojiOptions.length));
   }
 }
 
 function renderStatusBoard(output: NodeJS.WritableStream, statuses: ProviderStatus[]): void {
-  write(output, `${BOLD}Provider status${RESET}`);
-  write(output, `  ${DIM}Claude Code powers Nova, Scout, Oracle, and Courier.${RESET}`);
-  write(output, `  ${DIM}Codex powers Builder and Sentinel.${RESET}`);
+  write(output, TOOL_DETECTION.scanning);
 
   for (const status of statuses) {
-    const badge = status.installed ? `${GREEN}READY${RESET}` : `${RED}MISSING${RESET}`;
-    write(output, `  ${badge} ${status.label} ${DIM}- ${status.detail}${RESET}`);
-    if (!status.installed) {
-      write(output, `     Install: ${status.installCommand}`);
-      write(output, `     Sign in: ${status.loginCommand}`);
+    const toolCopy = status.id === "claude-code" ? TOOL_DETECTION.claudeCode : TOOL_DETECTION.codex;
+    if (status.installed) {
+      write(output, toolCopy.found(status.detail));
+      write(output, toolCopy.whatItPowers);
+    } else {
+      write(output, toolCopy.notFound);
+      write(output, toolCopy.installGuide);
     }
   }
+
+  const claude = statuses.find((s) => s.id === "claude-code");
+  const codex = statuses.find((s) => s.id === "codex");
+  const hasClaude = claude?.installed ?? false;
+  const hasCodex = codex?.installed ?? false;
+
+  if (hasClaude && hasCodex) {
+    write(output, TOOL_SUMMARY.allGood);
+  } else if (hasClaude) {
+    write(output, TOOL_SUMMARY.claudeOnly);
+  } else if (hasCodex) {
+    write(output, TOOL_SUMMARY.codexOnly);
+  } else {
+    write(output, TOOL_SUMMARY.noneFound);
+  }
+
+  write(output, TOOL_SUMMARY.continueAnyway);
 }
 
 function renderConfigSummary(
@@ -632,29 +661,38 @@ function renderConfigSummary(
   configPath: string,
   wroteConfig: boolean,
 ): void {
-  write(output, `${GREEN}${BOLD}Profile saved${RESET} ${DIM}${profilePath}${RESET}`);
+  write(output, CONFIG_MESSAGES.saving);
+  write(output, CONFIG_MESSAGES.saved(profilePath));
   if (wroteConfig) {
-    write(output, `${GREEN}${BOLD}Config written${RESET} ${DIM}${configPath}${RESET}`);
+    write(output, CONFIG_MESSAGES.yamlGenerated(configPath));
     return;
   }
 
-  write(output, `${DIM}hivemind.yaml already exists. Keeping ${configPath}.${RESET}`);
+  write(output, CONFIG_MESSAGES.yamlExists);
 }
 
 function writePersonalizedWelcome(output: NodeJS.WritableStream, profile: HivemindProfile): void {
   write(
     output,
-    `
-${MAGENTA}${BOLD}${profile.cofounder.name}${RESET} ${DIM}is ready.${RESET}
-${profile.cofounder.emoji} ${profile.cofounder.personalityLabel}
-Project: ${profile.user.project}
-Suggested first prompt: ${buildFirstTaskSuggestion(profile)}
-`,
+    LAUNCH_MESSAGE({
+      userName: profile.user.name,
+      cofounderName: profile.cofounder.name,
+      cofounderEmoji: profile.cofounder.emoji,
+      personality: profile.cofounder.personality,
+      projectDescription: profile.user.project,
+      agentCount: DEFAULT_AGENT_ORDER.length,
+    }),
   );
-}
 
-function writeStep(output: NodeJS.WritableStream, step: number, total: number, title: string): void {
-  write(output, `\n${MAGENTA}${BOLD}Step ${step} of ${total}${RESET} ${DIM}${title}${RESET}`);
+  write(
+    output,
+    FIRST_TASK_SUGGESTIONS({
+      role: profile.user.role,
+      stage: profile.user.projectStage,
+      project: profile.user.project,
+      cofounderName: profile.cofounder.name,
+    }),
+  );
 }
 
 function normalizeRole(value: unknown): UserRole {

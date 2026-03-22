@@ -15,6 +15,7 @@ import {
 } from './workspace-tracker.js';
 import { createMarketplaceRouter } from '../skills/marketplace-server.js';
 import { SwarmGraphTracker, type SwarmGraphState, type SwarmNode, type SwarmEdge } from './swarm-graph.js';
+import { loadProfileOrDefault } from '../cli/onboarding.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -451,6 +452,15 @@ app.use(express.static(path.join(__dirname, '../../public')));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+app.get('/api/profile', (_req, res) => {
+  try {
+    const profile = loadProfileOrDefault();
+    res.json(profile);
+  } catch {
+    res.json({});
+  }
 });
 
 app.get('/api/agents', (_req, res) => {

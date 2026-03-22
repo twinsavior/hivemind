@@ -135,21 +135,4 @@ export class LLMAgent extends BaseAgent {
     this.conversationHistory = [];
   }
 
-  private parseJSON(text: string): Record<string, any> {
-    try {
-      // Try direct parse
-      return JSON.parse(text);
-    } catch {
-      // Try extracting JSON from markdown code block
-      const match = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (match?.[1]) {
-        try {
-          return JSON.parse(match[1].trim());
-        } catch {
-          // fall through
-        }
-      }
-      return {};
-    }
-  }
 }

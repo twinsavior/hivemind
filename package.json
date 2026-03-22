@@ -1,0 +1,71 @@
+{
+  "name": "hivemind-swarm",
+  "version": "1.0.0",
+  "description": "The open-source autonomous agent swarm",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "hivemind": "dist/cli/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/cli/index.ts",
+    "build": "tsc",
+    "start": "node dist/cli/index.js up",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write 'src/**/*.ts'",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "claude-max-api-proxy": "^1.0.0",
+    "commander": "^13.1.0",
+    "express": "^4.21.1",
+    "ws": "^8.18.0",
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "agents",
+    "swarm",
+    "autonomous",
+    "local-first",
+    "multi-agent",
+    "llm",
+    "orchestration",
+    "hivemind"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hivemind-swarm/hivemind.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hivemind-swarm/hivemind/issues"
+  },
+  "homepage": "https://github.com/hivemind-swarm/hivemind#readme",
+  "files": [
+    "dist",
+    "hivemind.example.yaml",
+    "README.md",
+    "LICENSE"
+  ]
+}

@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Data
+data/
+*.db
+*.db-journal
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test & Coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Runtime
+*.pid
+*.seed
+
+# Temporary
+tmp/
+temp/
+.tmp/
+.cache/

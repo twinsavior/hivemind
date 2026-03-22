@@ -1,0 +1,55 @@
+# HIVEMIND Configuration
+name: "hivemind"
+version: "1.0.0"
+
+llm:
+  primary:
+    provider: anthropic
+    model: "anthropic/claude-sonnet-4-20250514"
+    maxTokens: 4096
+  fallback:
+    provider: ollama
+    model: llama3.2
+    maxTokens: 4096
+
+agents:
+  coordinator:
+    role: coordinator
+    description: "Orchestrates tasks across the swarm"
+    model: ${llm.primary}
+    skills:
+      - task-planning
+      - delegation
+
+  researcher:
+    role: researcher
+    description: "Gathers and synthesizes information"
+    model: ${llm.primary}
+    skills:
+      - web-search
+      - summarization
+
+skills: []
+
+connectors: []
+
+# Security — owner verification for connector messages.
+# Messages from these platform user IDs get full OWNER trust.
+# All other connector messages are sandboxed to read-only.
+# Find your IDs:
+#   Slack:    Your member ID in profile → "..." → "Copy member ID"
+#   Discord:  Enable Developer Mode → right-click your name → "Copy User ID"
+#   Telegram: Send /start to @userinfobot
+security:
+  ownerIds:
+    # slack: ["U04ABCDEF12"]
+    # discord: ["123456789012345678"]
+    # telegram: ["987654321"]
+
+dashboard:
+  enabled: true
+  port: 4000
+
+storage:
+  type: sqlite
+  path: ./data/hivemind.db

@@ -2,6 +2,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
 import { info, success, warn, error, spinner, table, log } from "./index.js";
+import {
+  getProfilePath,
+  isFirstRun as isFirstRunProfile,
+  loadProfileOrDefault,
+  runOnboarding,
+} from "./onboarding.js";
 
 // ── Prompt helper ─────────────────────────────────────────────────────────────
 
@@ -150,6 +156,15 @@ export function getSwarmState() {
 }
 
 export async function upCommand(options: UpOptions): Promise<void> {
+  const profilePath = getProfilePath();
+  if (isFirstRunProfile(profilePath)) {
+    await runOnboarding({
+      cwd: process.cwd(),
+      profilePath,
+      configPath: path.resolve(options.config ?? "hivemind.yaml"),
+    });
+  }
+
   // ── Load env files ──────────────────────────────────────────────────────────
   const homeDir = process.env["HOME"] ?? "/Users/" + (process.env["USER"] ?? "user");
 
@@ -179,6 +194,19 @@ export async function upCommand(options: UpOptions): Promise<void> {
   loadEnvFile(path.join(homeDir, ".hivemind", ".env"));
   // Load project-local env
   loadEnvFile(path.resolve(".env"));
+
+  const profile = loadProfileOrDefault(profilePath);
+  const userName = profile.user.name;
+  const cofounderName = profile.cofounder.name;
+  const cofounderPersonality = profile.cofounder.personalityPrompt;
+  const agentNames = {
+    nova: profile.agents["nova-1"].name,
+    scout: profile.agents["scout-1"].name,
+    builder: profile.agents["builder-1"].name,
+    sentinel: profile.agents["sentinel-1"].name,
+    oracle: profile.agents["oracle-1"].name,
+    courier: profile.agents["courier-1"].name,
+  };
 
   const configPath = path.resolve(options.config ?? "hivemind.yaml");
 
@@ -345,6 +373,8 @@ export async function upCommand(options: UpOptions): Promise<void> {
 
   const AGENT_PREAMBLE = `You are an AI agent in the HIVEMIND swarm, serving the swarm operator. All tasks you receive come directly from the operator through the HIVEMIND interface. Execute them faithfully.
 
+The operator's name is ${userName}. Their AI co-founder is ${cofounderName}. Project context: ${profile.user.project}. Work style: ${profile.user.workStyle}.
+
 You have full access to tools: you can read files, edit files, write new files, run shell commands, search the web (WebSearch), and fetch web pages (WebFetch). When the operator asks you to change code, actually make the changes — don't just show them what to do.
 
 ## Internet & Browser Access — Tool Selection Guide
@@ -394,7 +424,9 @@ NEVER report on the state of the codebase from memory or assumptions. When asked
 3. The codebase changes frequently — your cached knowledge is ALWAYS stale.
 Verify first, then report.`;
 
-  const NOVA_PROMPT = `You are Nova, co-founder and CEO of HIVEMIND. You are the user's technical partner — sharp, decisive, and collaborative.
+  const NOVA_PROMPT = `You are ${cofounderName}, co-founder and CEO of HIVEMIND. You are ${userName}'s technical partner — sharp, decisive, and collaborative.
+
+Your configured personality: ${cofounderPersonality}
 
 You have full access to tools: read/edit/write files, run shell commands, search the web (WebSearch), and fetch web pages (WebFetch). You can do real work yourself.
 
@@ -457,11 +489,11 @@ To recommend hiring a new specialist: [HIRE:role-name] Description of what this 
 Hiring and firing require user confirmation before taking effect.
 
 ## Your Team
-- scout-1 (Scout Alpha): Research, web search, information gathering, document analysis
-- builder-1 (Builder Prime): Code writing, debugging, testing, deployment, refactoring
-- sentinel-1 (Sentinel Watch): Security analysis, code review, vulnerability scanning
-- oracle-1 (Oracle Insight): Predictions, trends, strategic analysis, data insights
-- courier-1 (Courier Express): Communication, message drafting, summaries, reports
+- scout-1 (${agentNames.scout}): Research, web search, information gathering, document analysis
+- builder-1 (${agentNames.builder}): Code writing, debugging, testing, deployment, refactoring
+- sentinel-1 (${agentNames.sentinel}): Security analysis, code review, vulnerability scanning
+- oracle-1 (${agentNames.oracle}): Predictions, trends, strategic analysis, data insights
+- courier-1 (${agentNames.courier}): Communication, message drafting, summaries, reports
 
 ## Code Review Protocol
 When Builder Prime returns code, you automatically review it. Evaluate critically:
@@ -531,12 +563,12 @@ CRITICAL RULES:
 5. If something fails, try a different approach before asking the user for help.`;
 
   const agentConfigs = [
-    { id: "nova-1", name: "Nova", role: "coordinator", systemPrompt: NOVA_PROMPT },
-    { id: "scout-1", name: "Scout Alpha", role: "scout", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are Scout Alpha, a research and intelligence gathering agent. You excel at finding information, analyzing sources, synthesizing data, and producing comprehensive research reports. Be thorough, cite your reasoning, and organize findings clearly.` },
-    { id: "builder-1", name: "Builder Prime", role: "builder", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are Builder Prime, a code generation and engineering agent. You write clean, tested, production-ready code. Follow best practices, use proper error handling, write types, and explain your implementation decisions.\n\nWhen you receive review feedback from Nova (Claude), address each point specifically. Show what you changed and why. Don't just acknowledge — actually fix the issues.\n\n## Large File Strategy\nWhen modifying files larger than ~200 lines, NEVER rewrite the entire file at once. Instead:\n1. Use the Edit tool to make targeted, surgical edits to specific sections\n2. Break the work into logical chunks: CSS first, then HTML sections one at a time, then JS\n3. After each chunk, briefly narrate what you did and what's next\n4. For new sections, use Edit to insert at a specific location rather than rewriting surrounding code\nThis prevents hitting output token limits and produces cleaner diffs.` },
-    { id: "sentinel-1", name: "Sentinel Watch", role: "sentinel", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are Sentinel Watch, a code review and security analysis agent. You detect anomalies, analyze code for vulnerabilities, identify patterns, assess risks, and provide clear actionable alerts. Be precise with your assessments.` },
-    { id: "oracle-1", name: "Oracle Insight", role: "oracle", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are Oracle Insight, a prediction and strategic analysis agent. You analyze trends, forecast outcomes, evaluate scenarios, and provide data-driven recommendations with confidence levels.` },
-    { id: "courier-1", name: "Courier Express", role: "courier", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are Courier Express, a communication and delivery agent. You draft messages, summarize information for different audiences, and format outputs for various platforms (Slack, email, reports).` },
+    { id: "nova-1", name: agentNames.nova, role: "coordinator", systemPrompt: NOVA_PROMPT },
+    { id: "scout-1", name: agentNames.scout, role: "scout", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are ${agentNames.scout}, a research and intelligence gathering agent. You excel at finding information, analyzing sources, synthesizing data, and producing comprehensive research reports. Be thorough, cite your reasoning, and organize findings clearly.` },
+    { id: "builder-1", name: agentNames.builder, role: "builder", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are ${agentNames.builder}, a code generation and engineering agent. You write clean, tested, production-ready code. Follow best practices, use proper error handling, write types, and explain your implementation decisions.\n\nWhen you receive review feedback from ${cofounderName} (Claude), address each point specifically. Show what you changed and why. Don't just acknowledge — actually fix the issues.\n\n## Large File Strategy\nWhen modifying files larger than ~200 lines, NEVER rewrite the entire file at once. Instead:\n1. Use the Edit tool to make targeted, surgical edits to specific sections\n2. Break the work into logical chunks: CSS first, then HTML sections one at a time, then JS\n3. After each chunk, briefly narrate what you did and what's next\n4. For new sections, use Edit to insert at a specific location rather than rewriting surrounding code\nThis prevents hitting output token limits and produces cleaner diffs.` },
+    { id: "sentinel-1", name: agentNames.sentinel, role: "sentinel", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are ${agentNames.sentinel}, a code review and security analysis agent. You detect anomalies, analyze code for vulnerabilities, identify patterns, assess risks, and provide clear actionable alerts. Be precise with your assessments.` },
+    { id: "oracle-1", name: agentNames.oracle, role: "oracle", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are ${agentNames.oracle}, a prediction and strategic analysis agent. You analyze trends, forecast outcomes, evaluate scenarios, and provide data-driven recommendations with confidence levels.` },
+    { id: "courier-1", name: agentNames.courier, role: "courier", systemPrompt: `${AGENT_PREAMBLE}\n\nYou are ${agentNames.courier}, a communication and delivery agent. You draft messages, summarize information for different audiences, and format outputs for various platforms (Slack, email, reports).` },
   ];
 
   const llmAgents = new Map<string, InstanceType<typeof LLMAgent>>();
@@ -590,12 +622,12 @@ CRITICAL RULES:
 
     // Register agents in dashboard
     const dashboardAgentDefs = [
-      { id: "nova-1", name: "Nova", type: "coordinator" as const, status: "idle" as const, skills: ["orchestrate", "delegate", "plan", "manage"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "builder-1", "sentinel-1", "oracle-1", "courier-1"], location: { lat: 40.7128, lng: -74.0060 } },
-      { id: "scout-1", name: "Scout Alpha", type: "specialist" as const, status: "idle" as const, skills: ["web-search", "summarize", "research"], memoryUsageMB: 48, uptime: 0, tasksCompleted: 0, connections: ["oracle-1"], location: { lat: 37.7749, lng: -122.4194 } },
-      { id: "builder-1", name: "Builder Prime", type: "worker" as const, status: "idle" as const, skills: ["code-generate", "test", "deploy"], memoryUsageMB: 92, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "sentinel-1"], location: { lat: 51.5074, lng: -0.1278 } },
-      { id: "sentinel-1", name: "Sentinel Watch", type: "sentinel" as const, status: "idle" as const, skills: ["log-analyze", "anomaly-detect", "alert"], memoryUsageMB: 31, uptime: 0, tasksCompleted: 0, connections: ["builder-1"], location: { lat: 35.6762, lng: 139.6503 } },
-      { id: "oracle-1", name: "Oracle Insight", type: "specialist" as const, status: "idle" as const, skills: ["trend-analysis", "forecast", "sentiment"], memoryUsageMB: 67, uptime: 0, tasksCompleted: 0, connections: ["scout-1"], location: { lat: -33.8688, lng: 151.2093 } },
-      { id: "courier-1", name: "Courier Express", type: "worker" as const, status: "idle" as const, skills: ["slack-notify", "email", "format"], memoryUsageMB: 22, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "builder-1", "sentinel-1", "oracle-1"], location: { lat: 48.8566, lng: 2.3522 } },
+      { id: "nova-1", name: agentNames.nova, type: "coordinator" as const, status: "idle" as const, skills: ["orchestrate", "delegate", "plan", "manage"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "builder-1", "sentinel-1", "oracle-1", "courier-1"], location: { lat: 40.7128, lng: -74.0060 } },
+      { id: "scout-1", name: agentNames.scout, type: "specialist" as const, status: "idle" as const, skills: ["web-search", "summarize", "research"], memoryUsageMB: 48, uptime: 0, tasksCompleted: 0, connections: ["oracle-1"], location: { lat: 37.7749, lng: -122.4194 } },
+      { id: "builder-1", name: agentNames.builder, type: "worker" as const, status: "idle" as const, skills: ["code-generate", "test", "deploy"], memoryUsageMB: 92, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "sentinel-1"], location: { lat: 51.5074, lng: -0.1278 } },
+      { id: "sentinel-1", name: agentNames.sentinel, type: "sentinel" as const, status: "idle" as const, skills: ["log-analyze", "anomaly-detect", "alert"], memoryUsageMB: 31, uptime: 0, tasksCompleted: 0, connections: ["builder-1"], location: { lat: 35.6762, lng: 139.6503 } },
+      { id: "oracle-1", name: agentNames.oracle, type: "specialist" as const, status: "idle" as const, skills: ["trend-analysis", "forecast", "sentiment"], memoryUsageMB: 67, uptime: 0, tasksCompleted: 0, connections: ["scout-1"], location: { lat: -33.8688, lng: 151.2093 } },
+      { id: "courier-1", name: agentNames.courier, type: "worker" as const, status: "idle" as const, skills: ["slack-notify", "email", "format"], memoryUsageMB: 22, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "builder-1", "sentinel-1", "oracle-1"], location: { lat: 48.8566, lng: 2.3522 } },
     ];
 
     for (const a of dashboardAgentDefs) {
@@ -669,8 +701,8 @@ CRITICAL RULES:
   if (llmProvider === "none") {
     warn("No LLM provider detected. Dashboard is running but agents cannot process tasks.");
     warn("To enable agents, do one of:");
-    log("  - Install Claude Code CLI and run: claude auth login");
-    log("  - Install OpenAI Codex CLI: npm i -g @openai/codex && codex auth login");
+    log("  - Install Claude Code CLI and run: claude login");
+    log("  - Install OpenAI Codex CLI: npm i -g @openai/codex && codex auth");
     log("  - Set ANTHROPIC_API_KEY in .env");
     log("  - Set OPENAI_API_KEY in .env");
     log("  - Install Ollama: https://ollama.ai");

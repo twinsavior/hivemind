@@ -355,6 +355,11 @@ app.whenReady().then(async () => {
   }
   createWindow();
 
+  // Wait for the renderer to finish loading before sending IPC messages
+  const pageReady = new Promise((resolve) => {
+    mainWindow.webContents.once('did-finish-load', resolve);
+  });
+
   // Check if server is already running
   const running = await checkServer();
   if (running) {
@@ -369,6 +374,8 @@ app.whenReady().then(async () => {
     }
   }
 
+  // Ensure page is loaded before sending the ready signal
+  await pageReady;
   mainWindow.webContents.send('server-status', 'ready');
 });
 

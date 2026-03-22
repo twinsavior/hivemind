@@ -174,7 +174,7 @@ function cloneAgents(): Record<AgentId, AgentProfile> {
 }
 
 function defaultUserName(): string {
-  return process.env["USER"] || process.env["USERNAME"] || "Operator";
+  return process.env["USER"] || process.env["USERNAME"] || os.userInfo().username || "Operator";
 }
 
 export function getHivemindHome(homeDir = os.homedir()): string {
@@ -306,7 +306,8 @@ export function isFirstRun(profilePath = getProfilePath()): boolean {
 export function buildFirstTaskSuggestion(profile: HivemindProfile): string {
   const roleLabel = ROLE_OPTIONS.find((option) => option.value === profile.user.role)?.label ?? "Builder";
   const stageLabel = STAGE_OPTIONS.find((option) => option.value === profile.user.projectStage)?.label ?? profile.user.projectStage;
-  return `Help me plan the next 3 highest-leverage moves for ${profile.user.project} (${stageLabel}) as a ${roleLabel}.`;
+  const project = profile.user.project.trim() || "my project";
+  return `Help me plan the next 3 highest-leverage moves for ${project} (${stageLabel}) as a ${roleLabel}.`;
 }
 
 export function generatePersonalizedConfig(profile: HivemindProfile): string {

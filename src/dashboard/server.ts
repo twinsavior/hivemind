@@ -15,7 +15,14 @@ import {
 } from './workspace-tracker.js';
 import { createMarketplaceRouter } from '../skills/marketplace-server.js';
 import { SwarmGraphTracker, type SwarmGraphState, type SwarmNode, type SwarmEdge } from './swarm-graph.js';
-import { loadProfileOrDefault } from '../cli/onboarding.js';
+import {
+  buildFirstTaskSuggestion,
+  detectProviderStatuses,
+  isFirstRun,
+  loadProfileOrDefault,
+  normalizeProfile,
+  saveProfile,
+} from '../cli/onboarding.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,6 +88,8 @@ const taskToAgent = new Map<string, string>();       // taskId -> agentId (for d
 const taskMapTimestamps = new Map<string, number>(); // taskId -> creation timestamp (for periodic eviction)
 const taskAbortControllers = new Map<string, AbortController>();  // taskId -> abort controller for Nova's stream
 const MAX_TASK_EVENTS = 500;
+let providerStatusCache: Awaited<ReturnType<typeof detectProviderStatuses>> = [];
+let providerStatusRefresh: Promise<Awaited<ReturnType<typeof detectProviderStatuses>>> | null = null;
 
 const bus = new EventEmitter();
 bus.setMaxListeners(200);
@@ -432,6 +441,25 @@ app.use((_req, res, next) => {
 
 const DASH_PASSWORD = process.env["DASHBOARD_PASSWORD"];
 
+function refreshProviderStatuses(): Promise<Awaited<ReturnType<typeof detectProviderStatuses>>> {
+  if (providerStatusRefresh) return providerStatusRefresh;
+
+  providerStatusRefresh = detectProviderStatuses()
+    .then((providers) => {
+      providerStatusCache = providers;
+      return providers;
+    })
+    .catch((error) => {
+      console.warn('[Dashboard] Failed to detect provider statuses:', error);
+      return providerStatusCache;
+    })
+    .finally(() => {
+      providerStatusRefresh = null;
+    });
+
+  return providerStatusRefresh;
+}
+
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   if (!DASH_PASSWORD) return next(); // no password set → open access (localhost only)
   // Accept password via Authorization: Bearer <password> or ?token=<password>
@@ -445,8 +473,21 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
 // Apply auth to all API routes
 app.use('/api', requireAuth);
 
+// Serve the desktop renderer from the root URL too so first-run onboarding is reachable.
+app.get('/', (req, res) => {
+  const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  res.redirect(`/app${query}`);
+});
+
 // Serve static dashboard assets from public/
 app.use(express.static(path.join(__dirname, '../../public')));
+
+// Serve the desktop chat UI at /app (and /chat alias)
+const desktopRendererPath = path.join(__dirname, '../../desktop/renderer');
+app.use('/app', express.static(desktopRendererPath));
+app.get('/chat', (_req, res) => {
+  res.sendFile(path.join(desktopRendererPath, 'index.html'));
+});
 
 // ─── REST API ────────────────────────────────────────────────────────────────
 
@@ -458,8 +499,53 @@ app.get('/api/profile', (_req, res) => {
   try {
     const profile = loadProfileOrDefault();
     res.json(profile);
-  } catch {
-    res.json({});
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to load profile' });
+  }
+});
+
+app.get('/api/onboarding/bootstrap', async (_req, res) => {
+  try {
+    const profile = loadProfileOrDefault();
+    void refreshProviderStatuses();
+    res.json({
+      isFirstRun: isFirstRun(),
+      profile,
+      providers: providerStatusCache,
+      firstTaskSuggestion: buildFirstTaskSuggestion(profile),
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to load onboarding bootstrap',
+    });
+  }
+});
+
+app.get('/api/onboarding/providers', async (_req, res) => {
+  try {
+    const providers = await refreshProviderStatuses();
+    res.json({ providers });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to detect providers',
+      providers: providerStatusCache,
+    });
+  }
+});
+
+app.post('/api/profile', (req, res) => {
+  try {
+    const draft = normalizeProfile(req.body ?? {});
+    const profile = saveProfile(draft);
+    res.json({
+      ok: true,
+      profile,
+      firstTaskSuggestion: buildFirstTaskSuggestion(profile),
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to save profile',
+    });
   }
 });
 

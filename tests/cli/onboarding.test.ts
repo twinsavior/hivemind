@@ -681,6 +681,14 @@ describe("buildFirstTaskSuggestion", () => {
     const suggestion = buildFirstTaskSuggestion(profile);
     expect(suggestion).toContain("highest-leverage moves");
   });
+
+  it("falls back to a generic project label when project is blank", () => {
+    const profile = buildProfile({
+      user: { ...getDefaultProfile().user, project: "   " },
+    });
+    const suggestion = buildFirstTaskSuggestion(profile);
+    expect(suggestion).toContain("my project");
+  });
 });
 
 // ─── runOnboarding (full flow simulation) ────────────────────────────────────

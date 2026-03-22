@@ -1492,9 +1492,206 @@
     .hljs-meta { color: #79c0ff; }
     .hljs-addition { color: #aff5b4; background: rgba(46, 160, 67, 0.15); }
     .hljs-deletion { color: #ffdcd7; background: rgba(248, 81, 73, 0.15); }
+
+    /* ── Onboarding Wizard ───────────────────────────────────────────── */
+    body.app-loading #app { opacity: 0; pointer-events: none; }
+
+    #desktop-onboarding-root {
+      position: fixed; inset: 0; z-index: 99999;
+      background: linear-gradient(165deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow-y: auto;
+      transition: opacity 0.5s ease, transform 0.4s ease;
+    }
+    #desktop-onboarding-root.hidden {
+      opacity: 0; transform: scale(1.02); pointer-events: none;
+    }
+    #desktop-onboarding-root:empty { display: none; }
+
+    .ob-card {
+      width: 100%; max-width: 560px; padding: 48px 40px;
+      animation: obFadeIn 0.4s ease both;
+    }
+    @keyframes obFadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .ob-step-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+    }
+    .ob-title {
+      font-size: 28px; font-weight: 700; color: #f1f5f9;
+      line-height: 1.25; margin-bottom: 8px;
+    }
+    .ob-subtitle {
+      font-size: 15px; color: var(--text-secondary); line-height: 1.55;
+      margin-bottom: 32px;
+    }
+
+    .ob-field { margin-bottom: 22px; }
+    .ob-label {
+      display: block; font-size: 13px; font-weight: 500;
+      color: var(--text-secondary); margin-bottom: 6px;
+    }
+    .ob-input, .ob-select, .ob-textarea {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1.5px solid var(--border); background: var(--bg-input);
+      color: var(--text-primary); font-size: 14px; font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .ob-input:focus, .ob-select:focus, .ob-textarea:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    .ob-textarea { min-height: 64px; resize: vertical; }
+    .ob-select { cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+    }
+
+    /* Chip selectors (co-founder names, emojis) */
+    .ob-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .ob-chip {
+      appearance: none;
+      min-height: 36px;
+      padding: 7px 16px; border-radius: 20px; cursor: pointer;
+      font-size: 13px; font-weight: 500; border: 1.5px solid var(--border);
+      background: var(--bg-secondary); color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+    .ob-chip:hover { border-color: var(--accent); color: var(--text-primary); }
+    .ob-chip.selected {
+      background: var(--accent); border-color: var(--accent);
+      color: #fff; font-weight: 600;
+    }
+    .ob-chip-hint {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px;
+    }
+
+    /* Personality cards */
+    .ob-personality-grid { display: flex; flex-direction: column; gap: 8px; }
+    .ob-personality-card {
+      appearance: none;
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px; border-radius: 10px; cursor: pointer;
+      border: 1.5px solid var(--border); background: var(--bg-secondary);
+      transition: all 0.15s;
+    }
+    .ob-personality-card:hover { border-color: var(--accent-hover); }
+    .ob-personality-card.selected {
+      border-color: var(--accent); background: rgba(99,102,241,0.08);
+    }
+    .ob-personality-card .ob-pc-name {
+      font-weight: 600; font-size: 14px; color: var(--text-primary);
+    }
+    .ob-personality-card .ob-pc-desc {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px;
+    }
+
+    /* Provider status rows */
+    .ob-provider-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 10px;
+      background: var(--bg-secondary); margin-bottom: 8px;
+    }
+    .ob-provider-icon {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; flex-shrink: 0;
+    }
+    .ob-provider-icon.found { background: rgba(34,197,94,0.15); color: var(--green); }
+    .ob-provider-icon.missing { background: rgba(248,113,113,0.15); color: #f87171; }
+    .ob-provider-name { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+    .ob-provider-detail { font-size: 12px; color: var(--text-muted); }
+    .ob-provider-info { flex: 1; }
+
+    /* Progress dots */
+    .ob-progress {
+      display: flex; justify-content: center; gap: 8px;
+      margin-top: 36px;
+    }
+    .ob-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border); transition: all 0.2s;
+    }
+    .ob-dot.active { background: var(--accent); transform: scale(1.3); }
+    .ob-dot.done { background: var(--green); }
+
+    /* Buttons */
+    .ob-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 11px 28px; border-radius: 10px; font-size: 14px;
+      font-weight: 600; cursor: pointer; border: none;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .ob-btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .ob-btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .ob-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .ob-btn-secondary {
+      background: transparent; color: var(--text-secondary);
+      border: 1.5px solid var(--border);
+    }
+    .ob-btn-secondary:hover { border-color: var(--accent); color: var(--text-primary); }
+    .ob-actions { display: flex; gap: 12px; margin-top: 28px; }
+
+    /* Launch summary */
+    .ob-summary-box {
+      background: var(--bg-secondary); border-radius: 12px;
+      padding: 20px; margin-bottom: 24px; border: 1px solid var(--border);
+    }
+    .ob-summary-row {
+      display: flex; justify-content: space-between; padding: 6px 0;
+      font-size: 13px;
+    }
+    .ob-summary-label { color: var(--text-muted); }
+    .ob-summary-value { color: var(--text-primary); font-weight: 500; }
+    .ob-greeting-preview {
+      background: var(--bg-input); border-radius: 10px; padding: 16px;
+      margin-top: 16px; font-size: 14px; color: var(--text-primary);
+      line-height: 1.5; border-left: 3px solid var(--accent);
+    }
+
+    @media (max-width: 640px) {
+      #desktop-onboarding-root {
+        align-items: flex-start;
+        padding: 24px 16px;
+      }
+      .ob-card {
+        padding: 32px 20px;
+      }
+      .ob-actions {
+        flex-direction: column;
+      }
+      .ob-summary-row {
+        flex-direction: column;
+        gap: 4px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #desktop-onboarding-root,
+      .ob-card,
+      .ob-dot,
+      .ob-btn,
+      .ob-chip,
+      .ob-personality-card {
+        animation: none !important;
+        transition: none !important;
+      }
+      .ob-btn-primary:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
-<body>
+<body class="app-loading">
+  <div id="desktop-onboarding-root" aria-live="polite"></div>
   <div id="app">
     <!-- Sidebar -->
     <div id="sidebar">
@@ -1702,6 +1899,580 @@
   </div>
 
   <script>
+    // ── Dynamic base URL (supports any port) ──────────────────────────────
+    const _baseHttp = window.location.protocol === 'file:'
+      ? 'http://localhost:4000'
+      : `${window.location.protocol}//${window.location.host}`;
+    const _baseWs   = window.location.protocol === 'file:'
+      ? 'ws://localhost:4000'
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+
+    // ── Onboarding Wizard ────────────────────────────────────────────────
+    // Runs BEFORE the rest of the app initializes. If first-run, the wizard
+    // covers the entire screen and only reveals the chat after completion.
+
+    const OB_STEPS = ['welcome','identity','cofounder','tools','launch'];
+
+    const OB_COPY = {
+      cofounderNames: [
+        { name: 'Nova',  vibe: 'sharp & strategic' },
+        { name: 'Aria',  vibe: 'warm & thoughtful' },
+        { name: 'Kai',   vibe: 'fast & direct' },
+        { name: 'Atlas', vibe: 'calm & methodical' },
+        { name: 'Sage',  vibe: 'wise & measured' },
+        { name: 'Orion', vibe: 'bold & ambitious' },
+        { name: 'Vex',   vibe: 'witty & irreverent' },
+      ],
+      personalities: [
+        { value: 'direct',      label: 'Direct & strategic',   desc: 'Cuts to the chase. Thinks in systems. Pushes back when needed.' },
+        { value: 'warm',        label: 'Warm & encouraging',   desc: 'Supportive and collaborative. Celebrates wins. Patient explainer.' },
+        { value: 'technical',   label: 'Technical & precise',  desc: 'Detail-oriented. Shows their work. Speaks in specifics, not vibes.' },
+        { value: 'casual',      label: 'Casual & fun',         desc: 'Relaxed tone. Uses humor. Gets things done without the formality.' },
+        { value: 'no-nonsense', label: 'No-nonsense',          desc: 'Minimum words, maximum output. All signal, no filler.' },
+      ],
+      roles: [
+        { value: 'founder',   label: 'Founder / CEO' },
+        { value: 'developer', label: 'Developer' },
+        { value: 'designer',  label: 'Designer' },
+        { value: 'pm',        label: 'Product Manager' },
+        { value: 'student',   label: 'Student / Learner' },
+        { value: 'hobbyist',  label: 'Hobbyist / Maker' },
+      ],
+      stages: [
+        { value: 'idea',       label: 'Just an idea' },
+        { value: 'mvp',        label: 'Building the MVP' },
+        { value: 'beta',       label: 'In beta / testing' },
+        { value: 'production', label: 'Live in production' },
+      ],
+      workStyles: [
+        { value: 'hands-on',  label: 'Hands-on — I review everything' },
+        { value: 'balanced',  label: 'Balanced — review the big stuff, trust the rest' },
+        { value: 'delegator', label: 'Delegator — just get it done and show results' },
+      ],
+      emojis: ['🐝','🧠','⚡','🔮','🤖','👁️','🌀','💀','🚀','🎯','🦾','🔥'],
+    };
+
+    // Wizard state
+    const obState = {
+      step: 0,
+      userName: '',
+      role: 'founder',
+      project: '',
+      projectStage: 'idea',
+      workStyle: 'balanced',
+      cofounderName: 'Nova',
+      personality: 'direct',
+      cofounderEmoji: '🐝',
+      providers: [],
+      saving: false,
+      error: '',
+      waitingForServer: false,
+    };
+
+    let obServerRetryTimer = null;
+    let obServerListenerAttached = false;
+
+    function stripTrailingPunct(s) {
+      return s ? s.replace(/[.\!\?\,\;]+$/, '').trim() : '';
+    }
+
+    function obGetGreeting() {
+      const { userName, cofounderName, personality } = obState;
+      const u = userName || 'friend';
+      const p = stripTrailingPunct(obState.project);
+      const has = p.length > 0;
+      switch (personality) {
+        case 'direct':
+          return has ? `${cofounderName} here. I've got the team ready. Tell me what's first for ${p}.`
+                     : `${cofounderName} here. Team's ready, ${u}. What are we building?`;
+        case 'warm':
+          return has ? `Hey ${u}! I'm ${cofounderName} — excited to work on ${p} together. The whole team is here. What should we start with?`
+                     : `Hey ${u}! I'm ${cofounderName}, and I'm really glad you're here. The team's assembled — what do you want to build?`;
+        case 'technical':
+          return has ? `${cofounderName}, online. Swarm initialized with all agents reporting ready. Context loaded: ${p}. Awaiting first task.`
+                     : `${cofounderName}, online. All agents initialized and reporting ready. Awaiting your first task, ${u}.`;
+        case 'casual':
+          return has ? `Yo ${u}, it's ${cofounderName}. Crew's all here. Let's make ${p} happen — what's the move?`
+                     : `Yo ${u}! ${cofounderName} here. Got the whole crew standing by. What are we getting into?`;
+        case 'no-nonsense':
+          return has ? `${cofounderName}. Ready. What's the priority for ${p}?`
+                     : `${cofounderName}. Ready. Go.`;
+        default:
+          return `${cofounderName} here. Your swarm is ready, ${u}. What's first?`;
+      }
+    }
+
+    function obDots(currentIdx) {
+      return `<div class="ob-progress">${OB_STEPS.map((_, i) =>
+        `<div class="ob-dot ${i < currentIdx ? 'done' : i === currentIdx ? 'active' : ''}"></div>`
+      ).join('')}</div>`;
+    }
+
+    function obSetError(message = '') {
+      obState.error = message;
+    }
+
+    function obHydrateProfile(profile) {
+      if (!profile) return;
+      if (profile.user?.name) obState.userName = profile.user.name;
+      if (profile.user?.role) obState.role = profile.user.role;
+      if (profile.user?.project) obState.project = profile.user.project;
+      if (profile.user?.projectStage) obState.projectStage = profile.user.projectStage;
+      if (profile.user?.workStyle) obState.workStyle = profile.user.workStyle;
+      if (profile.cofounder?.name) obState.cofounderName = profile.cofounder.name;
+      if (profile.cofounder?.personality) obState.personality = profile.cofounder.personality;
+      if (profile.cofounder?.emoji) obState.cofounderEmoji = profile.cofounder.emoji;
+    }
+
+    function obQueueRetry() {
+      if (obServerRetryTimer) return;
+      obServerRetryTimer = setTimeout(() => {
+        obServerRetryTimer = null;
+        obInit();
+      }, 1200);
+    }
+
+    async function obLoadProviders() {
+      try {
+        const res = await fetch(`${_baseHttp}/api/onboarding/providers`);
+        if (!res.ok) throw new Error('Provider detection unavailable');
+        const data = await res.json();
+        obState.providers = Array.isArray(data.providers) ? data.providers : [];
+        if (OB_STEPS[obState.step] === 'tools') obRenderStep();
+      } catch (e) {
+        console.warn('[Onboarding] Could not load provider statuses:', e);
+      }
+    }
+
+    function obAttachServerReadyListener() {
+      if (obServerListenerAttached || !window.hivemind?.onServerStatus) return;
+      obServerListenerAttached = true;
+      window.hivemind.onServerStatus((status) => {
+        if (status === 'ready') obInit();
+      });
+    }
+
+    function obRenderStep() {
+      const root = document.getElementById('desktop-onboarding-root');
+      if (!root) return;
+      root.classList.remove('hidden');
+      const idx = obState.step;
+      const step = OB_STEPS[idx];
+      const errorHtml = obState.error
+        ? `<div class="ob-chip-hint" style="margin-bottom:16px;color:#fca5a5;">${escapeHtml(obState.error)}</div>`
+        : '';
+
+      const renderers = {
+        welcome: obStepWelcome,
+        identity: obStepIdentity,
+        cofounder: obStepCofounder,
+        tools: obStepTools,
+        launch: obStepLaunch,
+      };
+      root.innerHTML = `<div class="ob-card">${errorHtml}${renderers[step]()}${obDots(idx)}</div>`;
+      obBindStep(step);
+    }
+
+    function obRenderLoadingState(message, detail = 'Waiting for the local HIVEMIND server to finish starting.') {
+      const root = document.getElementById('desktop-onboarding-root');
+      if (!root) return;
+      root.classList.remove('hidden');
+      root.innerHTML = `
+        <div class="ob-card">
+          <div class="ob-step-label">Starting Up</div>
+          <div class="ob-title">${escapeHtml(message)}</div>
+          <div class="ob-subtitle">${escapeHtml(detail)}</div>
+        </div>`;
+    }
+
+    // ── Step renderers ──────────────────────────────────────────────
+
+    function obStepWelcome() {
+      return `
+        <div class="ob-step-label">Welcome</div>
+        <div class="ob-title">Welcome to HIVEMIND</div>
+        <div class="ob-subtitle">
+          You're about to set up your own autonomous agent swarm —
+          a team of AI specialists that work together on your behalf.<br><br>
+          This takes about 2 minutes.
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-primary" id="ob-next">Get Started</button>
+        </div>`;
+    }
+
+    function obStepIdentity() {
+      return `
+        <div class="ob-step-label">Step 1 of 4 — About You</div>
+        <div class="ob-title">Who are you?</div>
+        <div class="ob-subtitle">Quick context so your swarm knows who it's working with.</div>
+
+        <div class="ob-field">
+          <label class="ob-label">What should the swarm call you?</label>
+          <input class="ob-input" id="ob-name" type="text" placeholder="Your first name"
+                 value="${escapeHtml(obState.userName)}" autocomplete="off" autofocus />
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Your role</label>
+          <select class="ob-select" id="ob-role">
+            ${OB_COPY.roles.map(r =>
+              `<option value="${r.value}" ${r.value === obState.role ? 'selected' : ''}>${r.label}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">What are you building?</label>
+          <textarea class="ob-textarea" id="ob-project" placeholder="A SaaS app, a CLI tool, a game — anything goes">${escapeHtml(obState.project)}</textarea>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Where are you at with it?</label>
+          <select class="ob-select" id="ob-stage">
+            ${OB_COPY.stages.map(s =>
+              `<option value="${s.value}" ${s.value === obState.projectStage ? 'selected' : ''}>${s.label}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">How do you like to work?</label>
+          <select class="ob-select" id="ob-workstyle">
+            ${OB_COPY.workStyles.map(w =>
+              `<option value="${w.value}" ${w.value === obState.workStyle ? 'selected' : ''}>${w.label}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary" id="ob-next">Continue</button>
+        </div>`;
+    }
+
+    function obStepCofounder() {
+      return `
+        <div class="ob-step-label">Step 2 of 4 — Your Co-Founder</div>
+        <div class="ob-title">Meet your co-founder</div>
+        <div class="ob-subtitle">
+          Every swarm has a coordinator — your AI co-founder.
+          They run the team, delegate work, and talk to you directly. Make them yours.
+        </div>
+
+        <div class="ob-field">
+          <label class="ob-label">Pick a name</label>
+          <div class="ob-chips" id="ob-name-chips">
+            ${OB_COPY.cofounderNames.map(n =>
+              `<button type="button" class="ob-chip ${n.name === obState.cofounderName ? 'selected' : ''}" data-name="${escapeHtml(n.name)}" title="${escapeHtml(n.vibe)}" aria-pressed="${n.name === obState.cofounderName ? 'true' : 'false'}">${escapeHtml(n.name)}</button>`
+            ).join('')}
+          </div>
+          <input class="ob-input" id="ob-cf-custom" type="text" placeholder="Or type any name" maxlength="30"
+                 value="${OB_COPY.cofounderNames.some(n => n.name === obState.cofounderName) ? '' : escapeHtml(obState.cofounderName)}" />
+        </div>
+
+        <div class="ob-field">
+          <label class="ob-label">Personality</label>
+          <div class="ob-personality-grid" id="ob-personality-grid">
+            ${OB_COPY.personalities.map(p =>
+              `<button type="button" class="ob-personality-card ${p.value === obState.personality ? 'selected' : ''}" data-val="${p.value}" aria-pressed="${p.value === obState.personality ? 'true' : 'false'}">
+                <div class="ob-pc-name">${escapeHtml(p.label)}</div>
+                <div class="ob-pc-desc">${escapeHtml(p.desc)}</div>
+              </button>`
+            ).join('')}
+          </div>
+        </div>
+
+        <div class="ob-field">
+          <label class="ob-label">Icon</label>
+          <div class="ob-chips" id="ob-emoji-chips">
+            ${OB_COPY.emojis.map(e =>
+              `<button type="button" class="ob-chip ${e === obState.cofounderEmoji ? 'selected' : ''}" data-emoji="${e}" style="font-size:18px;padding:6px 12px;" aria-pressed="${e === obState.cofounderEmoji ? 'true' : 'false'}">${e}</button>`
+            ).join('')}
+          </div>
+        </div>
+
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary" id="ob-next">Continue</button>
+        </div>`;
+    }
+
+    function obStepTools() {
+      const providers = obState.providers || [];
+      const rows = providers.length > 0
+        ? providers.map(p => {
+            const found = Boolean(p.installed);
+            const detail = found
+              ? (p.detail || 'Detected')
+              : [p.detail, p.installCommand, p.loginCommand].filter(Boolean).join(' • ') || 'Not found';
+            return `<div class="ob-provider-row">
+              <div class="ob-provider-icon ${found ? 'found' : 'missing'}">${found ? '✓' : '✗'}</div>
+              <div class="ob-provider-info">
+                <div class="ob-provider-name">${escapeHtml(p.label || p.name || p.provider || 'Unknown')}</div>
+                <div class="ob-provider-detail">${escapeHtml(detail)}</div>
+              </div>
+            </div>`;
+          }).join('')
+        : `<div class="ob-provider-row">
+            <div class="ob-provider-icon missing">?</div>
+            <div class="ob-provider-info">
+              <div class="ob-provider-name">Checking tools...</div>
+              <div class="ob-provider-detail">Could not reach the server yet</div>
+            </div>
+          </div>`;
+
+      return `
+        <div class="ob-step-label">Step 3 of 4 — Your Tools</div>
+        <div class="ob-title">Connect your tools</div>
+        <div class="ob-subtitle">
+          HIVEMIND runs on CLI subscriptions — no API keys needed.
+          Here's what we detected on your system.
+        </div>
+        ${rows}
+        <div style="margin-top:16px;">
+          <div class="ob-chip-hint" style="font-size:13px; color:var(--text-muted);">
+            You can always add more later. Run <code style="color:var(--accent);">hivemind status</code> to check what's connected.
+          </div>
+          <div style="margin-top:12px; font-size:12px; color:var(--text-muted);">
+            <strong>Claude Code:</strong> <code>npm i -g @anthropic-ai/claude-code && claude login</code><br>
+            <strong>Codex CLI:</strong> <code>npm i -g @openai/codex && codex auth</code>
+          </div>
+        </div>
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary" id="ob-next">Continue</button>
+        </div>`;
+    }
+
+    function obStepLaunch() {
+      const greeting = obGetGreeting();
+      return `
+        <div class="ob-step-label">Ready to Go</div>
+        <div class="ob-title">${escapeHtml(obState.cofounderEmoji)} Meet ${escapeHtml(obState.cofounderName)}</div>
+        <div class="ob-subtitle">Here's what we set up. You can change any of this later in Settings.</div>
+
+        <div class="ob-summary-box">
+          <div class="ob-summary-row"><span class="ob-summary-label">You</span><span class="ob-summary-value">${escapeHtml(obState.userName)}</span></div>
+          <div class="ob-summary-row"><span class="ob-summary-label">Role</span><span class="ob-summary-value">${escapeHtml((OB_COPY.roles.find(r=>r.value===obState.role)||{}).label||obState.role)}</span></div>
+          ${obState.project ? `<div class="ob-summary-row"><span class="ob-summary-label">Building</span><span class="ob-summary-value">${escapeHtml(obState.project)}</span></div>` : ''}
+          <div class="ob-summary-row"><span class="ob-summary-label">Co-founder</span><span class="ob-summary-value">${escapeHtml(obState.cofounderEmoji)} ${escapeHtml(obState.cofounderName)}</span></div>
+          <div class="ob-summary-row"><span class="ob-summary-label">Personality</span><span class="ob-summary-value">${escapeHtml((OB_COPY.personalities.find(p=>p.value===obState.personality)||{}).label||obState.personality)}</span></div>
+        </div>
+
+        <div class="ob-greeting-preview">${escapeHtml(greeting)}</div>
+
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary" id="ob-finish" ${obState.saving ? 'disabled' : ''}>${obState.saving ? 'Setting up...' : 'Start Building'}</button>
+        </div>`;
+    }
+
+    // ── Step event binding ───────────────────────────────────────────
+
+    function obBindStep(step) {
+      const next = document.getElementById('ob-next');
+      const back = document.getElementById('ob-back');
+      const finish = document.getElementById('ob-finish');
+
+      if (back) back.addEventListener('click', () => { obSetError(); obState.step--; obRenderStep(); });
+      if (next) next.addEventListener('click', () => {
+        obSetError();
+        obSaveCurrentStep();
+        const validationError = obValidateStep(step);
+        if (validationError) {
+          obSetError(validationError);
+          obRenderStep();
+          return;
+        }
+        obState.step++;
+        obRenderStep();
+      });
+      if (finish) finish.addEventListener('click', obComplete);
+
+      if (step === 'identity') {
+        const nameInput = document.getElementById('ob-name');
+        if (nameInput) nameInput.focus();
+      }
+
+      if (step === 'cofounder') {
+        // Name chips
+        document.querySelectorAll('#ob-name-chips .ob-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            document.querySelectorAll('#ob-name-chips .ob-chip').forEach(c => {
+              c.classList.remove('selected');
+              c.setAttribute('aria-pressed', 'false');
+            });
+            chip.classList.add('selected');
+            chip.setAttribute('aria-pressed', 'true');
+            obState.cofounderName = chip.dataset.name;
+            document.getElementById('ob-cf-custom').value = '';
+            obSetError();
+          });
+        });
+        // Custom name input
+        const customInput = document.getElementById('ob-cf-custom');
+        if (customInput) customInput.addEventListener('input', () => {
+          const val = customInput.value.trim();
+          if (val) {
+            document.querySelectorAll('#ob-name-chips .ob-chip').forEach(c => c.classList.remove('selected'));
+            obState.cofounderName = val;
+          }
+          obSetError();
+        });
+
+        // Personality cards
+        document.querySelectorAll('#ob-personality-grid .ob-personality-card').forEach(card => {
+          card.addEventListener('click', () => {
+            document.querySelectorAll('.ob-personality-card').forEach(c => {
+              c.classList.remove('selected');
+              c.setAttribute('aria-pressed', 'false');
+            });
+            card.classList.add('selected');
+            card.setAttribute('aria-pressed', 'true');
+            obState.personality = card.dataset.val;
+            obSetError();
+          });
+        });
+
+        // Emoji chips
+        document.querySelectorAll('#ob-emoji-chips .ob-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            document.querySelectorAll('#ob-emoji-chips .ob-chip').forEach(c => {
+              c.classList.remove('selected');
+              c.setAttribute('aria-pressed', 'false');
+            });
+            chip.classList.add('selected');
+            chip.setAttribute('aria-pressed', 'true');
+            obState.cofounderEmoji = chip.dataset.emoji;
+            obSetError();
+          });
+        });
+      }
+    }
+
+    function obSaveCurrentStep() {
+      const step = OB_STEPS[obState.step];
+      if (step === 'identity') {
+        const n = document.getElementById('ob-name');
+        const r = document.getElementById('ob-role');
+        const p = document.getElementById('ob-project');
+        const s = document.getElementById('ob-stage');
+        const w = document.getElementById('ob-workstyle');
+        if (n) obState.userName = n.value.trim();
+        if (r) obState.role = r.value;
+        if (p) obState.project = p.value.trim();
+        if (s) obState.projectStage = s.value;
+        if (w) obState.workStyle = w.value;
+      }
+      // cofounder step saves via click handlers above
+    }
+
+    function obValidateStep(step) {
+      if (step === 'identity') {
+        if (!obState.userName.trim()) return 'Add your name so the swarm knows what to call you.';
+        if (!obState.project.trim()) return 'Add a quick project description so the swarm has context.';
+      }
+      if (step === 'cofounder') {
+        if (!obState.cofounderName.trim()) return 'Pick a co-founder name or type your own.';
+      }
+      return '';
+    }
+
+    async function obComplete() {
+      if (obState.saving) return;
+      obSaveCurrentStep();
+      const validationError = obValidateStep(OB_STEPS[obState.step]);
+      if (validationError) {
+        obSetError(validationError);
+        obRenderStep();
+        return;
+      }
+      obState.saving = true;
+      obSetError();
+      obRenderStep();
+
+      const profilePayload = {
+        user: {
+          name: obState.userName.trim(),
+          role: obState.role,
+          project: obState.project.trim(),
+          projectStage: obState.projectStage,
+          workStyle: obState.workStyle,
+        },
+        cofounder: {
+          name: obState.cofounderName.trim(),
+          personality: obState.personality,
+          emoji: obState.cofounderEmoji,
+        },
+      };
+
+      try {
+        const res = await fetch(`${_baseHttp}/api/profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profilePayload),
+        });
+        if (!res.ok) throw new Error('Could not save your onboarding choices.');
+        const data = await res.json();
+        obHydrateProfile(data.profile);
+      } catch (e) {
+        console.warn('[Onboarding] Could not save profile:', e);
+        obState.saving = false;
+        obSetError(e instanceof Error ? e.message : 'Could not save your onboarding choices.');
+        obRenderStep();
+        return;
+      }
+
+      // Fade out wizard, reveal app
+      const root = document.getElementById('desktop-onboarding-root');
+      if (root) root.classList.add('hidden');
+      document.body.classList.remove('app-loading');
+
+      // Reload profile into the chat UI
+      if (typeof loadProfile === 'function') await loadProfile();
+
+      // Clean up the overlay after transition
+      setTimeout(() => { if (root) root.innerHTML = ''; }, 600);
+    }
+
+    async function obInit() {
+      try {
+        obAttachServerReadyListener();
+        const res = await fetch(`${_baseHttp}/api/onboarding/bootstrap`);
+        if (!res.ok) throw new Error('Server unavailable');
+        const data = await res.json();
+        obState.waitingForServer = false;
+        obSetError();
+
+        const forceOnboarding = new URLSearchParams(window.location.search).has('onboarding');
+        if (!data.isFirstRun && !forceOnboarding) {
+          // Not first run — skip onboarding, show app
+          document.body.classList.remove('app-loading');
+          const root = document.getElementById('desktop-onboarding-root');
+          if (root) {
+            root.classList.remove('hidden');
+            root.innerHTML = '';
+          }
+          return;
+        }
+
+        // Populate providers
+        obState.providers = Array.isArray(data.providers) ? data.providers : [];
+
+        // Pre-fill from any partial profile
+        obHydrateProfile(data.profile);
+
+        obRenderStep();
+        if (obState.providers.length === 0) void obLoadProviders();
+      } catch (e) {
+        // Keep the onboarding overlay up until the local server is ready.
+        console.log('[Onboarding] Server not ready yet, waiting...', e);
+        obState.waitingForServer = true;
+        obRenderLoadingState('Starting your swarm', 'The desktop app is waiting for the local HIVEMIND server to come online.');
+        obAttachServerReadyListener();
+        obQueueRetry();
+      }
+    }
+
+    // Fire onboarding check immediately
+    obInit();
+
     // ── State ──────────────────────────────────────────────────────────────
     let selectedAgent = '';
     let isProcessing = false;
@@ -1715,8 +2486,8 @@
       'scout-1':    { name: 'Scout Alpha',    role: 'Research & Analysis',   provider: 'Claude',  icon: 'S' },
       'builder-1':  { name: 'Builder Prime',  role: 'Code Generation',       provider: 'Codex',   icon: 'B' },
       'sentinel-1': { name: 'Sentinel Watch',  role: 'Monitoring & Security', provider: 'Codex',   icon: 'W' },
-      'oracle-1':   { name: 'Oracle Vision',   role: 'Strategy & Prediction', provider: 'Claude',  icon: 'O' },
-      'courier-1':  { name: 'Courier Swift',   role: 'Communication',         provider: 'Claude',  icon: 'C' },
+      'oracle-1':   { name: 'Oracle Insight',  role: 'Strategy & Prediction', provider: 'Claude',  icon: 'O' },
+      'courier-1':  { name: 'Courier Express', role: 'Communication',         provider: 'Claude',  icon: 'C' },
     };
 
     // ── Profile-based personalization ────────────────────────────────────
@@ -1760,12 +2531,15 @@
           legendNova.appendChild(document.createTextNode(getCofounderName()));
         }
       }
+
+      const welcomeName = document.getElementById('welcome-agent-name');
+      if (welcomeName) welcomeName.textContent = getCofounderName();
     }
 
     /** Fetch profile from server and apply */
     async function loadProfile() {
       try {
-        const res = await fetch('http://localhost:4000/api/profile');
+        const res = await fetch(`${_baseHttp}/api/profile`);
         if (res.ok) {
           const profile = await res.json();
           applyProfile(profile);
@@ -1779,9 +2553,8 @@
     const $ = (s) => document.querySelector(s);
 
     function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
+      if (typeof str !== 'string') return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
     // ── Sidebar Navigation (Chat / Skills / Memory / Settings) ──────────
@@ -1833,7 +2606,7 @@
     async function loadSkillsPage() {
       if (!skillsData) {
         try {
-          const res = await fetch(`http://localhost:4000/api/skills`);
+          const res = await fetch(`${_baseHttp}/api/skills`);
           skillsData = res.ok ? await res.json() : [];
         } catch { skillsData = []; }
         // Fallback demo data if API returns empty
@@ -1923,7 +2696,7 @@
     async function loadMemoryPage() {
       if (!memoryData) {
         try {
-          const res = await fetch(`http://localhost:4000/api/memory`);
+          const res = await fetch(`${_baseHttp}/api/memory`);
           const raw = res.ok ? await res.json() : [];
           // Normalize field names (API returns camelCase, but direct DB might return snake_case)
           memoryData = raw.map(m => ({
@@ -2082,7 +2855,7 @@
       const saveBtn = $('#settings-save');
       if (saveBtn && settingsDirty) {
         saveBtn.addEventListener('click', async () => {
-          try { await fetch('http://localhost:4000/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sections: settingsSections }) }); } catch {}
+          try { await fetch(`${_baseHttp}/api/config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sections: settingsSections }) }); } catch {}
           settingsDirty = false;
           renderSettingsNav();
         });
@@ -3126,7 +3899,7 @@
     // ── WebSocket for real-time updates + streaming ────────────────────────
     function connectWebSocket() {
       try {
-        ws = new WebSocket('ws://localhost:4000/ws');
+        ws = new WebSocket(`${_baseWs}/ws`);
         ws.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);

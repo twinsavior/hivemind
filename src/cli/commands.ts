@@ -157,7 +157,7 @@ export function getSwarmState() {
 
 export async function upCommand(options: UpOptions): Promise<void> {
   const profilePath = getProfilePath();
-  if (isFirstRunProfile(profilePath)) {
+  if (isFirstRunProfile(profilePath) && process.stdin.isTTY) {
     await runOnboarding({
       cwd: process.cwd(),
       profilePath,

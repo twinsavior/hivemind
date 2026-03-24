@@ -1397,12 +1397,33 @@ app.use('/api/marketplace', createMarketplaceRouter({
 }));
 
 // ─── Email Module Routes ──────────────────────────────────────────────────────
-try {
-  const { createEmailRouter } = require('../modules/email/routes.js');
-  app.use('/api/email', createEmailRouter());
-} catch (e) {
-  console.warn('[dashboard] Email module routes not loaded:', (e as Error).message);
-}
+// Lazy-loaded: the first request to /api/email/* triggers the import, then the
+// router handles all subsequent requests. This avoids async issues with Express
+// route ordering while still loading the email module on demand.
+import type { Router } from 'express';
+let _emailRouter: Router | null = null;
+let _emailRouterLoading: Promise<void> | null = null;
+
+app.use('/api/email', (req, res, next) => {
+  if (_emailRouter) return _emailRouter(req, res, next);
+  if (!_emailRouterLoading) {
+    // Construct path dynamically so tsc doesn't resolve into the email module's types
+    const emailRoutesPath = ['..', 'modules', 'email', 'routes.js'].join('/');
+    _emailRouterLoading = (import(emailRoutesPath) as Promise<any>)
+      .then((mod: any) => {
+        _emailRouter = mod.createEmailRouter();
+        console.log('[dashboard] Email module routes loaded');
+      })
+      .catch(e => {
+        console.warn('[dashboard] Email module routes failed:', (e as Error).message);
+        _emailRouterLoading = null; // allow retry
+      });
+  }
+  _emailRouterLoading.then(() => {
+    if (_emailRouter) _emailRouter(req, res, next);
+    else res.status(503).json({ error: 'Email module not available' });
+  });
+});
 
 // SPA fallback
 app.get('*', (_req, res) => {

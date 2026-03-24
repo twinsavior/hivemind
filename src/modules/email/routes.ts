@@ -24,21 +24,11 @@ import {
   getPushQueueStats,
 } from './db.js';
 import { encrypt, decrypt } from './crypto.js';
-import { getSchedulerStatus, triggerManualRun, startScheduler } from './scheduler.js';
+import { getSchedulerStatus, triggerManualRun, startScheduler, toggleScheduler, updateInterval } from './scheduler.js';
 import { getTemplate, RETAILER_TEMPLATES } from './retailer-templates.js';
+import { getAuthUrl, exchangeCode } from './gmail-oauth.js';
+import { testImapConnection } from './imap-client.js';
 
-// Lazy-load heavy modules only when needed
-let _toggleScheduler: ((enabled: boolean) => void) | null = null;
-let _updateInterval: ((minutes: number) => void) | null = null;
-
-function getSchedulerControls() {
-  if (!_toggleScheduler) {
-    const mod = require('./scheduler.js');
-    _toggleScheduler = mod.toggleScheduler;
-    _updateInterval = mod.updateInterval;
-  }
-  return { toggleScheduler: _toggleScheduler!, updateInterval: _updateInterval! };
-}
 
 const SENSITIVE_CONFIG_KEYS = ['password', 'access_token', 'refresh_token', 'client_secret', 'api_key', 'webhook_url', 'url', 'auth_header_value'];
 
@@ -125,10 +115,9 @@ export function createEmailRouter(): Router {
 
   router.get('/auth/gmail', (req: Request, res: Response) => {
     try {
-      const { getAuthUrl } = require('./gmail-oauth.js');
       const accountId = req.query['account_id'];
       const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      const authUrl = getAuthUrl(fullUrl, accountId);
+      const authUrl = getAuthUrl(fullUrl, accountId as string | undefined);
       res.redirect(authUrl);
     } catch (e) {
       res.redirect('/accounts?error=' + encodeURIComponent((e as Error).message));
@@ -141,7 +130,6 @@ export function createEmailRouter(): Router {
       if (oauthError) return res.redirect('/accounts?error=' + encodeURIComponent(String(oauthError)));
       if (!code) return res.status(400).json({ error: 'Missing authorization code' });
 
-      const { exchangeCode } = require('./gmail-oauth.js');
       const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
       const tokens = await exchangeCode(String(code), fullUrl);
 
@@ -155,7 +143,7 @@ export function createEmailRouter(): Router {
           access_token: encrypt(tokens.access_token),
           refresh_token: encrypt(tokens.refresh_token || ''),
           token_expiry: tokens.expiry_date ? String(tokens.expiry_date) : '',
-          scopes: tokens.scope || '',
+          scopes: (tokens as any).scope || '',
         };
         updateEmailAccount(Number(accountId), {
           config: JSON.stringify(configObj),
@@ -176,7 +164,6 @@ export function createEmailRouter(): Router {
       const { email, password, host, port = 993, tls = true } = req.body;
       if (!email || !password || !host) return res.status(400).json({ success: false, error: 'email, password, and host are required' });
 
-      const { testImapConnection } = require('./imap-client.js');
       await testImapConnection({ email, password, host, port, tls });
 
       setImapAuth({ email, password: encrypt(password), host, port, tls });
@@ -231,7 +218,7 @@ export function createEmailRouter(): Router {
   router.post('/pipeline/toggle', (req: Request, res: Response) => {
     try {
       const { enabled } = req.body;
-      const { toggleScheduler } = getSchedulerControls();
+      
       toggleScheduler(Boolean(enabled));
       res.json({ ok: true, enabled: Boolean(enabled) });
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
@@ -524,7 +511,7 @@ export function createEmailRouter(): Router {
         setSetting(key, String(value));
       }
       if (req.body.scan_interval_minutes) {
-        const { updateInterval } = getSchedulerControls();
+        
         updateInterval(parseInt(String(req.body.scan_interval_minutes), 10));
       }
       res.json({ ok: true });

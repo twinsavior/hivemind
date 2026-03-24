@@ -25,7 +25,7 @@ import {
 } from './db.js';
 import { encrypt, decrypt } from './crypto.js';
 import { getSchedulerStatus, triggerManualRun, startScheduler } from './scheduler.js';
-import { getTemplate } from './retailer-templates.js';
+import { getTemplate, RETAILER_TEMPLATES } from './retailer-templates.js';
 
 // Lazy-load heavy modules only when needed
 let _toggleScheduler: ((enabled: boolean) => void) | null = null;
@@ -92,6 +92,25 @@ export function createEmailRouter(): Router {
         config: JSON.stringify(configObj), enabled: enabled !== false,
       });
       res.status(201).json({ id });
+    } catch (e) { res.status(500).json({ error: (e as Error).message }); }
+  });
+
+  router.put('/accounts/:id', (req: Request, res: Response) => {
+    try {
+      const { name, email, config, enabled } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (email !== undefined) updates.email = email;
+      if (enabled !== undefined) updates.enabled = enabled;
+      if (config !== undefined) {
+        const configObj = { ...config };
+        for (const key of SENSITIVE_CONFIG_KEYS) {
+          if (configObj[key] && !configObj[key].startsWith('****')) configObj[key] = encrypt(configObj[key]);
+        }
+        updates.config = JSON.stringify(configObj);
+      }
+      updateEmailAccount(Number(req.params['id']), updates);
+      res.json({ success: true });
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
@@ -417,6 +436,13 @@ export function createEmailRouter(): Router {
     }
   });
 
+  router.put('/rules/:id', (req: Request, res: Response) => {
+    try {
+      updateRule(Number(req.params['id']), req.body);
+      res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: (e as Error).message }); }
+  });
+
   router.delete('/rules/:id', (req: Request, res: Response) => {
     try {
       deleteRule(Number(req.params['id']));
@@ -455,6 +481,26 @@ export function createEmailRouter(): Router {
         enabled: enabled !== false,
       });
       res.status(201).json({ id });
+    } catch (e) { res.status(500).json({ error: (e as Error).message }); }
+  });
+
+  router.put('/destinations/:id', (req: Request, res: Response) => {
+    try {
+      const { name, type, config, field_mapping, enabled } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (type !== undefined) updates.type = type;
+      if (enabled !== undefined) updates.enabled = enabled;
+      if (config !== undefined) {
+        const configObj = { ...config };
+        for (const key of SENSITIVE_CONFIG_KEYS) {
+          if (configObj[key] && !String(configObj[key]).startsWith('****')) configObj[key] = encrypt(String(configObj[key]));
+        }
+        updates.config = JSON.stringify(configObj);
+      }
+      if (field_mapping !== undefined) updates.field_mapping = JSON.stringify(field_mapping);
+      updateDestination(Number(req.params['id']), updates);
+      res.json({ success: true });
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
@@ -512,7 +558,6 @@ export function createEmailRouter(): Router {
 
   router.get('/templates', (_req: Request, res: Response) => {
     try {
-      const { RETAILER_TEMPLATES } = require('./retailer-templates.js');
       const rules = getAllRules();
       const templates = (RETAILER_TEMPLATES as any[]).map(t => {
         const matchingRule = rules.find((r: any) => r.template_id === t.id);

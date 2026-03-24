@@ -2270,7 +2270,7 @@
     <!-- Email Config -->
     <div id="page-email-config" class="dashboard-page">
       <div class="dash-header">Email Configuration</div>
-      <div class="dash-content" style="padding:20px;">
+      <div class="dash-content" style="padding:20px;overflow-y:auto;max-height:calc(100vh - 120px);">
         <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:8px;">
           <button class="ec-tab active" data-tab="accounts" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;border-bottom:2px solid var(--accent);font-weight:500;">Accounts</button>
           <button class="ec-tab" data-tab="pipeline" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Pipeline</button>
@@ -2282,28 +2282,110 @@
         <!-- Accounts Tab -->
         <div id="ec-panel-accounts" class="ec-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0;">Email Accounts</h3>
-            <div style="display:flex;gap:8px;">
-              <button id="ec-add-gmail" style="background:#4285f4;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Connect Gmail</button>
-              <button id="ec-add-imap" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;">+ Add IMAP</button>
+            <div>
+              <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 2px;">Email Accounts</h3>
+              <p style="font-size:11px;color:var(--text-muted);margin:0;">IMAP works with any email provider. Gmail OAuth is faster but requires Google Cloud setup.</p>
             </div>
+            <button id="ec-add-account-btn" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Add Account</button>
           </div>
           <div id="ec-accounts-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-          <!-- IMAP form (hidden by default) -->
-          <div id="ec-imap-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;">
-            <h4 style="font-size:12px;font-weight:600;margin:0 0 12px;color:var(--text-primary);">Add IMAP Account</h4>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <input type="text" id="ec-imap-name" placeholder="Account name" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
-              <input type="email" id="ec-imap-email" placeholder="Email address" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
-              <input type="password" id="ec-imap-pass" placeholder="App password" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
-              <input type="text" id="ec-imap-host" value="imap.gmail.com" placeholder="IMAP host" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
+          <!-- Add Account Form (hidden by default) -->
+          <div id="ec-account-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <h4 style="font-size:13px;font-weight:600;margin:0;color:var(--text-primary);">Add Email Account</h4>
+              <button id="ec-form-cancel" style="background:none;border:none;font-size:18px;color:var(--text-muted);cursor:pointer;line-height:1;">&times;</button>
             </div>
-            <div style="display:flex;gap:8px;margin-top:10px;">
-              <button id="ec-imap-save" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">Save & Test</button>
-              <button id="ec-imap-cancel" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;">Cancel</button>
-              <span id="ec-imap-status" style="font-size:11px;color:var(--text-muted);align-self:center;"></span>
+            <!-- Connection Type -->
+            <div style="margin-bottom:12px;">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Connection Type</label>
+              <div style="display:flex;gap:6px;">
+                <button class="ec-type-btn selected" data-type="imap" style="flex:1;padding:10px;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:6px;cursor:pointer;font-size:12px;text-align:center;"><strong>IMAP</strong><br><span style="font-size:10px;opacity:0.8;">Works with any provider</span></button>
+                <button class="ec-type-btn" data-type="gmail_oauth" style="flex:1;padding:10px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;text-align:center;"><strong>Gmail OAuth</strong><br><span style="font-size:10px;opacity:0.6;">Faster, requires Google Cloud</span></button>
+              </div>
+            </div>
+            <!-- Common fields -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+              <div>
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Account Name</label>
+                <input type="text" id="ec-acc-name" placeholder="e.g. Work Gmail, Personal Outlook" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Email Address</label>
+                <input type="email" id="ec-acc-email" placeholder="you@gmail.com" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+              </div>
+            </div>
+            <!-- IMAP fields -->
+            <div id="ec-imap-fields">
+              <div style="margin-bottom:8px;">
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">App Password <span style="opacity:0.6;">(not your regular password)</span></label>
+                <input type="password" id="ec-acc-pass" placeholder="xxxx xxxx xxxx xxxx" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+                <div id="ec-app-pass-help" style="font-size:10px;color:var(--text-muted);margin-top:3px;">Stored encrypted. Most providers require an app-specific password. <a id="ec-app-pass-link" href="https://support.google.com/accounts/answer/185833" target="_blank" style="color:var(--accent);">How to get an app password</a></div>
+              </div>
+              <!-- Provider presets -->
+              <details style="margin-bottom:8px;">
+                <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none;">Advanced Settings</summary>
+                <div style="margin-top:8px;">
+                  <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px;">Email Provider</label>
+                  <div style="display:flex;gap:4px;margin-bottom:8px;">
+                    <button class="ec-provider-btn selected" data-provider="gmail" data-host="imap.gmail.com" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--accent);color:#fff;border:1px solid var(--accent);">Gmail</button>
+                    <button class="ec-provider-btn" data-provider="outlook" data-host="outlook.office365.com" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">Outlook</button>
+                    <button class="ec-provider-btn" data-provider="yahoo" data-host="imap.mail.yahoo.com" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">Yahoo</button>
+                    <button class="ec-provider-btn" data-provider="custom" data-host="" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">Custom</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                    <div>
+                      <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">IMAP Host</label>
+                      <input type="text" id="ec-acc-host" value="imap.gmail.com" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                      <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Port</label>
+                      <input type="number" id="ec-acc-port" value="993" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+            <!-- Gmail OAuth info -->
+            <div id="ec-oauth-fields" style="display:none;">
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px;">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:6px;">Setup Steps</div>
+                <ol style="margin:0;padding-left:18px;font-size:11px;color:var(--text-secondary);line-height:1.6;">
+                  <li>Configure Google Client ID & Secret in the <a href="#" onclick="ecSwitchTab('accounts');$('#ec-google-creds-toggle').open=true;return false;" style="color:var(--accent);">credentials section below</a></li>
+                  <li>Fill in the name and email above, then click <strong>Add & Authorize</strong></li>
+                  <li>You'll be redirected to Google to grant access</li>
+                </ol>
+              </div>
+              <div style="background:#f59e0b15;border:1px solid #f59e0b40;border-radius:6px;padding:10px 12px;font-size:11px;color:#f59e0b;">
+                If you haven't set up Google Cloud credentials yet, expand the "Google API Credentials" section below first. The OAuth flow will fail without them.
+              </div>
+            </div>
+            <!-- Submit -->
+            <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+              <button id="ec-acc-submit" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;cursor:pointer;">Add Account</button>
+              <span id="ec-acc-status" style="font-size:11px;color:var(--text-muted);"></span>
             </div>
           </div>
+          <!-- Google API Credentials (collapsible) -->
+          <details id="ec-google-creds-toggle" style="margin-top:16px;">
+            <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;user-select:none;">Google API Credentials (for Gmail OAuth)</summary>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:8px;">
+              <p style="font-size:11px;color:var(--text-muted);margin:0 0 12px;line-height:1.5;">Required for Gmail OAuth only. IMAP users can skip this.<br>1. Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent);">Google Cloud Console</a> and create an OAuth 2.0 Client ID.<br>2. Add <code style="font-size:10px;background:var(--bg);padding:1px 4px;border-radius:3px;">http://localhost:4000/api/email/auth/gmail/callback</code> as an authorized redirect URI.<br>3. Copy the Client ID and Client Secret below.</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Client ID</label>
+                  <input type="text" id="ec-google-client-id" placeholder="xxxx.apps.googleusercontent.com" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:11px;box-sizing:border-box;">
+                </div>
+                <div>
+                  <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Client Secret</label>
+                  <input type="password" id="ec-google-client-secret" placeholder="GOCSPX-xxxx" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:11px;box-sizing:border-box;">
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+                <button id="ec-google-save" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;">Save Credentials</button>
+                <span id="ec-google-status" style="font-size:11px;color:var(--text-muted);"></span>
+              </div>
+            </div>
+          </details>
         </div>
 
         <!-- Pipeline Tab -->
@@ -2329,28 +2411,83 @@
 
         <!-- Retailers Tab -->
         <div id="ec-panel-retailers" class="ec-panel" style="display:none;">
-          <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 8px;">Retailer Templates</h3>
-          <p style="font-size:12px;color:var(--text-muted);margin:0 0 16px;">Enable templates to automatically track purchase emails from these stores.</p>
-          <div id="ec-retailers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;"></div>
+          <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 4px;">Retailer Templates</h3>
+          <p style="font-size:11px;color:var(--text-muted);margin:0 0 16px;">One-click activation for popular retailers. Each template knows the sender patterns and extraction rules for that store.</p>
+          <div id="ec-retailers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;"></div>
         </div>
 
         <!-- Rules Tab -->
         <div id="ec-panel-rules" class="ec-panel" style="display:none;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
             <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0;">Flag Rules</h3>
             <button id="ec-add-rule" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Add Rule</button>
           </div>
+          <p style="font-size:11px;color:var(--text-muted);margin:0 0 16px;">Define who to watch, what to extract, and where to send results. Retailer templates auto-create rules.</p>
           <div id="ec-rules-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          <!-- Add Rule Form -->
+          <div id="ec-rule-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;">
+            <h4 style="font-size:13px;font-weight:600;margin:0 0 12px;color:var(--text-primary);">New Rule</h4>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">Rule Name</label>
+              <input type="text" id="ec-rule-name" placeholder="e.g. amazon-orders, costco-receipts" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">Sender Patterns <span style="opacity:0.6;">(one per line)</span></label>
+              <textarea id="ec-rule-senders" rows="2" placeholder="e.g. @amazon.com&#10;noreply@walmart.com" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;resize:vertical;font-family:monospace;"></textarea>
+              <span style="font-size:9px;color:var(--text-muted);">Leave empty to match all emails. Use @domain.com to match any sender from that domain.</span>
+            </div>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">Extraction Instructions <span style="opacity:0.6;">(what should AI extract?)</span></label>
+              <textarea id="ec-rule-instructions" rows="3" placeholder="e.g. Extract the order number, item names, quantities, prices, and delivery date." style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button id="ec-rule-save" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">Create Rule</button>
+              <button id="ec-rule-cancel" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;">Cancel</button>
+            </div>
+          </div>
         </div>
 
         <!-- Destinations Tab -->
         <div id="ec-panel-destinations" class="ec-panel" style="display:none;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
             <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0;">Destinations</h3>
             <button id="ec-add-dest" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Add Destination</button>
           </div>
-          <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;">Where parsed email data gets pushed (Google Sheets, Airtable, Discord, etc.)</p>
-          <div id="ec-destinations-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          <p style="font-size:11px;color:var(--text-muted);margin:0 0 16px;">Where parsed email data gets pushed. Configure field mapping per-rule.</p>
+          <div id="ec-destinations-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <!-- Add Destination Form -->
+          <div id="ec-dest-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;">
+            <h4 style="font-size:13px;font-weight:600;margin:0 0 12px;color:var(--text-primary);">New Destination</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+              <div>
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Name</label>
+                <input type="text" id="ec-dest-name" placeholder="e.g. My Buy Sheet" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Type</label>
+                <select id="ec-dest-type" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+                  <option value="sheets">Google Sheets</option>
+                  <option value="airtable">Airtable</option>
+                  <option value="notion">Notion</option>
+                  <option value="discord">Discord</option>
+                  <option value="slack">Slack</option>
+                  <option value="webhook">Webhook</option>
+                </select>
+              </div>
+            </div>
+            <!-- Dynamic config fields -->
+            <div id="ec-dest-config-fields"></div>
+            <!-- Setup instructions -->
+            <details id="ec-dest-instructions" style="margin-bottom:12px;">
+              <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;">How to set this up</summary>
+              <div id="ec-dest-instructions-content" style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6;padding-left:4px;"></div>
+            </details>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button id="ec-dest-save" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">Add Destination</button>
+              <button id="ec-dest-cancel" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;">Cancel</button>
+              <span id="ec-dest-status" style="font-size:11px;color:var(--text-muted);"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -5767,43 +5904,114 @@
     // ── Email Config Page ───────────────────────────────────────────────────
 
     let ecCurrentTab = 'accounts';
+    let ecAccountType = 'imap';
+    let ecSelectedProvider = 'gmail';
+    const EC_PROVIDERS = {
+      gmail: { host: 'imap.gmail.com', port: 993, helpUrl: 'https://support.google.com/accounts/answer/185833', helpText: 'How to get a Gmail app password' },
+      outlook: { host: 'outlook.office365.com', port: 993, helpUrl: 'https://support.microsoft.com/en-us/account-billing/using-app-passwords-with-apps-that-don-t-support-two-step-verification-5896ed9b-4263-e681-128a-a6f2979a7944', helpText: 'How to get an Outlook app password' },
+      yahoo: { host: 'imap.mail.yahoo.com', port: 993, helpUrl: 'https://help.yahoo.com/kb/generate-third-party-passwords-sln15241.html', helpText: 'How to get a Yahoo app password' },
+      custom: { host: '', port: 993, helpUrl: null, helpText: null },
+    };
+    const EC_DEST_CONFIGS = {
+      sheets: { fields: [{ key:'spreadsheet_id', label:'Spreadsheet ID', placeholder:'1abc...xyz', type:'text' }, { key:'sheet_name', label:'Sheet Name', placeholder:'Sheet1', type:'text' }], instructions: '1. Open your Google Sheet in a browser.\n2. Copy the Spreadsheet ID from the URL: docs.google.com/spreadsheets/d/<b>{SPREADSHEET_ID}</b>/edit\n3. The sheet name defaults to "Sheet1" - change if your tab has a different name.' },
+      airtable: { fields: [{ key:'api_key', label:'API Key', placeholder:'pat-xxx', type:'password' }, { key:'base_id', label:'Base ID', placeholder:'Paste URL or appXXXXXXX', type:'text' }, { key:'table_name', label:'Table Name', placeholder:'Processed Emails', type:'text' }], instructions: '1. Go to <a href="https://airtable.com/create/tokens" target="_blank" style="color:var(--accent)">airtable.com/create/tokens</a> and create a Personal Access Token.\n2. Give it scopes: <b>data.records:write</b>, <b>schema.bases:read</b>.\n3. Grant access to the base you want to use.\n4. Copy the token (starts with "pat-").\n5. Paste your Airtable base URL into Base ID - the appXXX part will be extracted.' },
+      notion: { fields: [{ key:'api_key', label:'API Key', placeholder:'ntn_xxx or secret_xxx', type:'password' }, { key:'database_id', label:'Database ID', placeholder:'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', type:'text' }], instructions: '1. Go to <a href="https://www.notion.so/my-integrations" target="_blank" style="color:var(--accent)">notion.so/my-integrations</a> and create a new integration.\n2. Copy the Internal Integration Token.\n3. Open your Notion database, click ••• > Connect to > select your integration.\n4. Copy the Database ID from the URL.' },
+      discord: { fields: [{ key:'webhook_url', label:'Webhook URL', placeholder:'https://discord.com/api/webhooks/...', type:'password' }], instructions: '1. Open Discord > Server Settings > Integrations > Webhooks.\n2. Click "New Webhook" and select the channel.\n3. Click "Copy Webhook URL".' },
+      slack: { fields: [{ key:'webhook_url', label:'Webhook URL', placeholder:'https://hooks.slack.com/services/...', type:'password' }], instructions: '1. Go to <a href="https://api.slack.com/apps" target="_blank" style="color:var(--accent)">api.slack.com/apps</a> > Create New App > From scratch.\n2. Go to Incoming Webhooks > toggle on.\n3. Add New Webhook to Workspace > select channel.\n4. Copy the Webhook URL.' },
+      webhook: { fields: [{ key:'url', label:'Endpoint URL', placeholder:'https://api.example.com/webhook', type:'password' }, { key:'method', label:'HTTP Method', placeholder:'POST', type:'text' }, { key:'auth_header_name', label:'Auth Header Name (optional)', placeholder:'Authorization', type:'text' }, { key:'auth_header_value', label:'Auth Header Value (optional)', placeholder:'Bearer sk-...', type:'password' }], instructions: '1. Enter the full URL of your webhook endpoint.\n2. Choose HTTP method (POST is standard).\n3. Optionally add an authorization header.' },
+    };
 
-    function loadEmailConfig() {
-      ecSwitchTab(ecCurrentTab);
-    }
+    function loadEmailConfig() { ecSwitchTab(ecCurrentTab); }
 
-    // Tab switching
     setTimeout(() => {
-      document.querySelectorAll('.ec-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          ecCurrentTab = tab.dataset.tab;
-          ecSwitchTab(ecCurrentTab);
-        });
-      });
+      document.querySelectorAll('.ec-tab').forEach(tab => tab.addEventListener('click', () => { ecCurrentTab = tab.dataset.tab; ecSwitchTab(ecCurrentTab); }));
+      // Account form bindings
+      const addBtn = $('#ec-add-account-btn'); if (addBtn) addBtn.addEventListener('click', () => { const f=$('#ec-account-form'); if(f) f.style.display = f.style.display==='none'?'block':'none'; });
+      const cancelBtn = $('#ec-form-cancel'); if (cancelBtn) cancelBtn.addEventListener('click', () => { const f=$('#ec-account-form'); if(f) f.style.display='none'; });
+      // Connection type toggle
+      document.querySelectorAll('.ec-type-btn').forEach(btn => btn.addEventListener('click', () => {
+        ecAccountType = btn.dataset.type;
+        document.querySelectorAll('.ec-type-btn').forEach(b => { b.style.background = b.dataset.type===ecAccountType ? 'var(--accent)' : 'var(--bg)'; b.style.color = b.dataset.type===ecAccountType ? '#fff' : 'var(--text-primary)'; b.style.borderColor = b.dataset.type===ecAccountType ? 'var(--accent)' : 'var(--border)'; });
+        const imapF=$('#ec-imap-fields'), oauthF=$('#ec-oauth-fields'), subBtn=$('#ec-acc-submit');
+        if (imapF) imapF.style.display = ecAccountType==='imap' ? 'block' : 'none';
+        if (oauthF) oauthF.style.display = ecAccountType==='gmail_oauth' ? 'block' : 'none';
+        if (subBtn) subBtn.textContent = ecAccountType==='gmail_oauth' ? 'Add & Authorize' : 'Add Account';
+      }));
+      // Provider presets
+      document.querySelectorAll('.ec-provider-btn').forEach(btn => btn.addEventListener('click', () => {
+        ecSelectedProvider = btn.dataset.provider;
+        document.querySelectorAll('.ec-provider-btn').forEach(b => { b.style.background = b.dataset.provider===ecSelectedProvider ? 'var(--accent)' : 'var(--bg)'; b.style.color = b.dataset.provider===ecSelectedProvider ? '#fff' : 'var(--text-primary)'; b.style.borderColor = b.dataset.provider===ecSelectedProvider ? 'var(--accent)' : 'var(--border)'; });
+        const p = EC_PROVIDERS[ecSelectedProvider];
+        const h=$('#ec-acc-host'), po=$('#ec-acc-port'), link=$('#ec-app-pass-link');
+        if (h && p.host) h.value = p.host;
+        if (po) po.value = p.port;
+        if (link) { if (p.helpUrl) { link.href = p.helpUrl; link.textContent = p.helpText; link.style.display = 'inline'; } else { link.style.display = 'none'; } }
+      }));
+      // Submit account
+      const submitBtn = $('#ec-acc-submit'); if (submitBtn) submitBtn.addEventListener('click', ecSubmitAccount);
+      // Google creds save
+      const gSave = $('#ec-google-save'); if (gSave) gSave.addEventListener('click', ecSaveGoogleCreds);
+      // Pipeline buttons
+      const pToggle=$('#ec-pipeline-toggle'); if(pToggle) pToggle.addEventListener('click', async()=>{ const s=await fetch(_baseHttp+'/api/email/pipeline/status').then(r=>r.json()).catch(()=>null); await fetch(_baseHttp+'/api/email/pipeline/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!(s&&s.enabled)})}); ecLoadPipeline(); });
+      const pRun=$('#ec-pipeline-run'); if(pRun) pRun.addEventListener('click', async()=>{ pRun.textContent='Running...'; pRun.disabled=true; await fetch(_baseHttp+'/api/email/pipeline/run',{method:'POST'}).catch(()=>{}); pRun.textContent='Run Now'; pRun.disabled=false; ecLoadPipeline(); });
+      const pSave=$('#ec-pipeline-save'); if(pSave) pSave.addEventListener('click', async()=>{ await fetch(_baseHttp+'/api/email/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({scan_interval_minutes:($('#ec-scan-interval')||{}).value,lookback_minutes:($('#ec-lookback')||{}).value})}); ecLoadPipeline(); });
+      // Rule form
+      const rAdd=$('#ec-add-rule'); if(rAdd) rAdd.addEventListener('click',()=>{ const f=$('#ec-rule-form'); if(f) f.style.display=f.style.display==='none'?'block':'none'; });
+      const rCancel=$('#ec-rule-cancel'); if(rCancel) rCancel.addEventListener('click',()=>{ const f=$('#ec-rule-form'); if(f) f.style.display='none'; });
+      const rSave=$('#ec-rule-save'); if(rSave) rSave.addEventListener('click', ecSubmitRule);
+      // Destination form
+      const dAdd=$('#ec-add-dest'); if(dAdd) dAdd.addEventListener('click',()=>{ const f=$('#ec-dest-form'); if(f) f.style.display=f.style.display==='none'?'block':'none'; ecRenderDestFields(); });
+      const dCancel=$('#ec-dest-cancel'); if(dCancel) dCancel.addEventListener('click',()=>{ const f=$('#ec-dest-form'); if(f) f.style.display='none'; });
+      const dType=$('#ec-dest-type'); if(dType) dType.addEventListener('change', ecRenderDestFields);
+      const dSave=$('#ec-dest-save'); if(dSave) dSave.addEventListener('click', ecSubmitDest);
     }, 100);
 
     function ecSwitchTab(tabName) {
-      document.querySelectorAll('.ec-tab').forEach(t => {
-        const active = t.dataset.tab === tabName;
-        t.style.borderBottomColor = active ? 'var(--accent)' : 'transparent';
-        t.style.color = active ? 'var(--text-primary)' : 'var(--text-muted)';
-        t.style.fontWeight = active ? '500' : '400';
-        if (active) t.classList.add('active'); else t.classList.remove('active');
-      });
+      document.querySelectorAll('.ec-tab').forEach(t => { const a=t.dataset.tab===tabName; t.style.borderBottomColor=a?'var(--accent)':'transparent'; t.style.color=a?'var(--text-primary)':'var(--text-muted)'; t.style.fontWeight=a?'500':'400'; });
       document.querySelectorAll('.ec-panel').forEach(p => p.style.display = 'none');
-      const panel = $(`#ec-panel-${tabName}`);
-      if (panel) panel.style.display = 'block';
-
-      if (tabName === 'accounts') ecLoadAccounts();
-      if (tabName === 'pipeline') ecLoadPipeline();
-      if (tabName === 'retailers') ecLoadRetailers();
-      if (tabName === 'rules') ecLoadRules();
-      if (tabName === 'destinations') ecLoadDestinations();
+      const panel = $(`#ec-panel-${tabName}`); if (panel) panel.style.display = 'block';
+      if (tabName==='accounts') ecLoadAccounts();
+      if (tabName==='pipeline') ecLoadPipeline();
+      if (tabName==='retailers') ecLoadRetailers();
+      if (tabName==='rules') ecLoadRules();
+      if (tabName==='destinations') ecLoadDestinations();
     }
 
-    // ── Accounts ────────────────────────────────────────────────────────────
+    async function ecSaveGoogleCreds() {
+      const clientId = ($('#ec-google-client-id')||{}).value?.trim();
+      const clientSecret = ($('#ec-google-client-secret')||{}).value?.trim();
+      const st = $('#ec-google-status');
+      if (!clientId || !clientSecret) { if(st) st.textContent='Both fields required.'; return; }
+      await fetch(_baseHttp+'/api/email/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({google_client_id:clientId,google_client_secret:clientSecret})});
+      if(st) st.innerHTML='<span style="color:#22c55e;">Saved!</span>';
+    }
+
+    async function ecSubmitAccount() {
+      const name = ($('#ec-acc-name')||{}).value?.trim();
+      const email = ($('#ec-acc-email')||{}).value?.trim();
+      const st = $('#ec-acc-status');
+      if (!name || !email) { if(st) st.textContent='Name and email required.'; return; }
+      if(st) st.textContent = ecAccountType==='imap' ? 'Testing connection...' : 'Creating...';
+      try {
+        const config = ecAccountType==='imap' ? { password:($('#ec-acc-pass')||{}).value, host:($('#ec-acc-host')||{}).value||'imap.gmail.com', port:Number(($('#ec-acc-port')||{}).value||993), tls:true } : {};
+        const resp = await fetch(_baseHttp+'/api/email/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,type:ecAccountType,email,config,enabled:true})});
+        const data = await resp.json();
+        if (!resp.ok) { if(st) st.textContent=data.error||'Failed.'; return; }
+        if (ecAccountType==='gmail_oauth') { window.open(_baseHttp+'/api/email/auth/gmail?account_id='+data.id,'_blank'); }
+        if(st) st.innerHTML='<span style="color:#22c55e;">Added!</span>';
+        const f=$('#ec-account-form'); if(f) f.style.display='none';
+        ecLoadAccounts();
+      } catch(e) { if(st) st.textContent='Error: '+e.message; }
+    }
 
     async function ecLoadAccounts() {
+      // Load Google creds status
+      try {
+        const settings = await fetch(_baseHttp+'/api/email/settings').then(r=>r.json()).catch(()=>({}));
+        const cid=$('#ec-google-client-id'), gst=$('#ec-google-status');
+        if(cid && settings.google_client_id) cid.value=settings.google_client_id;
+        if(gst && settings.google_client_id) gst.innerHTML='<span style="color:#22c55e;">Configured</span>';
+      } catch{}
       try {
         const accounts = await fetch(_baseHttp + '/api/email/accounts').then(r => r.json());
         const list = $('#ec-accounts-list');
@@ -5834,48 +6042,9 @@
     }
 
     async function ecToggleAccount(id, enabled) {
-      await fetch(_baseHttp + '/api/email/accounts/' + id, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      }).catch(() => {});
+      await fetch(_baseHttp+'/api/email/accounts/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})}).catch(()=>{});
       ecLoadAccounts();
     }
-
-    setTimeout(() => {
-      const gmailBtn = $('#ec-add-gmail');
-      if (gmailBtn) gmailBtn.addEventListener('click', () => {
-        window.open(_baseHttp + '/api/email/auth/gmail', '_blank');
-      });
-      const imapBtn = $('#ec-add-imap');
-      const imapForm = $('#ec-imap-form');
-      if (imapBtn && imapForm) imapBtn.addEventListener('click', () => {
-        imapForm.style.display = imapForm.style.display === 'none' ? 'block' : 'none';
-      });
-      const imapCancel = $('#ec-imap-cancel');
-      if (imapCancel) imapCancel.addEventListener('click', () => { imapForm.style.display = 'none'; });
-      const imapSave = $('#ec-imap-save');
-      if (imapSave) imapSave.addEventListener('click', async () => {
-        const name = ($('#ec-imap-name') || {}).value || 'IMAP Account';
-        const email = ($('#ec-imap-email') || {}).value;
-        const password = ($('#ec-imap-pass') || {}).value;
-        const host = ($('#ec-imap-host') || {}).value || 'imap.gmail.com';
-        const statusEl = $('#ec-imap-status');
-        if (!email || !password) { if (statusEl) statusEl.textContent = 'Email and password required.'; return; }
-        if (statusEl) statusEl.textContent = 'Testing connection...';
-        try {
-          const resp = await fetch(_baseHttp + '/api/email/accounts', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, type: 'imap', email, config: { password, host, port: 993, tls: true }, enabled: true }),
-          });
-          const data = await resp.json();
-          if (resp.ok) {
-            if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">Connected!</span>';
-            imapForm.style.display = 'none';
-            ecLoadAccounts();
-          } else { if (statusEl) statusEl.textContent = data.error || 'Failed.'; }
-        } catch (e) { if (statusEl) statusEl.textContent = 'Error: ' + e.message; }
-      });
-    }, 100);
 
     // ── Pipeline ────────────────────────────────────────────────────────────
 
@@ -5980,8 +6149,53 @@
     }
 
     async function ecToggleRetailer(ruleId, enabled) {
-      // Toggle by updating the rule (simplified — just reload for now)
+      await fetch(_baseHttp+'/api/email/rules/'+ruleId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});
       ecLoadRetailers();
+    }
+
+    // ── Rule Submit ─────────────────────────────────────────────────────────
+    async function ecSubmitRule() {
+      const name = ($('#ec-rule-name')||{}).value?.trim();
+      if (!name) { alert('Rule name is required.'); return; }
+      const senders = ($('#ec-rule-senders')||{}).value?.split('\n').map(s=>s.trim()).filter(Boolean) || [];
+      const instructions = ($('#ec-rule-instructions')||{}).value?.trim() || '';
+      await fetch(_baseHttp+'/api/email/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,sender_patterns:senders,instructions,enabled:true})});
+      const f=$('#ec-rule-form'); if(f) f.style.display='none';
+      $('#ec-rule-name').value=''; $('#ec-rule-senders').value=''; $('#ec-rule-instructions').value='';
+      ecLoadRules();
+    }
+
+    // ── Destination Form ────────────────────────────────────────────────────
+    function ecRenderDestFields() {
+      const type = ($('#ec-dest-type')||{}).value || 'sheets';
+      const cfg = EC_DEST_CONFIGS[type];
+      const container = $('#ec-dest-config-fields');
+      const instrContent = $('#ec-dest-instructions-content');
+      if (!cfg || !container) return;
+      container.innerHTML = cfg.fields.map(f => `
+        <div style="margin-bottom:8px;">
+          <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">${escapeHtml(f.label)}</label>
+          <input type="${f.type}" id="ec-dest-cfg-${f.key}" placeholder="${escapeHtml(f.placeholder)}" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+        </div>
+      `).join('');
+      if (instrContent) instrContent.innerHTML = cfg.instructions;
+    }
+
+    async function ecSubmitDest() {
+      const name = ($('#ec-dest-name')||{}).value?.trim();
+      const type = ($('#ec-dest-type')||{}).value;
+      const st = $('#ec-dest-status');
+      if (!name) { if(st) st.textContent='Name is required.'; return; }
+      const cfg = EC_DEST_CONFIGS[type];
+      const config = {};
+      if (cfg) cfg.fields.forEach(f => { const el=$('#ec-dest-cfg-'+f.key); if(el&&el.value) config[f.key]=el.value; });
+      try {
+        const resp = await fetch(_baseHttp+'/api/email/destinations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,type,config,enabled:true})});
+        if (!resp.ok) { const d=await resp.json(); if(st) st.textContent=d.error||'Failed.'; return; }
+        if(st) st.innerHTML='<span style="color:#22c55e;">Added!</span>';
+        const f=$('#ec-dest-form'); if(f) f.style.display='none';
+        ecLoadDestinations();
+      } catch(e) { if(st) st.textContent='Error: '+e.message; }
     }
 
     // ── Rules ───────────────────────────────────────────────────────────────

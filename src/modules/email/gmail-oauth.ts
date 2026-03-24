@@ -22,12 +22,12 @@ function getRedirectUri(requestUrl?: string): string {
   if (requestUrl) {
     try {
       const url = new URL(requestUrl);
-      return `${url.protocol}//${url.host}/api/auth/gmail/callback`;
+      return `${url.protocol}//${url.host}/api/email/auth/gmail/callback`;
     } catch {}
   }
   const storedUrl = getSetting('app_url');
-  const baseUrl = storedUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  return `${baseUrl}/api/auth/gmail/callback`;
+  const baseUrl = storedUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4000';
+  return `${baseUrl}/api/email/auth/gmail/callback`;
 }
 
 function getOAuth2Client(requestUrl?: string): OAuth2Client {

@@ -411,6 +411,17 @@ As you work, narrate your reasoning and key decisions so the operator can follow
 - Keep narration concise — one or two sentences at natural milestones, not a running commentary on every file read.
 - Do NOT narrate individual tool calls (reads, searches, fetches) — those show up automatically in a collapsible dropdown in the UI. Your text should focus on insights, decisions, and progress updates.
 
+## Interactive Questions
+If you need the operator to choose from options or provide a short answer before you can continue, emit exactly one structured block in this format:
+[ASK_USER]
+{"header":"Question","question":"What should we do next?","options":[{"label":"Option A","description":"Short explanation"},{"label":"Option B","description":"Short explanation"}],"multiSelect":false,"placeholder":"Type your own answer","otherLabel":"Other"}
+[/ASK_USER]
+Rules:
+- Use valid JSON only inside the block.
+- Keep options concise. The UI always provides a free-form "Other" input too.
+- Set \`multiSelect\` to \`true\` when multiple selections are valid.
+- Do not repeat the same question outside the block unless extra context is necessary.
+
 Don't dump large code blocks unless specifically asked to show code.
 
 CRITICAL: When the operator sends a message, interpret their intent and start working immediately. Don't ask for clarification unless the request is genuinely ambiguous. Don't lecture about what you can or can't do — just do it. If something fails, try a different approach. You have full tool access including file editing, shell commands, and web access. Act first, report results.
@@ -457,6 +468,17 @@ Use when you need to find information, look up docs, answer questions about the 
 Use when you just need the text content of a simple public URL.
 
 IMPORTANT: Never use Puppeteer, Playwright, or install any browser automation packages. Chrome CDP is already connected to the user's browser and ready to use.
+
+## Interactive Questions
+If you need the user to make a choice or provide a short answer before you can proceed, emit exactly one structured block in this format:
+[ASK_USER]
+{"header":"Question","question":"What should we do next?","options":[{"label":"Option A","description":"Short explanation"},{"label":"Option B","description":"Short explanation"}],"multiSelect":false,"placeholder":"Type your own answer","otherLabel":"Other"}
+[/ASK_USER]
+Rules:
+- Use valid JSON only inside the block.
+- Keep options concise. The desktop UI always adds a free-form "Other" field.
+- Set \`multiSelect\` to \`true\` when multiple selections are valid.
+- Ask one question at a time, then wait for the user's answer.
 
 ## Personality
 Direct, strategic, collaborative. Think out loud with the user. Push back when something doesn't make sense. Celebrate wins. You are their equal partner, not a servant or assistant.
@@ -647,8 +669,18 @@ CRITICAL RULES:
     const { SkillLoader } = await import("../skills/loader.js");
     const skillRegistry = new SkillRegistry();
     const skillsDir = path.join(process.cwd(), "skills");
+    const skillDirs = [skillsDir];
+    const homeSkillsDir = path.join(process.env['HOME'] || '', '.hivemind', 'skills');
+    if (fs.existsSync(homeSkillsDir)) {
+      skillDirs.push(homeSkillsDir);
+    }
+    // Also scan Claude Code's skills directory (for gstack and other Claude Code skills)
+    const claudeSkillsDir = path.join(process.env['HOME'] || '', '.claude', 'skills');
+    if (fs.existsSync(claudeSkillsDir)) {
+      skillDirs.push(claudeSkillsDir);
+    }
     const skillLoader = new SkillLoader(skillRegistry, {
-      skillDirs: [skillsDir],
+      skillDirs,
       watch: true, // Hot-reload on file changes
     });
     const loadedSkills = await skillLoader.loadAll();
@@ -677,6 +709,48 @@ CRITICAL RULES:
     const closeMemory = () => memoryStore.close();
     process.on("SIGINT", () => closeMemory());
     process.on("SIGTERM", () => closeMemory());
+  }
+
+  // ── Initialize Email Module ─────────────────────────────────────────────────
+  // Email module has its own tsconfig (tsconfig.email.json) — loaded via require()
+  // to avoid the main strict tsconfig from type-checking it.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const emailMod = require("../modules/email/index.js") as {
+      initEmailModule: (dir: string) => void;
+      startScheduler: () => void;
+      emailBus: import("events").EventEmitter;
+    };
+    const dataDir = path.join(process.cwd(), "data");
+    emailMod.initEmailModule(dataDir);
+    emailMod.startScheduler();
+
+    // Wire email events into Hivemind's dashboard bus for real-time UI updates
+    if (options.dashboard !== false) {
+      try {
+        const { bus } = await import("../dashboard/server.js");
+        // Forward email events to dashboard WebSocket bus
+        emailMod.emailBus.on("email:seller-alert", (data: unknown) => {
+          bus.emit("email:seller-alert", data);
+          const d = data as { urgency?: string; summary?: string };
+          info(`[Sentinel] Amazon seller alert: ${d.urgency ?? "unknown"} — ${d.summary ?? ""}`);
+        });
+        emailMod.emailBus.on("email:purchase", (data: unknown) => {
+          bus.emit("email:purchase", data);
+        });
+        emailMod.emailBus.on("email:pipeline-complete", (data: unknown) => {
+          bus.emit("email:pipeline-complete", data);
+          const d = data as { emails_scanned?: number; emails_flagged?: number; emails_pushed?: number };
+          if ((d.emails_flagged ?? 0) > 0) {
+            info(`[Email] Pipeline complete: ${d.emails_scanned ?? 0} scanned, ${d.emails_flagged ?? 0} flagged, ${d.emails_pushed ?? 0} pushed`);
+          }
+        });
+      } catch {}
+    }
+
+    info("Email module initialized (pipeline scheduler started)");
+  } catch (err) {
+    warn(`Email module failed to start: ${(err as Error).message}`);
   }
 
   s.succeed("HIVEMIND swarm is running");
@@ -1063,6 +1137,106 @@ export async function configCommand(options: ConfigOptions): Promise<void> {
   // Default: show full config
   const content = fs.readFileSync(configPath, "utf-8");
   log(content);
+}
+
+// ── skills (pack manager) ─────────────────────────────────────────────────────
+
+export async function packAddCommand(
+  gitUrl: string,
+  options: { name?: string },
+): Promise<void> {
+  const { SkillPackManager } = await import("../skills/pack-manager.js");
+  const manager = new SkillPackManager();
+
+  const s = spinner(`Installing skill pack from ${gitUrl}...`);
+
+  try {
+    const pack = await manager.add(gitUrl, options.name);
+    s.succeed(`Pack "${pack.name}" installed`);
+    info(`Path: ${pack.localPath}`);
+    info(`Skills found: ${pack.skillCount}`);
+    if (pack.version) {
+      info(`Version: ${pack.version}`);
+    }
+  } catch (err) {
+    s.fail("Install failed");
+    error((err as Error).message);
+  }
+}
+
+export async function packUpdateCommand(packName?: string): Promise<void> {
+  const { SkillPackManager } = await import("../skills/pack-manager.js");
+  const manager = new SkillPackManager();
+
+  const label = packName ? `Updating pack "${packName}"...` : "Updating all packs...";
+  const s = spinner(label);
+
+  try {
+    const results = await manager.update(packName);
+
+    if (results.length === 0) {
+      s.succeed("No packs installed to update.");
+      return;
+    }
+
+    s.succeed(`Updated ${results.length} pack${results.length === 1 ? "" : "s"}`);
+    log("");
+
+    table(
+      ["Pack", "Version", "Skills", "Updated"],
+      results.map((p) => [
+        p.name,
+        p.version ?? "-",
+        String(p.skillCount),
+        p.updatedAt.slice(0, 10),
+      ]),
+    );
+  } catch (err) {
+    s.fail("Update failed");
+    error((err as Error).message);
+  }
+}
+
+export async function packListCommand(): Promise<void> {
+  const { SkillPackManager } = await import("../skills/pack-manager.js");
+  const manager = new SkillPackManager();
+
+  const packs = manager.list();
+
+  if (packs.length === 0) {
+    info("No skill packs installed.");
+    info('Run "hivemind skills add <git-url>" to install one.');
+    return;
+  }
+
+  table(
+    ["Pack", "Version", "Skills", "Git URL", "Installed"],
+    packs.map((p) => [
+      p.name,
+      p.version ?? "-",
+      String(p.skillCount),
+      p.gitUrl,
+      p.installedAt.slice(0, 10),
+    ]),
+  );
+
+  log("");
+  info(`Pack directory: ${manager.getBaseDir()}`);
+}
+
+export async function packRemoveCommand(packName: string): Promise<void> {
+  const { SkillPackManager } = await import("../skills/pack-manager.js");
+  const manager = new SkillPackManager();
+
+  const s = spinner(`Removing pack "${packName}"...`);
+
+  try {
+    await manager.remove(packName);
+    s.succeed(`Pack "${packName}" removed`);
+  } catch (err) {
+    s.fail("Remove failed");
+    error((err as Error).message);
+  }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────

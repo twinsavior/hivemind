@@ -1,6 +1,8 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { getValidAccessToken } from './gmail-oauth.js';
+import { decrypt, encrypt } from './crypto.js';
+import { updateEmailAccount, getEmailAccount } from './db.js';
 import type { EmailData, AttachmentData } from './types.js';
 
 async function getGmailService() {
@@ -135,9 +137,7 @@ export interface GmailAccountConfig {
 }
 
 export function createGmailClientForAccount(accountConfig: GmailAccountConfig) {
-  // Lazy import to avoid circular deps
-  const { decrypt, encrypt } = require('./crypto');
-  const { updateEmailAccount, getEmailAccount } = require('./db');
+  // decrypt, encrypt, updateEmailAccount, getEmailAccount imported at top level
 
   async function getAccountGmailService() {
     let accessToken = decrypt(accountConfig.access_token);

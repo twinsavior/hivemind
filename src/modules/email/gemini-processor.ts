@@ -246,8 +246,8 @@ Return a JSON object: { "pass": ["id1", "id2", ...] } containing ONLY the IDs of
 export function extractPdfText(pdfBytes: Buffer, maxPages: number = 5, maxChars: number = 4000): Promise<string> {
   return new Promise(async (resolve) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require('pdf-parse');
+      const pdfMod = await import('pdf-parse');
+      const pdfParse = (pdfMod as any).default || pdfMod;
       const data = await pdfParse(pdfBytes, { max: maxPages });
       resolve(data.text.slice(0, maxChars).trim());
     } catch (e) {

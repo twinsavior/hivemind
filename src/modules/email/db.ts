@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { initializeDatabase } from './db-schema.js';
 
 let _dbPath: string | null = null;
@@ -20,7 +21,6 @@ export function setEmailDbPath(dbPath: string): void {
 
 function getDb(): Database.Database {
   if (!_db) {
-    const fs = require('fs');
     const resolvedPath = _dbPath ?? path.join(process.cwd(), 'data', 'email.db');
     const dir = path.dirname(resolvedPath);
     if (!fs.existsSync(dir)) {

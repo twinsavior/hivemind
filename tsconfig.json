@@ -33,5 +33,5 @@
     "newLine": "lf"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "**/*.tsx"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "**/*.tsx", "src/modules/email/**/*.ts"]
 }

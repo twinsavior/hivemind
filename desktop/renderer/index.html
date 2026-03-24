@@ -2031,6 +2031,10 @@
           Alerts
           <span id="alert-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:auto;font-weight:600;"></span>
         </button>
+        <button class="sidebar-nav-item" data-view="email-config">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email Config
+        </button>
       </div>
 
       <div class="sidebar-status">
@@ -2260,6 +2264,94 @@
         <div id="alerts-critical" style="margin-bottom:16px;"></div>
         <div id="alerts-high" style="margin-bottom:16px;"></div>
         <div id="alerts-other"></div>
+      </div>
+    </div>
+
+    <!-- Email Config -->
+    <div id="page-email-config" class="dashboard-page">
+      <div class="dash-header">Email Configuration</div>
+      <div class="dash-content" style="padding:20px;">
+        <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+          <button class="ec-tab active" data-tab="accounts" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;border-bottom:2px solid var(--accent);font-weight:500;">Accounts</button>
+          <button class="ec-tab" data-tab="pipeline" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Pipeline</button>
+          <button class="ec-tab" data-tab="retailers" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Retailers</button>
+          <button class="ec-tab" data-tab="rules" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Rules</button>
+          <button class="ec-tab" data-tab="destinations" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Destinations</button>
+        </div>
+
+        <!-- Accounts Tab -->
+        <div id="ec-panel-accounts" class="ec-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0;">Email Accounts</h3>
+            <div style="display:flex;gap:8px;">
+              <button id="ec-add-gmail" style="background:#4285f4;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Connect Gmail</button>
+              <button id="ec-add-imap" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;">+ Add IMAP</button>
+            </div>
+          </div>
+          <div id="ec-accounts-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <!-- IMAP form (hidden by default) -->
+          <div id="ec-imap-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;">
+            <h4 style="font-size:12px;font-weight:600;margin:0 0 12px;color:var(--text-primary);">Add IMAP Account</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <input type="text" id="ec-imap-name" placeholder="Account name" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
+              <input type="email" id="ec-imap-email" placeholder="Email address" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
+              <input type="password" id="ec-imap-pass" placeholder="App password" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
+              <input type="text" id="ec-imap-host" value="imap.gmail.com" placeholder="IMAP host" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;">
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <button id="ec-imap-save" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">Save & Test</button>
+              <button id="ec-imap-cancel" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;">Cancel</button>
+              <span id="ec-imap-status" style="font-size:11px;color:var(--text-muted);align-self:center;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline Tab -->
+        <div id="ec-panel-pipeline" class="ec-panel" style="display:none;">
+          <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 16px;">Pipeline Settings</h3>
+          <div id="ec-pipeline-status" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Scan Interval (minutes)</label>
+              <input type="number" id="ec-scan-interval" value="15" min="1" max="1440" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Lookback (minutes)</label>
+              <input type="number" id="ec-lookback" value="1440" min="30" max="43200" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button id="ec-pipeline-toggle" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">Enable Pipeline</button>
+            <button id="ec-pipeline-run" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;">Run Now</button>
+            <button id="ec-pipeline-save" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;">Save Settings</button>
+          </div>
+        </div>
+
+        <!-- Retailers Tab -->
+        <div id="ec-panel-retailers" class="ec-panel" style="display:none;">
+          <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 8px;">Retailer Templates</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 16px;">Enable templates to automatically track purchase emails from these stores.</p>
+          <div id="ec-retailers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;"></div>
+        </div>
+
+        <!-- Rules Tab -->
+        <div id="ec-panel-rules" class="ec-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0;">Flag Rules</h3>
+            <button id="ec-add-rule" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Add Rule</button>
+          </div>
+          <div id="ec-rules-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
+        <!-- Destinations Tab -->
+        <div id="ec-panel-destinations" class="ec-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0;">Destinations</h3>
+            <button id="ec-add-dest" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Add Destination</button>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;">Where parsed email data gets pushed (Google Sheets, Airtable, Discord, etc.)</p>
+          <div id="ec-destinations-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -3177,10 +3269,12 @@
     const pagePurchases = $('#page-purchases');
     const pageShipments = $('#page-shipments');
     const pageAlerts = $('#page-alerts');
+    const pageEmailConfig = $('#page-email-config');
 
     const pageMap = {
       chat: mainChat, swarm: pageSwarm, skills: pageSkills, memory: pageMemory, settings: pageSettings,
       'ops-dashboard': pageOpsDashboard, purchases: pagePurchases, shipments: pageShipments, alerts: pageAlerts,
+      'email-config': pageEmailConfig,
     };
 
     document.querySelectorAll('.sidebar-nav-item').forEach(btn => {
@@ -3209,6 +3303,7 @@
           if (view === 'purchases') loadPurchasesPage();
           if (view === 'shipments') loadShipmentsPage();
           if (view === 'alerts') loadAlertsPage();
+          if (view === 'email-config') loadEmailConfig();
         }
       });
     });
@@ -5668,6 +5763,295 @@
     }
     setInterval(pollAlertBadge, 60000);
     setTimeout(pollAlertBadge, 3000);
+
+    // ── Email Config Page ───────────────────────────────────────────────────
+
+    let ecCurrentTab = 'accounts';
+
+    function loadEmailConfig() {
+      ecSwitchTab(ecCurrentTab);
+    }
+
+    // Tab switching
+    setTimeout(() => {
+      document.querySelectorAll('.ec-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          ecCurrentTab = tab.dataset.tab;
+          ecSwitchTab(ecCurrentTab);
+        });
+      });
+    }, 100);
+
+    function ecSwitchTab(tabName) {
+      document.querySelectorAll('.ec-tab').forEach(t => {
+        const active = t.dataset.tab === tabName;
+        t.style.borderBottomColor = active ? 'var(--accent)' : 'transparent';
+        t.style.color = active ? 'var(--text-primary)' : 'var(--text-muted)';
+        t.style.fontWeight = active ? '500' : '400';
+        if (active) t.classList.add('active'); else t.classList.remove('active');
+      });
+      document.querySelectorAll('.ec-panel').forEach(p => p.style.display = 'none');
+      const panel = $(`#ec-panel-${tabName}`);
+      if (panel) panel.style.display = 'block';
+
+      if (tabName === 'accounts') ecLoadAccounts();
+      if (tabName === 'pipeline') ecLoadPipeline();
+      if (tabName === 'retailers') ecLoadRetailers();
+      if (tabName === 'rules') ecLoadRules();
+      if (tabName === 'destinations') ecLoadDestinations();
+    }
+
+    // ── Accounts ────────────────────────────────────────────────────────────
+
+    async function ecLoadAccounts() {
+      try {
+        const accounts = await fetch(_baseHttp + '/api/email/accounts').then(r => r.json());
+        const list = $('#ec-accounts-list');
+        if (!list) return;
+
+        if (!accounts.length) {
+          list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No email accounts connected. Add one above to start tracking purchases.</div>';
+          return;
+        }
+
+        list.innerHTML = accounts.map(a => `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${a.enabled ? '#22c55e' : '#6b7280'};"></div>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:500;color:var(--text-primary);">${escapeHtml(a.name || a.email)}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(a.email)} &middot; ${escapeHtml(a.type)}</div>
+            </div>
+            <button onclick="ecToggleAccount(${a.id}, ${!a.enabled})" style="background:none;border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:10px;color:var(--text-muted);cursor:pointer;">${a.enabled ? 'Disable' : 'Enable'}</button>
+            <button onclick="ecDeleteAccount(${a.id})" style="background:none;border:1px solid #ef4444;border-radius:4px;padding:3px 10px;font-size:10px;color:#ef4444;cursor:pointer;">Remove</button>
+          </div>
+        `).join('');
+      } catch (e) { console.error('Load accounts error:', e); }
+    }
+
+    async function ecDeleteAccount(id) {
+      await fetch(_baseHttp + '/api/email/accounts/' + id, { method: 'DELETE' });
+      ecLoadAccounts();
+    }
+
+    async function ecToggleAccount(id, enabled) {
+      await fetch(_baseHttp + '/api/email/accounts/' + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      }).catch(() => {});
+      ecLoadAccounts();
+    }
+
+    setTimeout(() => {
+      const gmailBtn = $('#ec-add-gmail');
+      if (gmailBtn) gmailBtn.addEventListener('click', () => {
+        window.open(_baseHttp + '/api/email/auth/gmail', '_blank');
+      });
+      const imapBtn = $('#ec-add-imap');
+      const imapForm = $('#ec-imap-form');
+      if (imapBtn && imapForm) imapBtn.addEventListener('click', () => {
+        imapForm.style.display = imapForm.style.display === 'none' ? 'block' : 'none';
+      });
+      const imapCancel = $('#ec-imap-cancel');
+      if (imapCancel) imapCancel.addEventListener('click', () => { imapForm.style.display = 'none'; });
+      const imapSave = $('#ec-imap-save');
+      if (imapSave) imapSave.addEventListener('click', async () => {
+        const name = ($('#ec-imap-name') || {}).value || 'IMAP Account';
+        const email = ($('#ec-imap-email') || {}).value;
+        const password = ($('#ec-imap-pass') || {}).value;
+        const host = ($('#ec-imap-host') || {}).value || 'imap.gmail.com';
+        const statusEl = $('#ec-imap-status');
+        if (!email || !password) { if (statusEl) statusEl.textContent = 'Email and password required.'; return; }
+        if (statusEl) statusEl.textContent = 'Testing connection...';
+        try {
+          const resp = await fetch(_baseHttp + '/api/email/accounts', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, type: 'imap', email, config: { password, host, port: 993, tls: true }, enabled: true }),
+          });
+          const data = await resp.json();
+          if (resp.ok) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">Connected!</span>';
+            imapForm.style.display = 'none';
+            ecLoadAccounts();
+          } else { if (statusEl) statusEl.textContent = data.error || 'Failed.'; }
+        } catch (e) { if (statusEl) statusEl.textContent = 'Error: ' + e.message; }
+      });
+    }, 100);
+
+    // ── Pipeline ────────────────────────────────────────────────────────────
+
+    async function ecLoadPipeline() {
+      try {
+        const [status, settings] = await Promise.all([
+          fetch(_baseHttp + '/api/email/pipeline/status').then(r => r.json()).catch(() => null),
+          fetch(_baseHttp + '/api/email/settings').then(r => r.json()).catch(() => ({})),
+        ]);
+
+        const statusEl = $('#ec-pipeline-status');
+        if (statusEl && status) {
+          statusEl.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:${status.enabled ? '#22c55e' : '#6b7280'};"></div>
+              <span style="font-size:13px;font-weight:500;color:var(--text-primary);">${status.enabled ? 'Pipeline Running' : 'Pipeline Paused'}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);">
+              ${status.last_run_stats ? `Last run: ${status.last_run_stats.emails_scanned} scanned, ${status.last_run_stats.emails_flagged} flagged` : 'No runs yet'}
+              &middot; ${status.rules_count || 0} rules &middot; ${status.destinations_count || 0} destinations &middot; ${status.accounts_count || 0} accounts
+            </div>
+          `;
+          const toggleBtn = $('#ec-pipeline-toggle');
+          if (toggleBtn) {
+            toggleBtn.textContent = status.enabled ? 'Pause Pipeline' : 'Enable Pipeline';
+            toggleBtn.style.background = status.enabled ? '#6b7280' : 'var(--accent)';
+          }
+        }
+
+        const intervalEl = $('#ec-scan-interval');
+        if (intervalEl && settings.scan_interval_minutes) intervalEl.value = settings.scan_interval_minutes;
+        const lookbackEl = $('#ec-lookback');
+        if (lookbackEl && settings.lookback_minutes) lookbackEl.value = settings.lookback_minutes;
+      } catch (e) { console.error('Load pipeline error:', e); }
+    }
+
+    setTimeout(() => {
+      const toggleBtn = $('#ec-pipeline-toggle');
+      if (toggleBtn) toggleBtn.addEventListener('click', async () => {
+        const status = await fetch(_baseHttp + '/api/email/pipeline/status').then(r => r.json()).catch(() => null);
+        const newEnabled = !(status && status.enabled);
+        await fetch(_baseHttp + '/api/email/pipeline/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: newEnabled }) });
+        ecLoadPipeline();
+      });
+      const runBtn = $('#ec-pipeline-run');
+      if (runBtn) runBtn.addEventListener('click', async () => {
+        runBtn.textContent = 'Running...'; runBtn.disabled = true;
+        await fetch(_baseHttp + '/api/email/pipeline/run', { method: 'POST' }).catch(() => {});
+        runBtn.textContent = 'Run Now'; runBtn.disabled = false;
+        ecLoadPipeline();
+      });
+      const saveBtn = $('#ec-pipeline-save');
+      if (saveBtn) saveBtn.addEventListener('click', async () => {
+        const interval = ($('#ec-scan-interval') || {}).value;
+        const lookback = ($('#ec-lookback') || {}).value;
+        await fetch(_baseHttp + '/api/email/settings', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scan_interval_minutes: interval, lookback_minutes: lookback }),
+        });
+        ecLoadPipeline();
+      });
+    }, 100);
+
+    // ── Retailers ───────────────────────────────────────────────────────────
+
+    async function ecLoadRetailers() {
+      try {
+        const templates = await fetch(_baseHttp + '/api/email/templates').then(r => r.json());
+        const grid = $('#ec-retailers-grid');
+        if (!grid) return;
+
+        const icons = { amazon:'📦', walmart:'🏪', target:'🎯', costco:'🏬', samsclub:'🛒', bestbuy:'💻', homedepot:'🔨', staples:'📎', nike:'👟', apple:'🍎', ebay:'🏷', topps:'⚾', pokemoncenter:'⚡', dtlr:'👕', shopify:'🛍' };
+
+        grid.innerHTML = templates.map(t => `
+          <div style="background:var(--surface);border:1px solid ${t.activated ? 'var(--accent)' : 'var(--border)'};border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">${icons[t.id] || '📧'}</span>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:500;color:var(--text-primary);">${escapeHtml(t.name)}</div>
+              <div style="font-size:10px;color:var(--text-muted);">${t.activated ? (t.rule_enabled ? 'Active' : 'Disabled') : 'Not configured'}</div>
+            </div>
+            ${t.activated
+              ? `<button onclick="ecToggleRetailer(${t.rule_id}, ${!t.rule_enabled})" style="background:none;border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:10px;color:var(--text-muted);cursor:pointer;">${t.rule_enabled ? 'Disable' : 'Enable'}</button>
+                 <button onclick="ecRemoveRetailer(${t.rule_id})" style="background:none;border:1px solid #ef4444;border-radius:4px;padding:3px 8px;font-size:10px;color:#ef4444;cursor:pointer;">Remove</button>`
+              : `<button onclick="ecActivateRetailer('${t.id}')" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">Activate</button>`
+            }
+          </div>
+        `).join('');
+      } catch (e) { console.error('Load retailers error:', e); }
+    }
+
+    async function ecActivateRetailer(templateId) {
+      await fetch(_baseHttp + '/api/email/rules', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: templateId + '-auto', template_id: templateId, enabled: true }),
+      });
+      ecLoadRetailers();
+    }
+
+    async function ecRemoveRetailer(ruleId) {
+      await fetch(_baseHttp + '/api/email/rules/' + ruleId, { method: 'DELETE' });
+      ecLoadRetailers();
+    }
+
+    async function ecToggleRetailer(ruleId, enabled) {
+      // Toggle by updating the rule (simplified — just reload for now)
+      ecLoadRetailers();
+    }
+
+    // ── Rules ───────────────────────────────────────────────────────────────
+
+    async function ecLoadRules() {
+      try {
+        const rules = await fetch(_baseHttp + '/api/email/rules').then(r => r.json());
+        const list = $('#ec-rules-list');
+        if (!list) return;
+
+        if (!rules.length) {
+          list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No rules configured. Activate retailer templates or add custom rules.</div>';
+          return;
+        }
+
+        list.innerHTML = rules.map(r => `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${r.enabled ? '#22c55e' : '#6b7280'};"></div>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:500;color:var(--text-primary);">${escapeHtml(r.name)}</div>
+              <div style="font-size:10px;color:var(--text-muted);">
+                ${r.sender_patterns.length ? 'Senders: ' + r.sender_patterns.slice(0,3).map(s => escapeHtml(s)).join(', ') : ''}
+                ${r.keywords.length ? ' | Keywords: ' + r.keywords.slice(0,3).map(k => escapeHtml(k)).join(', ') : ''}
+                ${r.template_id ? ' | Template: ' + escapeHtml(r.template_id) : ''}
+              </div>
+            </div>
+            <span style="font-size:10px;color:var(--text-muted);">P${r.priority}</span>
+            <button onclick="ecDeleteRule(${r.id})" style="background:none;border:1px solid #ef4444;border-radius:4px;padding:3px 8px;font-size:10px;color:#ef4444;cursor:pointer;">Delete</button>
+          </div>
+        `).join('');
+      } catch (e) { console.error('Load rules error:', e); }
+    }
+
+    async function ecDeleteRule(id) {
+      await fetch(_baseHttp + '/api/email/rules/' + id, { method: 'DELETE' });
+      ecLoadRules();
+    }
+
+    // ── Destinations ────────────────────────────────────────────────────────
+
+    async function ecLoadDestinations() {
+      try {
+        const dests = await fetch(_baseHttp + '/api/email/destinations').then(r => r.json());
+        const list = $('#ec-destinations-list');
+        if (!list) return;
+
+        if (!dests.length) {
+          list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No destinations configured. Add one to push parsed email data to Google Sheets, Airtable, Discord, etc.</div>';
+          return;
+        }
+
+        const typeIcons = { airtable: '📊', sheets: '📗', notion: '📝', slack: '💬', discord: '🎮', webhook: '🔗' };
+
+        list.innerHTML = dests.map(d => `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:16px;">${typeIcons[d.type] || '📧'}</span>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:500;color:var(--text-primary);">${escapeHtml(d.name)}</div>
+              <div style="font-size:10px;color:var(--text-muted);">${escapeHtml(d.type)} ${d.enabled ? '' : '(disabled)'}</div>
+            </div>
+            <button onclick="ecDeleteDest(${d.id})" style="background:none;border:1px solid #ef4444;border-radius:4px;padding:3px 8px;font-size:10px;color:#ef4444;cursor:pointer;">Remove</button>
+          </div>
+        `).join('');
+      } catch (e) { console.error('Load destinations error:', e); }
+    }
+
+    async function ecDeleteDest(id) {
+      await fetch(_baseHttp + '/api/email/destinations/' + id, { method: 'DELETE' });
+      ecLoadDestinations();
+    }
 
   </script>
 </body>

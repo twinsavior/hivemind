@@ -751,6 +751,7 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
+      position: relative;
     }
 
     .chat-header {
@@ -811,7 +812,6 @@
       flex: 1;
       overflow-y: auto;
       padding: 20px 0;
-      scroll-behavior: smooth;
     }
 
     #messages::-webkit-scrollbar { width: 6px; }
@@ -1094,6 +1094,7 @@
       max-width: 800px;
       width: 100%;
       margin: 0 auto;
+      position: relative;
     }
 
     .input-wrapper {
@@ -1605,6 +1606,12 @@
     }
     .ob-provider-icon.found { background: rgba(34,197,94,0.15); color: var(--green); }
     .ob-provider-icon.missing { background: rgba(248,113,113,0.15); color: #f87171; }
+    .ob-provider-icon.optional { background: rgba(148,163,184,0.12); color: var(--text-muted); }
+    .ob-provider-row.optional-row { opacity: 0.7; }
+    .ob-provider-row.optional-row:hover { opacity: 1; }
+    .ob-status-banner { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; font-weight: 500; }
+    .ob-status-banner.good { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: var(--green); }
+    .ob-status-banner.warn { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; }
     .ob-provider-name { font-weight: 600; font-size: 14px; color: var(--text-primary); }
     .ob-provider-detail { font-size: 12px; color: var(--text-muted); }
     .ob-provider-info { flex: 1; }
@@ -1688,6 +1695,272 @@
         transform: none;
       }
     }
+
+    /* ── Slash Command Dropdown ───────────────────────────────────────── */
+    .skill-dropdown {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      display: none;
+      margin-bottom: 4px;
+    }
+    .skill-dropdown.visible { display: block; }
+    .skill-dropdown::-webkit-scrollbar { width: 4px; }
+    .skill-dropdown::-webkit-scrollbar-track { background: transparent; }
+    .skill-dropdown::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .skill-dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .skill-dropdown-item:last-child { border-bottom: none; }
+    .skill-dropdown-item:hover,
+    .skill-dropdown-item.selected {
+      background: var(--bg-hover);
+    }
+    .skill-dropdown-item .skill-name {
+      font-weight: 600;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .skill-dropdown-item .skill-desc {
+      color: var(--text-secondary);
+      font-size: 12px;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .skill-dropdown-item .skill-agent {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ── Agent Question Cards ─────────────────────────────────────────── */
+    .question-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin: 16px 0;
+      max-width: 520px;
+      animation: questionFadeIn 0.25s ease-out;
+    }
+    @keyframes questionFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .question-card .q-header {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .question-card .q-text {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .question-card .q-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .q-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .q-option:hover {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.08);
+    }
+    .q-option.selected {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.15);
+    }
+    .q-option .q-indicator {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .q-option.multi .q-indicator { border-radius: 4px; }
+    .q-option.selected .q-indicator {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .q-option.selected .q-indicator::after {
+      content: '\2713';
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .q-option .q-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .q-option .q-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+    .q-other-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-top: 8px;
+      display: none;
+    }
+    .q-other-input:focus { border-color: var(--accent); }
+    .q-other-input::placeholder { color: var(--text-muted); }
+    .q-submit {
+      margin-top: 14px;
+      padding: 10px 24px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      width: 100%;
+    }
+    .q-submit:hover { background: var(--accent-hover); }
+    .q-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+    .question-card.answered {
+      border-color: var(--border);
+      padding: 14px 18px;
+      opacity: 0.85;
+    }
+    .question-card.answered .q-options,
+    .question-card.answered .q-other-input,
+    .question-card.answered .q-submit { display: none; }
+    .question-card.answered .q-answered { display: flex; }
+    .q-answered {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    .q-answered::before {
+      content: '\2192';
+      font-size: 16px;
+    }
+
+    /* ── Onboarding Skill Packs ──────────────────────────────────────── */
+    .ob-pack {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+    .ob-pack:hover { border-color: var(--accent-hover); }
+    .ob-pack.checked { border-color: var(--accent); background: rgba(99,102,241,0.06); }
+    .ob-pack-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .ob-pack-check {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: transparent;
+      transition: all 0.15s;
+    }
+    .ob-pack.checked .ob-pack-check {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .ob-pack-check.locked {
+      background: rgba(34,197,94,0.15);
+      border-color: var(--green);
+      color: var(--green);
+    }
+    .ob-pack-info { flex: 1; min-width: 0; }
+    .ob-pack-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    .ob-pack-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .ob-pack-skills {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      padding-left: 30px;
+      line-height: 1.5;
+    }
+    .ob-pack-url {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 2px;
+      padding-left: 30px;
+    }
   </style>
 </head>
 <body class="app-loading">
@@ -1739,6 +2012,27 @@
         </button>
       </div>
 
+      <div style="padding:0 16px;margin-top:8px;margin-bottom:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#666;">Operations</div>
+      <div class="sidebar-nav" id="sidebar-nav-ops">
+        <button class="sidebar-nav-item" data-view="ops-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button class="sidebar-nav-item" data-view="purchases">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Purchases
+        </button>
+        <button class="sidebar-nav-item" data-view="shipments">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          Shipments
+        </button>
+        <button class="sidebar-nav-item" data-view="alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Alerts
+          <span id="alert-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:auto;font-weight:600;"></span>
+        </button>
+      </div>
+
       <div class="sidebar-status">
         <div id="status-dot" class="status-indicator connecting"></div>
         <span id="status-text" class="status-text">Connecting...</span>
@@ -1772,6 +2066,7 @@
           </div>
         </div>
       </div>
+      <button id="scroll-to-bottom-btn" style="display:none;position:absolute;bottom:80px;right:24px;width:36px;height:36px;border-radius:50%;background:var(--bg-tertiary,#333);border:1px solid var(--border,#444);color:var(--text-secondary,#aaa);cursor:pointer;align-items:center;justify-content:center;font-size:18px;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:opacity 0.2s;" title="Scroll to bottom" onclick="document.getElementById('messages').scrollTop=document.getElementById('messages').scrollHeight;this.style.display='none';">↓</button>
 
       <div id="context-bar" style="display:none;">
         <div class="context-bar-inner">
@@ -1812,7 +2107,7 @@
             </svg>
           </button>
         </div>
-        <div class="input-hint">Enter to send &middot; Shift+Enter for new line &middot; <span id="selected-agent-hint">Auto-routing</span></div>
+        <div class="input-hint">Enter to send &middot; Shift+Enter for new line &middot; / for skills &middot; <span id="selected-agent-hint">Auto-routing</span></div>
       </div>
     </div>
 
@@ -1896,6 +2191,77 @@
         </div>
       </div>
     </div>
+
+    <!-- Operations Dashboard -->
+    <div id="page-ops-dashboard" class="dashboard-page">
+      <div class="dash-header">Operations Dashboard</div>
+      <div class="dash-content" style="padding:20px;">
+        <div id="ops-kpi-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Recent Alerts</h3>
+            <div id="ops-recent-alerts" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <div>
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Pipeline Status</h3>
+            <div id="ops-pipeline-status" style="font-size:12px;color:var(--text-secondary);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Purchases (Buy Sheet) -->
+    <div id="page-purchases" class="dashboard-page">
+      <div class="dash-header">Purchases</div>
+      <div class="dash-content" style="padding:20px;">
+        <div id="purchases-toolbar" style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
+          <input type="text" id="purchases-search" placeholder="Search purchases..." style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-primary);font-size:12px;">
+          <select id="purchases-retailer-filter" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:12px;">
+            <option value="">All Retailers</option>
+          </select>
+          <button id="purchases-refresh-btn" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">Refresh</button>
+        </div>
+        <div id="purchases-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;"></div>
+        <div id="purchases-table-wrap" style="overflow-x:auto;">
+          <table id="purchases-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="border-bottom:1px solid var(--border);text-align:left;">
+              <th style="padding:8px 6px;color:var(--text-muted);font-weight:500;">Date</th>
+              <th style="padding:8px 6px;color:var(--text-muted);font-weight:500;">Retailer</th>
+              <th style="padding:8px 6px;color:var(--text-muted);font-weight:500;">Item</th>
+              <th style="padding:8px 6px;color:var(--text-muted);font-weight:500;">Qty</th>
+              <th style="padding:8px 6px;color:var(--text-muted);font-weight:500;">Price</th>
+              <th style="padding:8px 6px;color:var(--text-muted);font-weight:500;">Status</th>
+            </tr></thead>
+            <tbody id="purchases-tbody"></tbody>
+          </table>
+        </div>
+        <div id="purchases-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- Shipments -->
+    <div id="page-shipments" class="dashboard-page">
+      <div class="dash-header">Shipments</div>
+      <div class="dash-content" style="padding:20px;">
+        <div id="shipments-stage-filters" style="display:flex;gap:6px;margin-bottom:16px;">
+          <button class="shipments-stage-btn active" data-stage="all" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;color:var(--text-primary);cursor:pointer;">All</button>
+          <button class="shipments-stage-btn" data-stage="ordered" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;color:var(--text-primary);cursor:pointer;">Ordered</button>
+          <button class="shipments-stage-btn" data-stage="shipped" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;color:var(--text-primary);cursor:pointer;">Shipped</button>
+          <button class="shipments-stage-btn" data-stage="delivered" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:12px;color:var(--text-primary);cursor:pointer;">Delivered</button>
+        </div>
+        <div id="shipments-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div id="page-alerts" class="dashboard-page">
+      <div class="dash-header">Seller Alerts <button id="alerts-ack-all-btn" style="float:right;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text-secondary);cursor:pointer;">Acknowledge All</button></div>
+      <div class="dash-content" style="padding:20px;">
+        <div id="alerts-critical" style="margin-bottom:16px;"></div>
+        <div id="alerts-high" style="margin-bottom:16px;"></div>
+        <div id="alerts-other"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -1911,7 +2277,7 @@
     // Runs BEFORE the rest of the app initializes. If first-run, the wizard
     // covers the entire screen and only reveals the chat after completion.
 
-    const OB_STEPS = ['welcome','identity','cofounder','tools','launch'];
+    const OB_STEPS = ['welcome','identity','cofounder','tools','email-setup','email-rules','skillpacks','launch'];
 
     const OB_COPY = {
       cofounderNames: [
@@ -2067,6 +2433,9 @@
         identity: obStepIdentity,
         cofounder: obStepCofounder,
         tools: obStepTools,
+        'email-setup': obStepEmailSetup,
+        'email-rules': obStepEmailRules,
+        skillpacks: obStepSkillpacks,
         launch: obStepLaunch,
       };
       root.innerHTML = `<div class="ob-card">${errorHtml}${renderers[step]()}${obDots(idx)}</div>`;
@@ -2103,7 +2472,7 @@
 
     function obStepIdentity() {
       return `
-        <div class="ob-step-label">Step 1 of 4 — About You</div>
+        <div class="ob-step-label">Step 1 of 5 — About You</div>
         <div class="ob-title">Who are you?</div>
         <div class="ob-subtitle">Quick context so your swarm knows who it's working with.</div>
 
@@ -2148,7 +2517,7 @@
 
     function obStepCofounder() {
       return `
-        <div class="ob-step-label">Step 2 of 4 — Your Co-Founder</div>
+        <div class="ob-step-label">Step 2 of 5 — Your Co-Founder</div>
         <div class="ob-title">Meet your co-founder</div>
         <div class="ob-subtitle">
           Every swarm has a coordinator — your AI co-founder.
@@ -2195,48 +2564,132 @@
 
     function obStepTools() {
       const providers = obState.providers || [];
-      const rows = providers.length > 0
-        ? providers.map(p => {
-            const found = Boolean(p.installed);
-            const detail = found
-              ? (p.detail || 'Detected')
-              : [p.detail, p.installCommand, p.loginCommand].filter(Boolean).join(' • ') || 'Not found';
-            return `<div class="ob-provider-row">
-              <div class="ob-provider-icon ${found ? 'found' : 'missing'}">${found ? '✓' : '✗'}</div>
-              <div class="ob-provider-info">
-                <div class="ob-provider-name">${escapeHtml(p.label || p.name || p.provider || 'Unknown')}</div>
-                <div class="ob-provider-detail">${escapeHtml(detail)}</div>
-              </div>
-            </div>`;
-          }).join('')
-        : `<div class="ob-provider-row">
-            <div class="ob-provider-icon missing">?</div>
+      const claude = providers.find(p => p.id === 'claude-code');
+      const codex = providers.find(p => p.id === 'codex');
+      const hasClaude = claude && claude.installed;
+      const hasCodex = codex && codex.installed;
+      const hasAny = hasClaude || hasCodex;
+
+      // Status banner — the key messaging
+      let bannerHtml = '';
+      if (providers.length === 0) {
+        bannerHtml = `<div class="ob-status-banner warn">⏳ Couldn't reach the server yet — provider detection will retry on next load.</div>`;
+      } else if (hasClaude && hasCodex) {
+        bannerHtml = `<div class="ob-status-banner good">✓ Fully loaded — Claude Code powers the swarm, Codex adds a second brain for code tasks.</div>`;
+      } else if (hasClaude) {
+        bannerHtml = `<div class="ob-status-banner good">✓ You're all set. Claude Code powers the entire swarm — all 6 agents work with just this.</div>`;
+      } else if (hasCodex) {
+        bannerHtml = `<div class="ob-status-banner warn">⚠ Codex only — Builder and Sentinel will work, but the rest of the swarm needs Claude Code.</div>`;
+      } else {
+        bannerHtml = `<div class="ob-status-banner warn">⚠ No CLI providers found. You'll need at least Claude Code to run the swarm.</div>`;
+      }
+
+      // Claude row — the primary provider
+      let claudeRow = '';
+      if (claude) {
+        claudeRow = `<div class="ob-provider-row">
+          <div class="ob-provider-icon ${hasClaude ? 'found' : 'missing'}">${hasClaude ? '✓' : '✗'}</div>
+          <div class="ob-provider-info">
+            <div class="ob-provider-name">Claude Code CLI <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— powers all agents</span></div>
+            <div class="ob-provider-detail">${hasClaude ? escapeHtml(claude.detail || 'Detected') : '<code>npm i -g @anthropic-ai/claude-code && claude login</code>'}</div>
+          </div>
+        </div>`;
+      }
+
+      // Codex row — explicitly optional
+      let codexRow = '';
+      if (codex) {
+        codexRow = `<div class="ob-provider-row ${hasCodex ? '' : 'optional-row'}">
+          <div class="ob-provider-icon ${hasCodex ? 'found' : 'optional'}">${hasCodex ? '✓' : '＋'}</div>
+          <div class="ob-provider-info">
+            <div class="ob-provider-name">Codex CLI <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— optional, adds a second brain for code</span></div>
+            <div class="ob-provider-detail">${hasCodex ? escapeHtml(codex.detail || 'Detected') : 'Not installed — not required. <code>npm i -g @openai/codex</code> if you want it.'}</div>
+          </div>
+        </div>`;
+      }
+
+      // Fallback if server didn't return providers
+      const fallbackRow = providers.length === 0
+        ? `<div class="ob-provider-row">
+            <div class="ob-provider-icon optional">?</div>
             <div class="ob-provider-info">
               <div class="ob-provider-name">Checking tools...</div>
               <div class="ob-provider-detail">Could not reach the server yet</div>
             </div>
-          </div>`;
+          </div>`
+        : '';
 
       return `
-        <div class="ob-step-label">Step 3 of 4 — Your Tools</div>
+        <div class="ob-step-label">Step 3 of 5 — Your Tools</div>
         <div class="ob-title">Connect your tools</div>
         <div class="ob-subtitle">
-          HIVEMIND runs on CLI subscriptions — no API keys needed.
-          Here's what we detected on your system.
+          HIVEMIND uses CLI subscriptions — no API keys needed.
+          Claude Code is all you need to run the full swarm.
         </div>
-        ${rows}
+        ${bannerHtml}
+        ${claudeRow}${codexRow}${fallbackRow}
         <div style="margin-top:16px;">
           <div class="ob-chip-hint" style="font-size:13px; color:var(--text-muted);">
-            You can always add more later. Run <code style="color:var(--accent);">hivemind status</code> to check what's connected.
-          </div>
-          <div style="margin-top:12px; font-size:12px; color:var(--text-muted);">
-            <strong>Claude Code:</strong> <code>npm i -g @anthropic-ai/claude-code && claude login</code><br>
-            <strong>Codex CLI:</strong> <code>npm i -g @openai/codex && codex auth</code>
+            You can always add or change tools later. Run <code style="color:var(--accent);">hivemind status</code> to check what's connected.
           </div>
         </div>
         <div class="ob-actions">
           <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
           <button class="ob-btn ob-btn-primary" id="ob-next">Continue</button>
+        </div>`;
+    }
+
+    // ── Curated Skill Packs ────────────────────────────────────────────
+    const CURATED_SKILL_PACKS = [
+      {
+        name: 'HIVEMIND Core',
+        description: '11 built-in skills for development, research, and communication',
+        skills: ['git-workflow', 'code-generate', 'codebase-map', 'adversarial-review', 'slack-notify', 'smoke-test', 'debug-server', 'uptime-check', 'trend-analysis', 'web-research', 'chrome-cdp'],
+        alwaysIncluded: true,
+        gitUrl: null,
+      },
+      {
+        name: 'gstack by Garry Tan',
+        description: '28 engineering workflow skills — office hours, code review, QA, shipping, deployment',
+        skills: ['office-hours', 'plan-ceo-review', 'plan-eng-review', 'plan-design-review', 'review', 'qa', 'ship', 'design-review', 'investigate', 'retro', 'codex', 'browse'],
+        alwaysIncluded: false,
+        gitUrl: 'https://github.com/garrytan/gstack',
+      },
+    ];
+
+    // Track which optional packs the user has selected during onboarding
+    if (!obState.selectedPacks) obState.selectedPacks = [];
+
+    function obStepSkillpacks() {
+      const packsHtml = CURATED_SKILL_PACKS.map((pack, idx) => {
+        const isLocked = pack.alwaysIncluded;
+        const isChecked = isLocked || obState.selectedPacks.includes(pack.name);
+        const skillsList = pack.skills.slice(0, 6).join(', ') + (pack.skills.length > 6 ? '...' : '');
+        return `
+          <div class="ob-pack ${isChecked ? 'checked' : ''}" data-pack-idx="${idx}">
+            <div class="ob-pack-header">
+              <div class="ob-pack-check ${isLocked ? 'locked' : ''}">${isChecked ? '&#10003;' : ''}</div>
+              <div class="ob-pack-info">
+                <div class="ob-pack-name">${escapeHtml(pack.name)}</div>
+                <div class="ob-pack-desc">${escapeHtml(pack.description)}</div>
+              </div>
+            </div>
+            <div class="ob-pack-skills">${escapeHtml(skillsList)}</div>
+            ${pack.gitUrl ? `<div class="ob-pack-url">${escapeHtml(pack.gitUrl.replace('https://', ''))}</div>` : ''}
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="ob-step-label">Step 4 of 5 — Skill Packs</div>
+        <div class="ob-title">Available Skill Packs</div>
+        <div class="ob-subtitle">
+          Skills are reusable capabilities your agents can use.
+          Core skills are always included. Add community packs to expand what your swarm can do.
+        </div>
+        ${packsHtml}
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary" id="ob-next">Install Selected &amp; Continue</button>
         </div>`;
     }
 
@@ -2344,6 +2797,83 @@
           });
         });
       }
+
+      if (step === 'skillpacks') {
+        document.querySelectorAll('.ob-pack').forEach(packEl => {
+          const idx = parseInt(packEl.dataset.packIdx, 10);
+          const pack = CURATED_SKILL_PACKS[idx];
+          if (!pack || pack.alwaysIncluded) return;
+          packEl.querySelector('.ob-pack-header').addEventListener('click', () => {
+            const isSelected = obState.selectedPacks.includes(pack.name);
+            if (isSelected) {
+              obState.selectedPacks = obState.selectedPacks.filter(n => n !== pack.name);
+            } else {
+              obState.selectedPacks.push(pack.name);
+            }
+            obRenderStep();
+          });
+        });
+      }
+
+      // Email setup step bindings
+      if (step === 'email-setup') {
+        const gmailBtn = document.getElementById('ob-gmail-btn');
+        if (gmailBtn) gmailBtn.addEventListener('click', () => {
+          const statusEl = document.getElementById('ob-email-status');
+          if (statusEl) statusEl.textContent = 'Redirecting to Gmail OAuth...';
+          window.open(_baseHttp + '/api/email/auth/gmail', '_blank');
+          if (statusEl) statusEl.innerHTML = 'Complete the Google sign-in in your browser, then click <strong>Skip for now</strong> to continue.';
+        });
+        const imapBtn = document.getElementById('ob-imap-btn');
+        if (imapBtn) imapBtn.addEventListener('click', async () => {
+          const statusEl = document.getElementById('ob-email-status');
+          const email = document.getElementById('ob-imap-email')?.value;
+          const password = document.getElementById('ob-imap-password')?.value;
+          const host = document.getElementById('ob-imap-host')?.value || 'imap.gmail.com';
+          if (!email || !password) { if (statusEl) statusEl.textContent = 'Email and password required.'; return; }
+          if (statusEl) statusEl.textContent = 'Testing connection...';
+          try {
+            const resp = await fetch(_baseHttp + '/api/email/auth/imap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, host, port: 993, tls: true }) });
+            const data = await resp.json();
+            if (data.success) { if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">Connected! Click Continue.</span>'; }
+            else { if (statusEl) statusEl.textContent = data.error || 'Connection failed.'; }
+          } catch (e) { if (statusEl) statusEl.textContent = 'Connection error: ' + e.message; }
+        });
+        document.querySelectorAll('.ob-prev').forEach(b => b.addEventListener('click', () => { obSetError(); obState.step--; obRenderStep(); }));
+        document.querySelectorAll('.ob-next').forEach(b => b.addEventListener('click', () => { obSetError(); obState.step++; obRenderStep(); }));
+      }
+
+      // Email rules step bindings
+      if (step === 'email-rules') {
+        document.querySelectorAll('.ob-retailer-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const rid = chip.dataset.retailer;
+            if (!obState.selectedRetailers) obState.selectedRetailers = [];
+            if (obState.selectedRetailers.includes(rid)) {
+              obState.selectedRetailers = obState.selectedRetailers.filter(r => r !== rid);
+            } else {
+              obState.selectedRetailers.push(rid);
+            }
+            obRenderStep();
+          });
+        });
+        const pcInput = document.getElementById('ob-prep-center');
+        if (pcInput) pcInput.addEventListener('input', () => { obState.prepCenter = pcInput.value; });
+        document.querySelectorAll('.ob-prev').forEach(b => b.addEventListener('click', () => { obSetError(); obState.step--; obRenderStep(); }));
+        document.querySelectorAll('.ob-next').forEach(b => b.addEventListener('click', async () => {
+          obSetError();
+          // Create rules for selected retailers
+          for (const rid of (obState.selectedRetailers || [])) {
+            try {
+              await fetch(_baseHttp + '/api/email/rules', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: rid + '-auto', template_id: rid, enabled: true }),
+              });
+            } catch {}
+          }
+          obState.step++; obRenderStep();
+        }));
+      }
     }
 
     function obSaveCurrentStep() {
@@ -2361,6 +2891,85 @@
         if (w) obState.workStyle = w.value;
       }
       // cofounder step saves via click handlers above
+      if (step === 'skillpacks') {
+        // Send install request for selected packs that have a gitUrl
+        const packsToInstall = CURATED_SKILL_PACKS
+          .filter(p => !p.alwaysIncluded && obState.selectedPacks.includes(p.name) && p.gitUrl)
+          .map(p => ({ name: p.name, gitUrl: p.gitUrl }));
+        if (packsToInstall.length > 0 && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'skills:install-packs', packs: packsToInstall }));
+        }
+      }
+    }
+
+    // ── Email Setup Step ────────────────────────────────────────────────────
+    function obStepEmailSetup() {
+      return `
+        <div class="ob-step-label">Step 5 of ${OB_STEPS.length}</div>
+        <h2 class="ob-title">Connect Your Email</h2>
+        <p class="ob-subtitle">Track purchases, shipments, and Amazon account health automatically.</p>
+        <div style="display:flex;flex-direction:column;gap:12px;margin:20px 0;">
+          <button id="ob-gmail-btn" class="ob-btn-primary" style="padding:12px;border-radius:8px;font-size:14px;cursor:pointer;background:#4285f4;color:white;border:none;">
+            Connect Gmail (Recommended)
+          </button>
+          <div style="text-align:center;color:var(--text-muted);font-size:12px;">or</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input type="email" id="ob-imap-email" placeholder="Email address" class="ob-input" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+            <input type="password" id="ob-imap-password" placeholder="App password" class="ob-input" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+            <input type="text" id="ob-imap-host" placeholder="IMAP host (e.g. imap.gmail.com)" value="imap.gmail.com" class="ob-input" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+            <button id="ob-imap-btn" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);cursor:pointer;font-size:13px;">Connect IMAP</button>
+          </div>
+          <div id="ob-email-status" style="text-align:center;font-size:12px;color:var(--text-muted);"></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:space-between;">
+          <button class="ob-btn-secondary ob-prev">Back</button>
+          <button class="ob-btn-secondary ob-next">Skip for now</button>
+        </div>
+      `;
+    }
+
+    // ── Email Rules Step ─────────────────────────────────────────────────────
+    function obStepEmailRules() {
+      const retailers = [
+        { id: 'amazon', name: 'Amazon', icon: '📦' },
+        { id: 'walmart', name: 'Walmart', icon: '🏪' },
+        { id: 'target', name: 'Target', icon: '🎯' },
+        { id: 'costco', name: 'Costco', icon: '🏬' },
+        { id: 'samsclub', name: "Sam's Club", icon: '🛒' },
+        { id: 'bestbuy', name: 'Best Buy', icon: '💻' },
+        { id: 'homedepot', name: 'Home Depot', icon: '🔨' },
+        { id: 'staples', name: 'Staples', icon: '📎' },
+        { id: 'nike', name: 'Nike', icon: '👟' },
+        { id: 'apple', name: 'Apple', icon: '🍎' },
+        { id: 'ebay', name: 'eBay', icon: '🏷️' },
+        { id: 'topps', name: 'Topps', icon: '⚾' },
+        { id: 'pokemoncenter', name: 'Pokemon Center', icon: '⚡' },
+        { id: 'dtlr', name: 'DTLR', icon: '👕' },
+        { id: 'shopify', name: 'Shopify Stores', icon: '🛍️' },
+      ];
+      if (!obState.selectedRetailers) obState.selectedRetailers = ['amazon', 'walmart', 'target'];
+      if (!obState.prepCenter) obState.prepCenter = '';
+
+      return `
+        <div class="ob-step-label">Step 6 of ${OB_STEPS.length}</div>
+        <h2 class="ob-title">Where Do You Source?</h2>
+        <p class="ob-subtitle">Select the stores you buy from. We'll track purchase emails from these retailers.</p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0;max-height:260px;overflow-y:auto;">
+          ${retailers.map(r => `
+            <button class="ob-retailer-chip" data-retailer="${r.id}" style="padding:8px;background:${obState.selectedRetailers.includes(r.id) ? 'var(--accent)' : 'var(--surface)'};color:${obState.selectedRetailers.includes(r.id) ? '#fff' : 'var(--text-primary)'};border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;text-align:center;">
+              ${r.icon} ${escapeHtml(r.name)}
+            </button>
+          `).join('')}
+        </div>
+        <div style="margin:16px 0;">
+          <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Prep Center Name (optional)</label>
+          <input type="text" id="ob-prep-center" placeholder="e.g. PrepItRight, MyPrepCenter" value="${escapeHtml(obState.prepCenter)}" style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:space-between;">
+          <button class="ob-btn-secondary ob-prev">Back</button>
+          <button class="ob-btn-primary ob-next">Continue</button>
+        </div>
+      `;
     }
 
     function obValidateStep(step) {
@@ -2564,8 +3173,15 @@
     const pageSkills = $('#page-skills');
     const pageMemory = $('#page-memory');
     const pageSettings = $('#page-settings');
+    const pageOpsDashboard = $('#page-ops-dashboard');
+    const pagePurchases = $('#page-purchases');
+    const pageShipments = $('#page-shipments');
+    const pageAlerts = $('#page-alerts');
 
-    const pageMap = { chat: mainChat, swarm: pageSwarm, skills: pageSkills, memory: pageMemory, settings: pageSettings };
+    const pageMap = {
+      chat: mainChat, swarm: pageSwarm, skills: pageSkills, memory: pageMemory, settings: pageSettings,
+      'ops-dashboard': pageOpsDashboard, purchases: pagePurchases, shipments: pageShipments, alerts: pageAlerts,
+    };
 
     document.querySelectorAll('.sidebar-nav-item').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2578,21 +3194,21 @@
 
         // Hide all pages
         mainChat.classList.add('hidden');
-        pageSwarm.classList.remove('visible');
-        pageSkills.classList.remove('visible');
-        pageMemory.classList.remove('visible');
-        pageSettings.classList.remove('visible');
+        Object.values(pageMap).forEach(p => { if (p && p !== mainChat) p.classList.remove('visible'); });
 
         if (view === 'chat') {
           mainChat.classList.remove('hidden');
         } else {
           const page = pageMap[view];
           if (page) page.classList.add('visible');
-          // Load data when page first shown
           if (view === 'swarm') initSwarmGraph();
           if (view === 'skills') loadSkillsPage();
           if (view === 'memory') loadMemoryPage();
           if (view === 'settings') loadSettingsPage();
+          if (view === 'ops-dashboard') loadOpsDashboard();
+          if (view === 'purchases') loadPurchasesPage();
+          if (view === 'shipments') loadShipmentsPage();
+          if (view === 'alerts') loadAlertsPage();
         }
       });
     });
@@ -3181,10 +3797,11 @@
             : `${imageRefs}\n\nIMPORTANT: Use the Read tool to view each attached image file above and factor what you see into your current work.`;
         }
 
-        // Show user message with thumbnails
+        // Show user message with thumbnails (only use displayHtml for attachments;
+        // for plain text, let addMessage handle escaping + newline→<br> conversion)
         const followupDisplay = pendingAttachments.length > 0
-          ? pendingAttachments.map(a => `<img src="${a.dataUrl}" style="max-width:120px;border-radius:8px;margin:4px 4px 4px 0;">`).join('') + (text ? '<br>' + text : '')
-          : text;
+          ? pendingAttachments.map(a => `<img src="${a.dataUrl}" style="max-width:120px;border-radius:8px;margin:4px 4px 4px 0;">`).join('') + (text ? '<br>' + escapeHtml(text).replace(/\n/g, '<br>') : '')
+          : undefined;
         addMessage('user', text || '(image attached)', undefined, undefined, followupDisplay);
         inputEl.value = '';
         pendingAttachments = [];
@@ -3201,8 +3818,10 @@
         const shortLabel = text || (followupAttachmentPaths.length > 0 ? `${followupAttachmentPaths.length} image(s)` : '');
         if (streamingTextEl && activeTaskId === convTaskId) {
           streamBuffer += `\n\n---\n*📨 Additional context received: "${shortLabel.length > 80 ? shortLabel.substring(0, 80) + '...' : shortLabel}"*\n\n`;
-          streamingTextEl.innerHTML = renderMarkdown(streamBuffer);
-          scrollToBottom();
+          const rt = runningTasks.get(convTaskId);
+          const questionHtml = rt?.activeQuestionHtml || '';
+          streamingTextEl.innerHTML = renderMarkdown(streamBuffer) + questionHtml;
+          scrollToBottom(true);
         } else {
           // We're viewing this conv but the stream element isn't live — update the buffer in runningTasks
           const rt = runningTasks.get(convTaskId);
@@ -3231,10 +3850,11 @@
           : text;
       }
 
-      // Show user message with image thumbnails
+      // Show user message with image thumbnails (only use displayHtml for attachments;
+      // for plain text, let addMessage handle escaping + newline→<br> conversion)
       const displayContent = pendingAttachments.length > 0
-        ? pendingAttachments.map(a => `<img src="${a.dataUrl}" style="max-width:120px;border-radius:8px;margin:4px 4px 4px 0;">`).join('') + (text ? '<br>' + text : '')
-        : text;
+        ? pendingAttachments.map(a => `<img src="${a.dataUrl}" style="max-width:120px;border-radius:8px;margin:4px 4px 4px 0;">`).join('') + (text ? '<br>' + escapeHtml(text).replace(/\n/g, '<br>') : '')
+        : undefined;
 
       // Add user message
       addMessage('user', text || '(image attached)', undefined, undefined, displayContent);
@@ -3326,10 +3946,253 @@
 
     sendBtn.addEventListener('click', sendMessage);
     inputEl.addEventListener('keydown', (e) => {
+      // Slash command dropdown navigation
+      const dropdown = document.getElementById('skillDropdown');
+      if (dropdown && dropdown.classList.contains('visible')) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          navigateSkillDropdown(1);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          navigateSkillDropdown(-1);
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const items = dropdown.querySelectorAll('.skill-dropdown-item');
+          if (items[skillDropdownIndex]) {
+            selectSkill(items[skillDropdownIndex].dataset.skill);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          hideSkillDropdown();
+          return;
+        }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const items = dropdown.querySelectorAll('.skill-dropdown-item');
+          if (items[skillDropdownIndex]) {
+            selectSkill(items[skillDropdownIndex].dataset.skill);
+          }
+          return;
+        }
+      }
+
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
       }
+    });
+
+    // ── Slash Command System ──────────────────────────────────────────────
+    let skillCache = null;
+    let skillDropdownIndex = -1;
+
+    function createSkillDropdown() {
+      const dropdown = document.createElement('div');
+      dropdown.className = 'skill-dropdown';
+      dropdown.id = 'skillDropdown';
+      const inputArea = document.getElementById('input-area');
+      inputArea.insertBefore(dropdown, inputArea.querySelector('.folder-picker'));
+      return dropdown;
+    }
+
+    function showSkillDropdown(filter) {
+      if (!skillCache) {
+        // Request skills from server
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'skills:list' }));
+        }
+        return;
+      }
+
+      const dropdown = document.getElementById('skillDropdown') || createSkillDropdown();
+      const filterLower = (filter || '').toLowerCase();
+      const filtered = skillCache.filter(function(s) {
+        return s.name.toLowerCase().includes(filterLower) ||
+               (s.description || '').toLowerCase().includes(filterLower);
+      });
+
+      if (filtered.length === 0) {
+        dropdown.classList.remove('visible');
+        return;
+      }
+
+      dropdown.innerHTML = filtered.map(function(skill, i) {
+        return '<div class="skill-dropdown-item ' + (i === 0 ? 'selected' : '') + '" data-skill="' + escapeHtml(skill.name) + '">'
+          + '<span class="skill-name">/' + escapeHtml(skill.name) + '</span>'
+          + '<span class="skill-desc">' + escapeHtml((skill.description || '').split('\n')[0]) + '</span>'
+          + (skill.agent ? '<span class="skill-agent">' + escapeHtml(skill.agent) + '</span>' : '')
+          + '</div>';
+      }).join('');
+
+      skillDropdownIndex = 0;
+      dropdown.classList.add('visible');
+
+      // Click handlers
+      dropdown.querySelectorAll('.skill-dropdown-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          selectSkill(item.dataset.skill);
+        });
+        item.addEventListener('mouseenter', function() {
+          dropdown.querySelectorAll('.skill-dropdown-item').forEach(function(el) { el.classList.remove('selected'); });
+          item.classList.add('selected');
+          var items = Array.from(dropdown.querySelectorAll('.skill-dropdown-item'));
+          skillDropdownIndex = items.indexOf(item);
+        });
+      });
+    }
+
+    function hideSkillDropdown() {
+      const dropdown = document.getElementById('skillDropdown');
+      if (dropdown) dropdown.classList.remove('visible');
+      skillDropdownIndex = -1;
+    }
+
+    function selectSkill(skillName) {
+      inputEl.value = '/' + skillName + ' ';
+      inputEl.focus();
+      hideSkillDropdown();
+      autoResize();
+    }
+
+    function navigateSkillDropdown(direction) {
+      const dropdown = document.getElementById('skillDropdown');
+      if (!dropdown) return;
+      const items = dropdown.querySelectorAll('.skill-dropdown-item');
+      if (items.length === 0) return;
+
+      if (skillDropdownIndex >= 0 && items[skillDropdownIndex]) {
+        items[skillDropdownIndex].classList.remove('selected');
+      }
+      skillDropdownIndex = Math.max(0, Math.min(items.length - 1, skillDropdownIndex + direction));
+      items[skillDropdownIndex].classList.add('selected');
+      items[skillDropdownIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    // ── Interactive Question Cards ──────────────────────────────────────
+    function renderQuestionCard(taskId, data) {
+      var cardId = 'qcard-' + Date.now();
+      var opts = (data.options || []);
+      var isMulti = !!data.multiSelect;
+      var otherLabel = data.otherLabel || 'Other';
+      var placeholder = data.placeholder || 'Type your answer...';
+
+      var optionsHtml = opts.map(function(opt, i) {
+        var label = typeof opt === 'string' ? opt : (opt.label || '');
+        var desc  = typeof opt === 'string' ? '' : (opt.description || '');
+        var escaped = label.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return '<div class="q-option' + (isMulti ? ' multi' : '') + '" data-idx="' + i + '" data-label="' + escaped + '" onclick="toggleQOption(\'' + cardId + '\',' + i + ',' + isMulti + ')">'
+          + '<div class="q-indicator"></div>'
+          + '<div><div class="q-label">' + label + '</div>'
+          + (desc ? '<div class="q-desc">' + desc + '</div>' : '')
+          + '</div></div>';
+      }).join('');
+
+      return '<div class="question-card" id="' + cardId + '" data-task-id="' + taskId + '" data-multi="' + isMulti + '">'
+        + '<div class="q-header">' + (data.header || 'Question') + '</div>'
+        + '<div class="q-text">' + (data.question || '') + '</div>'
+        + '<div class="q-options">' + optionsHtml
+        + '<div class="q-option' + (isMulti ? ' multi' : '') + '" data-idx="other" data-label="' + otherLabel.replace(/"/g, '&quot;') + '" onclick="toggleQOption(\'' + cardId + '\',\'other\',' + isMulti + ')">'
+        + '<div class="q-indicator"></div>'
+        + '<div><div class="q-label">' + otherLabel + '</div>'
+        + '<div class="q-desc">Type your own answer</div></div></div>'
+        + '</div>'
+        + '<input type="text" class="q-other-input" placeholder="' + placeholder.replace(/"/g, '&quot;') + '" onkeydown="if(event.key===\'Enter\')submitQAnswer(\'' + cardId + '\')">'
+        + '<button class="q-submit" onclick="submitQAnswer(\'' + cardId + '\')" disabled>Submit</button>'
+        + '<div class="q-answered"></div>'
+        + '</div>';
+    }
+
+    // Must be on window so inline onclick works
+    window.toggleQOption = function(cardId, idx, isMulti) {
+      var card = document.getElementById(cardId);
+      if (!card || card.classList.contains('answered')) return;
+
+      var allOpts = card.querySelectorAll('.q-option');
+      var otherInput = card.querySelector('.q-other-input');
+      var submitBtn = card.querySelector('.q-submit');
+
+      if (!isMulti) {
+        // Single-select: deselect all first
+        allOpts.forEach(function(o) { o.classList.remove('selected'); });
+      }
+
+      // Find and toggle the clicked option
+      var target = (idx === 'other')
+        ? card.querySelector('.q-option[data-idx="other"]')
+        : card.querySelector('.q-option[data-idx="' + idx + '"]');
+      if (target) target.classList.toggle('selected');
+
+      // Show/hide other input
+      var otherSel = card.querySelector('.q-option[data-idx="other"]');
+      if (otherInput && otherSel) {
+        var isOtherSelected = otherSel.classList.contains('selected');
+        otherInput.style.display = isOtherSelected ? 'block' : 'none';
+        if (isOtherSelected) otherInput.focus();
+      }
+
+      // Enable submit if anything is selected
+      var hasSelection = card.querySelector('.q-option.selected');
+      if (submitBtn) submitBtn.disabled = !hasSelection;
+    };
+
+    window.submitQAnswer = function(cardId) {
+      var card = document.getElementById(cardId);
+      if (!card || card.classList.contains('answered')) return;
+
+      var taskId = card.getAttribute('data-task-id');
+      var isMulti = card.getAttribute('data-multi') === 'true';
+      var selected = card.querySelectorAll('.q-option.selected');
+      var otherInput = card.querySelector('.q-other-input');
+      var answerEl = card.querySelector('.q-answered');
+
+      var answers = [];
+      selected.forEach(function(opt) {
+        if (opt.getAttribute('data-idx') === 'other') {
+          answers.push((otherInput && otherInput.value) ? otherInput.value : 'Other');
+        } else {
+          answers.push(opt.getAttribute('data-label'));
+        }
+      });
+
+      if (answers.length === 0) return;
+      var answerText = isMulti ? answers.join(', ') : answers[0];
+
+      // Mark card as answered (collapse)
+      card.classList.add('answered');
+      if (answerEl) answerEl.textContent = answerText;
+
+      // Clear the stored question card so future tokens don't re-append it
+      if (taskId) {
+        var rt = runningTasks.get(taskId);
+        if (rt) rt.activeQuestionHtml = null;
+      }
+
+      // Send answer back to server
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'task:answer', taskId: taskId, text: answerText }));
+      }
+    };
+
+    // Detect slash at start of input to show skill dropdown
+    inputEl.addEventListener('input', function() {
+      const val = inputEl.value;
+      if (val.startsWith('/') && !val.includes(' ')) {
+        // User is typing a slash command name (no space yet)
+        showSkillDropdown(val.slice(1));
+      } else {
+        hideSkillDropdown();
+      }
+    });
+
+    // Close dropdown when input loses focus (with delay for click handling)
+    inputEl.addEventListener('blur', function() {
+      setTimeout(hideSkillDropdown, 200);
     });
 
     // ── Image Attachments ──────────────────────────────────────────────────
@@ -3596,7 +4459,7 @@
       const badge = !isUser && meta ? `<span class="agent-badge">${meta.provider}</span>` : '';
 
       const actionsHtml = (!isUser && actions?.length) ? renderActionsDropdown(actions) : '';
-      let renderedContent = displayHtml || (isUser ? escapeHtml(content) : (actionsHtml + renderMarkdown(content)));
+      let renderedContent = displayHtml || (isUser ? escapeHtml(content).replace(/\n/g, '<br>') : (actionsHtml + renderMarkdown(content)));
       let filesHtml = '';
       if (savedFiles && savedFiles.length > 0) {
         filesHtml = `
@@ -3621,7 +4484,7 @@
 
       messagesEl.appendChild(msg);
       highlightCodeBlocks(msg);
-      scrollToBottom();
+      scrollToBottom(isUser); // Force scroll for user's own messages
       return msg;
     }
 
@@ -3648,8 +4511,26 @@
       return el;
     }
 
-    function scrollToBottom() {
+    // Track whether the user has scrolled up — if so, don't force them back down
+    let userScrolledUp = false;
+    let lastProgrammaticScroll = 0;
+    messagesEl.addEventListener('scroll', function() {
+      // Ignore scroll events caused by our own scrollToBottom() calls
+      if (Date.now() - lastProgrammaticScroll < 150) return;
+      const distanceFromBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+      userScrolledUp = distanceFromBottom > 100;
+      // Show/hide "scroll to bottom" button
+      const jumpBtn = document.getElementById('scroll-to-bottom-btn');
+      if (jumpBtn) jumpBtn.style.display = userScrolledUp ? 'flex' : 'none';
+    });
+
+    function scrollToBottom(force) {
+      if (!force && userScrolledUp) return;
+      lastProgrammaticScroll = Date.now();
       messagesEl.scrollTop = messagesEl.scrollHeight;
+      // Hide the jump button since we're at the bottom
+      const jumpBtn = document.getElementById('scroll-to-bottom-btn');
+      if (jumpBtn) jumpBtn.style.display = 'none';
     }
 
     // ── Markdown-ish rendering ────────────────────────────────────────────
@@ -3928,7 +4809,8 @@
                   if (isTaskVisible(msg.taskId) && streamingTextEl) {
                     streamBuffer = rt.buffer;
                     const actionsHtml = renderActionsDropdown(rt.actions);
-                    streamingTextEl.innerHTML = actionsHtml + renderMarkdown(streamBuffer);
+                    const questionHtml = rt.activeQuestionHtml || '';
+                    streamingTextEl.innerHTML = actionsHtml + renderMarkdown(streamBuffer) + questionHtml;
                     highlightCodeBlocks(streamingTextEl);
                     scrollToBottom();
                   }
@@ -3948,7 +4830,9 @@
                   if (isTaskVisible(msg.taskId) && streamingTextEl) {
                     streamBuffer = rt.buffer;
                     const actionsHtml = rt.actions?.length ? renderActionsDropdown(rt.actions) : '';
-                    streamingTextEl.innerHTML = actionsHtml + renderMarkdown(streamBuffer);
+                    // Preserve any active question card so tokens don't wipe it
+                    const questionHtml = rt.activeQuestionHtml || '';
+                    streamingTextEl.innerHTML = actionsHtml + renderMarkdown(streamBuffer) + questionHtml;
                     highlightCodeBlocks(streamingTextEl);
                     scrollToBottom();
                   }
@@ -4068,6 +4952,28 @@
               }
             }
 
+            // ── Interactive question card from agent ──
+            if (msg.type === 'task:question') {
+              const rt = runningTasks.get(msg.taskId);
+              if (rt && isTaskVisible(msg.taskId) && streamingTextEl) {
+                const cardHtml = renderQuestionCard(msg.taskId, {
+                  question: msg.question,
+                  options: msg.options || [],
+                  multiSelect: msg.multiSelect,
+                  header: msg.header,
+                  placeholder: msg.placeholder,
+                  otherLabel: msg.otherLabel,
+                });
+                // Persist the card HTML on the running task so subsequent
+                // task:token updates don't wipe it from the DOM
+                rt.activeQuestionHtml = cardHtml;
+                streamBuffer = rt.buffer;
+                const actionsHtml = rt.actions?.length ? renderActionsDropdown(rt.actions) : '';
+                streamingTextEl.innerHTML = actionsHtml + renderMarkdown(streamBuffer) + cardHtml;
+                scrollToBottom();
+              }
+            }
+
             // Coordinator events — always buffer, only update DOM if visible
             if (msg.type === 'nova:delegating') {
               const rt = runningTasks.get(msg.taskId);
@@ -4079,7 +4985,8 @@
               if (rt) rt.buffer += text;
               if (isTaskVisible(msg.taskId) && streamingTextEl) {
                 streamBuffer += text;
-                streamingTextEl.innerHTML = renderMarkdown(streamBuffer);
+                const questionHtml = rt?.activeQuestionHtml || '';
+                streamingTextEl.innerHTML = renderMarkdown(streamBuffer) + questionHtml;
                 scrollToBottom();
               }
             }
@@ -4089,7 +4996,8 @@
               if (rt) rt.buffer += text;
               if (isTaskVisible(msg.taskId) && streamingTextEl) {
                 streamBuffer += text;
-                streamingTextEl.innerHTML = renderMarkdown(streamBuffer);
+                const questionHtml = rt?.activeQuestionHtml || '';
+                streamingTextEl.innerHTML = renderMarkdown(streamBuffer) + questionHtml;
                 scrollToBottom();
               }
             }
@@ -4099,7 +5007,8 @@
               if (rt) rt.buffer += text;
               if (streamingTextEl) {
                 streamBuffer += text;
-                streamingTextEl.innerHTML = renderMarkdown(streamBuffer);
+                const questionHtml = rt?.activeQuestionHtml || '';
+                streamingTextEl.innerHTML = renderMarkdown(streamBuffer) + questionHtml;
               }
             }
             if (msg.type === 'nova:firing') {
@@ -4109,7 +5018,8 @@
               if (rt) rt.buffer += text;
               if (streamingTextEl) {
                 streamBuffer += text;
-                streamingTextEl.innerHTML = renderMarkdown(streamBuffer);
+                const questionHtml = rt?.activeQuestionHtml || '';
+                streamingTextEl.innerHTML = renderMarkdown(streamBuffer) + questionHtml;
               }
             }
 
@@ -4123,7 +5033,8 @@
               if (rt) rt.buffer += text;
               if (isTaskVisible(msg.taskId) && streamingTextEl) {
                 streamBuffer += text;
-                streamingTextEl.innerHTML = renderMarkdown(streamBuffer);
+                const questionHtml = rt?.activeQuestionHtml || '';
+                streamingTextEl.innerHTML = renderMarkdown(streamBuffer) + questionHtml;
                 scrollToBottom();
               }
             }
@@ -4247,6 +5158,16 @@
                   if (totalTokens > 0) parts.push(`${(totalTokens / 1000).toFixed(1)}k tokens`);
                   detail.textContent = parts.length > 0 ? `(${parts.join(' · ')})` : '';
                 }
+              }
+            }
+
+            // ── Skills list response (for slash command dropdown) ──
+            if (msg.type === 'skills:list' && Array.isArray(msg.skills)) {
+              skillCache = msg.skills;
+              // Re-show dropdown if input still starts with /
+              const val = inputEl.value;
+              if (val.startsWith('/') && !val.includes(' ')) {
+                showSkillDropdown(val.slice(1));
               }
             }
           } catch {}
@@ -4501,6 +5422,253 @@
       switchToConversation(conversations[0].id);
     }
     inputEl.focus();
+
+    // ── Operations Pages — Data Loading ──────────────────────────────────────
+
+    const urgencyColors = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#6b7280' };
+
+    function makeKpiCard(label, value, color) {
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${escapeHtml(label)}</div>
+        <div style="font-size:22px;font-weight:600;color:${color || 'var(--text-primary)'}">${escapeHtml(String(value))}</div>
+      </div>`;
+    }
+
+    function makeAlertCard(alert) {
+      const color = urgencyColors[alert.urgency] || '#6b7280';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+        <span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;">${escapeHtml(alert.urgency)}</span>
+        <span style="font-size:12px;color:var(--text-primary);flex:1;">${escapeHtml(alert.summary || alert.raw_subject || 'Alert')}</span>
+        <span style="font-size:11px;color:var(--text-muted);">${alert.alert_type || ''}</span>
+        ${!alert.acknowledged ? `<button onclick="ackAlert(${alert.id})" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:10px;color:var(--text-muted);cursor:pointer;">Ack</button>` : ''}
+      </div>`;
+    }
+
+    async function ackAlert(id) {
+      await fetch(_baseHttp + '/api/email/alerts/acknowledge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      loadAlertsPage();
+      pollAlertBadge();
+    }
+
+    async function ackAllAlerts() {
+      await fetch(_baseHttp + '/api/email/alerts/acknowledge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) });
+      loadAlertsPage();
+      pollAlertBadge();
+    }
+
+    // ── Ops Dashboard ───────────────────────────────────────────────────────
+    async function loadOpsDashboard() {
+      try {
+        const [dashRes, pipeRes] = await Promise.all([
+          fetch(_baseHttp + '/api/email/dashboard').then(r => r.json()).catch(() => null),
+          fetch(_baseHttp + '/api/email/pipeline/status').then(r => r.json()).catch(() => null),
+        ]);
+
+        const kpis = $('#ops-kpi-cards');
+        if (kpis && dashRes) {
+          kpis.innerHTML = [
+            makeKpiCard('Spent This Week', '$' + (dashRes.spent_this_week || 0).toFixed(2)),
+            makeKpiCard('In Transit', dashRes.in_transit || 0),
+            makeKpiCard('Unread Alerts', dashRes.unread_alerts || 0, dashRes.unread_alerts > 0 ? '#ef4444' : undefined),
+            makeKpiCard('Email Accounts', dashRes.has_accounts ? 'Connected' : 'Not Set Up', dashRes.has_accounts ? '#22c55e' : '#f97316'),
+          ].join('');
+        }
+
+        const alertsEl = $('#ops-recent-alerts');
+        if (alertsEl && dashRes) {
+          const allAlerts = [...(dashRes.critical_alerts || []), ...(dashRes.high_alerts || [])];
+          alertsEl.innerHTML = allAlerts.length > 0
+            ? allAlerts.slice(0, 5).map(makeAlertCard).join('')
+            : '<div style="font-size:12px;color:var(--text-muted);">No active alerts</div>';
+        }
+
+        const pipeEl = $('#ops-pipeline-status');
+        if (pipeEl && pipeRes) {
+          const lastRun = pipeRes.last_run_stats;
+          pipeEl.innerHTML = `
+            <div style="margin-bottom:6px;"><strong>Status:</strong> ${pipeRes.enabled ? 'Running' : 'Paused'} (every ${pipeRes.intervalMinutes || '?'}min)</div>
+            ${lastRun ? `<div style="margin-bottom:4px;"><strong>Last run:</strong> ${lastRun.emails_scanned} scanned, ${lastRun.emails_flagged} flagged, ${lastRun.emails_pushed} pushed</div>` : '<div>No runs yet</div>'}
+            <div><strong>Rules:</strong> ${pipeRes.rules_count || 0} | <strong>Destinations:</strong> ${pipeRes.destinations_count || 0}</div>
+            <div style="margin-top:8px;"><strong>Accounts:</strong> ${pipeRes.accounts_count || 0} connected</div>
+          `;
+        }
+      } catch (e) { console.error('Ops dashboard load error:', e); }
+    }
+
+    // ── Purchases Page ──────────────────────────────────────────────────────
+    let purchasesPage = 0;
+    const purchasesPerPage = 50;
+
+    async function loadPurchasesPage(page) {
+      if (page !== undefined) purchasesPage = page;
+      try {
+        const params = new URLSearchParams({
+          limit: String(purchasesPerPage),
+          offset: String(purchasesPage * purchasesPerPage),
+        });
+        const search = ($('#purchases-search') || {}).value;
+        if (search) params.set('search', search);
+        const retailer = ($('#purchases-retailer-filter') || {}).value;
+        if (retailer) params.set('retailer', retailer);
+
+        const data = await fetch(_baseHttp + '/api/email/purchases?' + params).then(r => r.json());
+        const tbody = $('#purchases-tbody');
+        if (!tbody) return;
+
+        if (!data.rows || data.rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">No purchases found. Connect your email in Settings to start tracking.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.rows.map(r => `<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px;">${escapeHtml(r.order_date || r.created_at || '-')}</td>
+          <td style="padding:6px;">${escapeHtml(r.retailer || '-')}</td>
+          <td style="padding:6px;">${escapeHtml(r.item_name || '-')}</td>
+          <td style="padding:6px;">${r.item_quantity || '-'}</td>
+          <td style="padding:6px;">${r.item_price ? '$' + Number(r.item_price).toFixed(2) : '-'}</td>
+          <td style="padding:6px;"><span style="background:${r.order_status === 'delivered' ? '#22c55e22' : r.order_status === 'shipped' ? '#3b82f622' : '#6b728022'};color:${r.order_status === 'delivered' ? '#22c55e' : r.order_status === 'shipped' ? '#3b82f6' : '#9ca3af'};padding:2px 8px;border-radius:4px;font-size:10px;">${escapeHtml(r.order_status || 'ordered')}</span></td>
+        </tr>`).join('');
+
+        // Pagination
+        const totalPages = Math.ceil((data.total || 0) / purchasesPerPage);
+        const pagEl = $('#purchases-pagination');
+        if (pagEl && totalPages > 1) {
+          pagEl.innerHTML = Array.from({ length: Math.min(totalPages, 10) }, (_, i) =>
+            `<button onclick="loadPurchasesPage(${i})" style="background:${i === purchasesPage ? 'var(--accent)' : 'var(--surface)'};color:${i === purchasesPage ? '#fff' : 'var(--text-primary)'};border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;">${i + 1}</button>`
+          ).join('');
+        }
+
+        // Load retailer filter options
+        const filterEl = $('#purchases-retailer-filter');
+        if (filterEl && filterEl.options.length <= 1) {
+          try {
+            const dashData = await fetch(_baseHttp + '/api/email/purchases?dashboard=true').then(r => r.json());
+            if (dashData.by_retailer) {
+              dashData.by_retailer.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.retailer; opt.textContent = r.retailer;
+                filterEl.appendChild(opt);
+              });
+            }
+          } catch {}
+        }
+      } catch (e) { console.error('Purchases load error:', e); }
+    }
+
+    // Wire up purchases search/filter
+    setTimeout(() => {
+      const searchEl = $('#purchases-search');
+      if (searchEl) searchEl.addEventListener('input', () => { clearTimeout(searchEl._timer); searchEl._timer = setTimeout(() => loadPurchasesPage(0), 300); });
+      const filterEl = $('#purchases-retailer-filter');
+      if (filterEl) filterEl.addEventListener('change', () => loadPurchasesPage(0));
+      const refreshBtn = $('#purchases-refresh-btn');
+      if (refreshBtn) refreshBtn.addEventListener('click', () => loadPurchasesPage(0));
+    }, 100);
+
+    // ── Shipments Page ──────────────────────────────────────────────────────
+    let shipmentsStageFilter = 'all';
+
+    async function loadShipmentsPage() {
+      try {
+        const params = new URLSearchParams({ limit: '100' });
+        if (shipmentsStageFilter !== 'all') params.set('status', shipmentsStageFilter);
+        const data = await fetch(_baseHttp + '/api/email/orders?' + params).then(r => r.json());
+
+        const listEl = $('#shipments-list');
+        if (!listEl) return;
+
+        if (!data.rows || data.rows.length === 0) {
+          listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">No shipments to track yet.</div>';
+          return;
+        }
+
+        const statusColors = { ordered: '#6b7280', processing: '#eab308', shipped: '#3b82f6', out_for_delivery: '#8b5cf6', delivered: '#22c55e', cancelled: '#ef4444', returned: '#f97316' };
+
+        listEl.innerHTML = data.rows.map(r => {
+          const color = statusColors[r.order_status] || '#6b7280';
+          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:12px;">
+            <span style="background:${color}22;color:${color};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;min-width:70px;text-align:center;">${escapeHtml(r.order_status || 'ordered')}</span>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:500;color:var(--text-primary);">${escapeHtml(r.item_name || 'Unknown')}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(r.retailer || '')} ${r.tracking_number ? '| ' + escapeHtml(r.tracking_number) : ''}</div>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">${r.item_quantity ? r.item_quantity + 'x' : ''}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(r.order_date || '')}</div>
+          </div>`;
+        }).join('');
+      } catch (e) { console.error('Shipments load error:', e); }
+    }
+
+    // Wire up shipment stage filters
+    setTimeout(() => {
+      document.querySelectorAll('.shipments-stage-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.shipments-stage-btn').forEach(b => { b.classList.remove('active'); b.style.background = 'var(--surface)'; });
+          btn.classList.add('active'); btn.style.background = 'var(--accent)'; btn.style.color = '#fff';
+          shipmentsStageFilter = btn.dataset.stage;
+          loadShipmentsPage();
+        });
+      });
+    }, 100);
+
+    // ── Alerts Page ─────────────────────────────────────────────────────────
+    async function loadAlertsPage() {
+      try {
+        const [critical, high, other] = await Promise.all([
+          fetch(_baseHttp + '/api/email/alerts?urgency=critical&acknowledged=false').then(r => r.json()).catch(() => ({ rows: [] })),
+          fetch(_baseHttp + '/api/email/alerts?urgency=high&acknowledged=false').then(r => r.json()).catch(() => ({ rows: [] })),
+          fetch(_baseHttp + '/api/email/alerts?limit=50').then(r => r.json()).catch(() => ({ rows: [] })),
+        ]);
+
+        const critEl = $('#alerts-critical');
+        const highEl = $('#alerts-high');
+        const otherEl = $('#alerts-other');
+
+        if (critEl) {
+          const rows = critical.rows || critical || [];
+          critEl.innerHTML = rows.length > 0
+            ? `<h3 style="font-size:12px;font-weight:600;color:#ef4444;margin-bottom:8px;">Critical (${rows.length})</h3>` + rows.map(makeAlertCard).join('')
+            : '';
+        }
+        if (highEl) {
+          const rows = high.rows || high || [];
+          highEl.innerHTML = rows.length > 0
+            ? `<h3 style="font-size:12px;font-weight:600;color:#f97316;margin-bottom:8px;">High (${rows.length})</h3>` + rows.map(makeAlertCard).join('')
+            : '';
+        }
+        if (otherEl) {
+          const rows = (other.rows || other || []).filter(a => a.urgency !== 'critical' && a.urgency !== 'high');
+          otherEl.innerHTML = rows.length > 0
+            ? `<h3 style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Other (${rows.length})</h3>` + rows.map(makeAlertCard).join('')
+            : '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No alerts</div>';
+        }
+      } catch (e) { console.error('Alerts load error:', e); }
+    }
+
+    // Wire up Acknowledge All button
+    setTimeout(() => {
+      const ackBtn = $('#alerts-ack-all-btn');
+      if (ackBtn) ackBtn.addEventListener('click', ackAllAlerts);
+    }, 100);
+
+    // ── Alert Badge Polling ─────────────────────────────────────────────────
+    async function pollAlertBadge() {
+      try {
+        const data = await fetch(_baseHttp + '/api/email/alerts/count').then(r => r.json()).catch(() => ({ count: 0 }));
+        const badge = $('#alert-badge');
+        if (badge) {
+          if (data.count > 0) {
+            badge.textContent = String(data.count);
+            badge.style.display = 'inline';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      } catch {}
+    }
+    setInterval(pollAlertBadge, 60000);
+    setTimeout(pollAlertBadge, 3000);
+
   </script>
 </body>
 </html>

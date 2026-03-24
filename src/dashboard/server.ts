@@ -87,6 +87,7 @@ const taskFollowups = new Map<string, string[]>();  // taskId -> queued follow-u
 const taskToAgent = new Map<string, string>();       // taskId -> agentId (for delivering mid-task context)
 const taskMapTimestamps = new Map<string, number>(); // taskId -> creation timestamp (for periodic eviction)
 const taskAbortControllers = new Map<string, AbortController>();  // taskId -> abort controller for Nova's stream
+const taskQuestionResolvers = new Map<string, (answer: string) => void>(); // taskId -> question answer resolver
 const MAX_TASK_EVENTS = 500;
 let providerStatusCache: Awaited<ReturnType<typeof detectProviderStatuses>> = [];
 let providerStatusRefresh: Promise<Awaited<ReturnType<typeof detectProviderStatuses>>> | null = null;
@@ -120,8 +121,16 @@ setInterval(() => {
   const cutoff = Date.now() - 10 * 60 * 1000;
   for (const [id, ts] of taskMapTimestamps) {
     if (ts < cutoff) {
+      // Resolve any pending question resolvers before deleting — otherwise the
+      // waitForTaskAnswer Promise hangs forever and the agent silently dies.
+      const resolver = taskQuestionResolvers.get(id);
+      if (resolver) {
+        console.warn(`[Dashboard] Evicting stale question resolver for task ${id}`);
+        resolver('[Question expired — no answer received. Continue with your best judgment.]');
+      }
       taskFollowups.delete(id);
       taskToAgent.delete(id);
+      taskQuestionResolvers.delete(id);
       taskMapTimestamps.delete(id);
     }
   }
@@ -130,6 +139,297 @@ setInterval(() => {
 interface TaskExecutionResult {
   content: string;
   workspaceSummary?: WorkspaceMutationSummary;
+}
+
+interface AskUserOption {
+  label: string;
+  description?: string;
+}
+
+interface AskUserQuestion {
+  header: string;
+  question: string;
+  options: AskUserOption[];
+  multiSelect: boolean;
+  placeholder?: string;
+  otherLabel: string;
+}
+
+const ASK_USER_START = '[ASK_USER]';
+const ASK_USER_END = '[/ASK_USER]';
+
+function normalizeAskUserQuestion(raw: unknown): AskUserQuestion | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const candidate = raw as Record<string, unknown>;
+  const questionVal = typeof candidate['question'] === 'string' ? (candidate['question'] as string).trim() : '';
+  if (!questionVal) return null;
+
+  const rawOptions = Array.isArray(candidate['options']) ? candidate['options'] as unknown[] : [];
+  const options = rawOptions
+    .map((option): AskUserOption | null => {
+      if (typeof option === 'string') {
+        const label = option.trim();
+        return label ? { label } : null;
+      }
+      if (!option || typeof option !== 'object') return null;
+      const optionObj = option as Record<string, unknown>;
+      const label = typeof optionObj['label'] === 'string' ? (optionObj['label'] as string).trim() : '';
+      if (!label) return null;
+      const description = typeof optionObj['description'] === 'string' ? (optionObj['description'] as string).trim() : undefined;
+      return { label, description };
+    })
+    .filter((option): option is AskUserOption => Boolean(option));
+
+  const headerVal = candidate['header'];
+  const placeholderVal = candidate['placeholder'];
+  const otherLabelVal = candidate['otherLabel'];
+
+  return {
+    header: typeof headerVal === 'string' && headerVal.trim() ? headerVal.trim() : 'Question',
+    question: questionVal,
+    options,
+    multiSelect: Boolean(candidate['multiSelect']),
+    placeholder: typeof placeholderVal === 'string' && placeholderVal.trim() ? placeholderVal.trim() : undefined,
+    otherLabel: typeof otherLabelVal === 'string' && otherLabelVal.trim() ? otherLabelVal.trim() : 'Other',
+  };
+}
+
+function extractAskUserBlocks(text: string): { cleanText: string; questions: AskUserQuestion[] } {
+  if (!text) return { cleanText: '', questions: [] };
+
+  const questions: AskUserQuestion[] = [];
+  let cleanText = '';
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const start = text.indexOf(ASK_USER_START, cursor);
+    if (start === -1) {
+      cleanText += text.slice(cursor);
+      break;
+    }
+
+    cleanText += text.slice(cursor, start);
+    const end = text.indexOf(ASK_USER_END, start + ASK_USER_START.length);
+    if (end === -1) {
+      cleanText += text.slice(start);
+      break;
+    }
+
+    const payload = text.slice(start + ASK_USER_START.length, end).trim();
+    try {
+      const parsed = JSON.parse(payload);
+      const question = normalizeAskUserQuestion(parsed);
+      if (question) questions.push(question);
+    } catch (error) {
+      console.warn('[ASK_USER] Failed to parse question block:', error);
+    }
+
+    cursor = end + ASK_USER_END.length;
+  }
+
+  return { cleanText: cleanText.trimEnd(), questions };
+}
+
+function getAskUserPrefixRemainder(text: string): string {
+  const maxLen = Math.min(text.length, ASK_USER_START.length - 1);
+  for (let len = maxLen; len > 0; len--) {
+    if (text.endsWith(ASK_USER_START.slice(0, len))) {
+      return text.slice(-len);
+    }
+  }
+  return '';
+}
+
+function consumeAskUserStreamBuffer(buffer: string): { displayText: string; remainder: string } {
+  if (!buffer) return { displayText: '', remainder: '' };
+
+  let displayText = '';
+  let cursor = 0;
+
+  while (cursor < buffer.length) {
+    const start = buffer.indexOf(ASK_USER_START, cursor);
+    if (start === -1) {
+      const tail = buffer.slice(cursor);
+      const prefixRemainder = getAskUserPrefixRemainder(tail);
+      const safeTail = prefixRemainder ? tail.slice(0, -prefixRemainder.length) : tail;
+      displayText += safeTail;
+      return { displayText, remainder: prefixRemainder };
+    }
+
+    displayText += buffer.slice(cursor, start);
+    const end = buffer.indexOf(ASK_USER_END, start + ASK_USER_START.length);
+    if (end === -1) {
+      return { displayText, remainder: buffer.slice(start) };
+    }
+
+    cursor = end + ASK_USER_END.length;
+  }
+
+  return { displayText, remainder: '' };
+}
+
+async function waitForTaskAnswer(taskId: string, timeoutMs = 5 * 60 * 1000): Promise<string> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      taskQuestionResolvers.delete(taskId);
+      console.warn(`[Dashboard] Question for task ${taskId} timed out after ${timeoutMs / 1000}s — auto-resolving`);
+      resolve('[No answer received — question timed out. Continue with your best judgment.]');
+    }, timeoutMs);
+
+    taskQuestionResolvers.set(taskId, (answer: string) => {
+      clearTimeout(timer);
+      resolve(answer);
+    });
+  });
+}
+
+async function streamAssistantTurn(params: {
+  ws: WebSocket;
+  taskId: string;
+  agentId: string;
+  parentTaskId?: string;
+  provider: any;
+  request: {
+    messages: Array<{ role: string; content: string }>;
+    agentId: string;
+    signal?: AbortSignal;
+    permissions?: any;
+  };
+}): Promise<{ cleanContent: string; questions: AskUserQuestion[]; rawContent: string }> {
+  const { ws, taskId, agentId, parentTaskId, provider, request } = params;
+  let visibleContent = '';
+  let streamRemainder = '';
+
+  const response = await provider.completeStreaming(
+    request,
+    (data: { text: string; type: string }) => {
+      if (data.type !== 'text') {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'task:token', taskId, text: data.text, tokenType: data.type, agentId }));
+          if (parentTaskId) {
+            ws.send(JSON.stringify({ type: 'task:token', taskId: parentTaskId, text: data.text, tokenType: data.type, agentId }));
+          }
+        }
+        return;
+      }
+
+      streamRemainder += data.text;
+      const consumed = consumeAskUserStreamBuffer(streamRemainder);
+      streamRemainder = consumed.remainder;
+      if (consumed.displayText && ws.readyState === WebSocket.OPEN) {
+        visibleContent += consumed.displayText;
+        ws.send(JSON.stringify({ type: 'task:token', taskId, text: consumed.displayText, tokenType: 'text', agentId }));
+        if (parentTaskId) {
+          ws.send(JSON.stringify({ type: 'task:token', taskId: parentTaskId, text: consumed.displayText, tokenType: 'text', agentId }));
+        }
+      }
+    }
+  );
+
+  const responseContent = typeof response?.content === 'string' ? response.content : `${visibleContent}${streamRemainder}`;
+  const { cleanText, questions } = extractAskUserBlocks(responseContent);
+  return { cleanContent: cleanText, questions, rawContent: responseContent };
+}
+
+async function resolveInteractiveQuestions(params: {
+  ws: WebSocket;
+  taskId: string;
+  agentId: string;
+  provider: any;
+  sessionKey: string;
+  systemPrompt: string;
+  baseMessages: Array<{ role: string; content: string }>;
+  initialContent: string;
+  initialQuestions: AskUserQuestion[];
+  waitingText?: string;
+  resumedText?: string;
+  permissions?: any;
+}): Promise<string> {
+  const {
+    ws,
+    taskId,
+    agentId,
+    provider,
+    sessionKey,
+    systemPrompt,
+    baseMessages,
+    initialContent,
+    initialQuestions,
+    waitingText = '\n\n---\n*Waiting for your answer...*\n\n',
+    resumedText = '\n\n---\n*Reading your answer and continuing...*\n\n',
+    permissions,
+  } = params;
+
+  let fullContent = initialContent;
+  let pendingQuestions = [...initialQuestions];
+  const transcript = [...baseMessages];
+  if (fullContent) {
+    transcript.push({ role: 'assistant', content: fullContent });
+  }
+
+  while (pendingQuestions.length > 0) {
+    const currentQuestion = pendingQuestions[0]!;
+    pendingQuestions = [];
+
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'task:question',
+        taskId,
+        header: currentQuestion.header,
+        question: currentQuestion.question,
+        options: currentQuestion.options,
+        multiSelect: currentQuestion.multiSelect,
+        placeholder: currentQuestion.placeholder,
+        otherLabel: currentQuestion.otherLabel,
+      }));
+
+      if (waitingText) {
+        ws.send(JSON.stringify({
+          type: 'task:token',
+          taskId,
+          text: waitingText,
+          tokenType: 'text',
+          agentId,
+        }));
+      }
+    }
+
+    const answer = await waitForTaskAnswer(taskId);
+    transcript.push({ role: 'user', content: answer });
+
+    if (ws.readyState === WebSocket.OPEN && resumedText) {
+      ws.send(JSON.stringify({
+        type: 'task:token',
+        taskId,
+        text: resumedText,
+        tokenType: 'text',
+        agentId,
+      }));
+    }
+
+    const nextTurn = await streamAssistantTurn({
+      ws,
+      taskId,
+      agentId,
+      provider,
+      request: {
+        messages: [{ role: 'system', content: systemPrompt }, ...transcript],
+        agentId: sessionKey,
+        permissions,
+      },
+    });
+
+    if (nextTurn.cleanContent) {
+      fullContent = fullContent
+        ? `${fullContent}\n\n${nextTurn.cleanContent}`
+        : nextTurn.cleanContent;
+      transcript.push({ role: 'assistant', content: nextTurn.cleanContent });
+    }
+    pendingQuestions = nextTurn.questions;
+  }
+
+  return fullContent;
 }
 
 // ─── Memory helpers ─────────────────────────────────────────────────────────
@@ -316,7 +616,7 @@ async function loadProjectKnowledge(description: string): Promise<string> {
     // CLAUDE.md — always loaded
     for (const p of [path.join(workDir, 'CLAUDE.md'), path.join(workDir, '.claude', 'CLAUDE.md')]) {
       if (fs.existsSync(p)) {
-        context += `\n\n## Project Instructions\n${fs.readFileSync(p, 'utf-8').slice(0, 3000)}`;
+        context += `\n\n## Project Instructions\n${fs.readFileSync(p, 'utf-8').slice(0, 6000)}`;
       }
     }
 
@@ -329,7 +629,7 @@ async function loadProjectKnowledge(description: string): Promise<string> {
     for (const mp of memPaths) {
       if (fs.existsSync(mp)) {
         const label = mp.includes('.claude/projects/') ? 'Global Memory' : 'Project Memory';
-        context += `\n\n## ${label}\n${fs.readFileSync(mp, 'utf-8').slice(0, 2000)}`;
+        context += `\n\n## ${label}\n${fs.readFileSync(mp, 'utf-8').slice(0, 4000)}`;
       }
     }
 
@@ -356,12 +656,21 @@ async function loadProjectKnowledge(description: string): Promise<string> {
       }
     }
 
-    // Executable skills — trigger-matched from the skill registry
+    // Executable skills — explicit slash-command or trigger-matched from the skill registry
     const skillRegistry = (swarm as any)?.skillRegistry;
-    if (skillRegistry?.matchTriggers) {
+    const slashMatch = description.match(/^\/([\w-]+)\s*/);
+    if (slashMatch && skillRegistry) {
+      // Explicit slash-command invocation: load full skill with NO truncation
+      const skillName = slashMatch[1];
+      const skill = skillRegistry.get(skillName);
+      if (skill) {
+        context += `\n\n## Skill: ${skill.metadata.name} (activated)\n${skill.instructions}`;
+      }
+    } else if (skillRegistry?.matchTriggers) {
+      // Background trigger matching — increased limit for trigger-matched skills
       const matched = skillRegistry.matchTriggers(description);
       for (const skill of matched.slice(0, 3)) { // Max 3 skills per task
-        context += `\n\n## Skill: ${skill.metadata.name}\n${skill.instructions.slice(0, 3000)}`;
+        context += `\n\n## Skill: ${skill.metadata.name}\n${skill.instructions.slice(0, 12000)}`;
       }
     }
   } catch { /* non-critical */ }
@@ -1087,6 +1396,14 @@ app.use('/api/marketplace', createMarketplaceRouter({
   authSecret: process.env['MARKETPLACE_AUTH_SECRET'],
 }));
 
+// ─── Email Module Routes ──────────────────────────────────────────────────────
+try {
+  const { createEmailRouter } = require('../modules/email/routes.js');
+  app.use('/api/email', createEmailRouter());
+} catch (e) {
+  console.warn('[dashboard] Email module routes not loaded:', (e as Error).message);
+}
+
 // SPA fallback
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, '../../public/index.html'));
@@ -1192,12 +1509,21 @@ wss.on('connection', (ws) => {
           }
         }
 
-        // ── Abort Nova's active stream so the followup gets processed immediately ──
-        // Nova runs as a subprocess with no stdin — we can't inject mid-stream.
-        // Instead, we abort the current stream and coordinateRequest's followup
-        // handler will restart with the user's message in a new turn.
+        // ── If we're waiting for a question answer, resolve it with the followup ──
+        // This prevents deadlock when the user types a response instead of
+        // clicking the question card (or if the card failed to render).
+        const questionResolver = taskQuestionResolvers.get(taskId);
         const abortController = taskAbortControllers.get(taskId);
-        if (abortController) {
+        if (questionResolver) {
+          console.log(`[Dashboard] Resolving pending question for task ${taskId} with followup: "${text.substring(0, 80)}..."`);
+          taskQuestionResolvers.delete(taskId);
+          questionResolver(text);
+          // Don't abort — the question loop will continue with this answer
+        } else if (abortController) {
+          // ── Abort Nova's active stream so the followup gets processed immediately ──
+          // Nova runs as a subprocess with no stdin — we can't inject mid-stream.
+          // Instead, we abort the current stream and coordinateRequest's followup
+          // handler will restart with the user's message in a new turn.
           console.log(`[Dashboard] Aborting Nova stream for task ${taskId} to process followup: "${text.substring(0, 80)}..."`);
           abortController.abort();
         }
@@ -1234,9 +1560,11 @@ wss.on('connection', (ws) => {
           const ackLabel = humanText
             ? (humanText.length > 60 ? humanText.substring(0, 60) + '...' : humanText)
             : hasImages ? 'image(s) attached' : '...';
-          const ackText = abortController
-            ? `\n\n*Interrupting — "${ackLabel}" — Nova is re-reading with your input now.*\n\n`
-            : `\n\n*Queued — "${ackLabel}" — will be processed after the current step.*\n\n`;
+          const ackText = questionResolver
+            ? `\n\n*Got your answer — continuing...*\n\n`
+            : abortController
+              ? `\n\n*Interrupting — "${ackLabel}" — Nova is re-reading with your input now.*\n\n`
+              : `\n\n*Queued — "${ackLabel}" — will be processed after the current step.*\n\n`;
           ws.send(JSON.stringify({
             type: 'task:token', taskId, text: ackText,
             tokenType: 'text', agentId: 'nova-1',
@@ -1245,6 +1573,74 @@ wss.on('connection', (ws) => {
 
         ws.send(JSON.stringify({ type: 'task:followup:ack', taskId, text }));
       }
+    }
+
+    if (msg.type === 'task:answer') {
+      const taskId = msg.taskId;
+      const answer = typeof msg.text === 'string' ? msg.text.trim() : '';
+      if (taskId && answer) {
+        const resolve = taskQuestionResolvers.get(taskId);
+        if (resolve) {
+          taskQuestionResolvers.delete(taskId);
+          resolve(answer);
+        }
+      }
+    }
+
+    if (msg.type === 'skills:list') {
+      // Return all available skills with metadata (no instructions — just for the picker UI)
+      const skillReg = (getInjectedSwarmState() as any)?.skillRegistry;
+      const skills = skillReg ? skillReg.list().map((s: any) => ({
+        name: s.metadata.name,
+        description: s.metadata.description,
+        agent: s.metadata.agent,
+        tags: s.metadata.tags || [],
+        version: s.metadata.version,
+        triggers: s.metadata.triggers,
+      })) : [];
+
+      // Also scan for external skill packs in ~/.hivemind/skills/ and ~/.claude/skills/
+      const externalSkillRoots = [
+        path.join(process.env['HOME'] || '', '.hivemind', 'skills'),
+        path.join(process.env['HOME'] || '', '.claude', 'skills'),
+      ];
+      const externalPacks: Array<{ name: string; path: string; skillCount: number }> = [];
+      try {
+        const fsSync = await import('fs');
+        for (const homeSkillsDir of externalSkillRoots) {
+          if (fsSync.existsSync(homeSkillsDir)) {
+            for (const packDir of fsSync.readdirSync(homeSkillsDir)) {
+              const packPath = path.join(homeSkillsDir, packDir);
+              if (fsSync.statSync(packPath).isDirectory()) {
+                // Look for SKILL.md files recursively
+                const findSkills = (dir: string): string[] => {
+                  const results: string[] = [];
+                  for (const entry of fsSync.readdirSync(dir)) {
+                    const full = path.join(dir, entry);
+                    if (fsSync.statSync(full).isDirectory()) {
+                      results.push(...findSkills(full));
+                    } else if (entry === 'SKILL.md' || (entry.endsWith('.md') && entry !== 'README.md')) {
+                      results.push(full);
+                    }
+                  }
+                  return results;
+                };
+                externalPacks.push({
+                  name: packDir,
+                  path: packPath,
+                  skillCount: findSkills(packPath).length,
+                });
+              }
+            }
+          }
+        }
+      } catch { /* non-critical */ }
+
+      ws.send(JSON.stringify({
+        type: 'skills:list',
+        skills,
+        externalPacks,
+      }));
     }
   });
 
@@ -1615,21 +2011,30 @@ async function coordinateRequest(ws: WebSocket, description: string, taskId?: st
     }
     chatMessages.push({ role: 'user', content: description });
 
-    let novaFullResponse = '';
-    const response = await streamingProvider.completeStreaming(
-      {
+    const firstNovaTurn = await streamAssistantTurn({
+      ws,
+      taskId: id,
+      agentId: 'nova-1',
+      provider: streamingProvider,
+      request: {
         messages: chatMessages,
-        agentId: novaSessionKey,  // Per-conversation session isolation
-        signal: novaAbort.signal,  // Allows user followups to interrupt this stream
+        agentId: novaSessionKey,
+        signal: novaAbort.signal,
       },
-      (data: { text: string; type: string }) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          novaFullResponse += data.text;
-          ws.send(JSON.stringify({ type: 'task:token', taskId: id, text: data.text, tokenType: data.type, agentId: 'nova-1' }));
-        }
-      }
-    );
-    novaFullResponse = response.content || novaFullResponse;
+    });
+    let novaFullResponse = await resolveInteractiveQuestions({
+      ws,
+      taskId: id,
+      agentId: 'nova-1',
+      provider: streamingProvider,
+      sessionKey: novaSessionKey,
+      systemPrompt: novaSystemPrompt,
+      baseMessages: chatMessages.slice(1),
+      initialContent: firstNovaTurn.cleanContent,
+      initialQuestions: firstNovaTurn.questions,
+      waitingText: '\n\n---\n*Waiting for your answer...*\n\n',
+      resumedText: '\n\n---\n*Reading your answer and re-evaluating...*\n\n',
+    });
 
     // ── Process any follow-ups that arrived while Nova was streaming ──
     // When a followup arrives, the stream is aborted (killed) so we get here fast.
@@ -1667,20 +2072,31 @@ async function coordinateRequest(ws: WebSocket, description: string, taskId?: st
         { role: 'user', content: followupWithHint },
       );
 
-      const followupResponse = await streamingProvider.completeStreaming(
-        {
+      const followupTurn = await streamAssistantTurn({
+        ws,
+        taskId: id,
+        agentId: 'nova-1',
+        provider: streamingProvider,
+        request: {
           messages: followupMessages,
           agentId: novaSessionKey,
           signal: followupAbort.signal,
         },
-        (data: { text: string; type: string }) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'task:token', taskId: id, text: data.text, tokenType: data.type, agentId: 'nova-1' }));
-          }
-        }
-      );
+      });
+      const followupContent = await resolveInteractiveQuestions({
+        ws,
+        taskId: id,
+        agentId: 'nova-1',
+        provider: streamingProvider,
+        sessionKey: novaSessionKey,
+        systemPrompt: novaSystemPrompt,
+        baseMessages: followupMessages.slice(1),
+        initialContent: followupTurn.cleanContent,
+        initialQuestions: followupTurn.questions,
+        waitingText: '\n\n---\n*Waiting for your answer...*\n\n',
+        resumedText: '\n\n---\n*Reading your answer and re-evaluating...*\n\n',
+      });
       // Merge markers from BOTH responses — don't lose delegations from the original
-      const followupContent = followupResponse.content || '';
       if (followupContent) {
         novaFullResponse = novaFullResponse + '\n' + followupContent;
       }
@@ -2140,6 +2556,7 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
     }
 
     let finalContent = '';
+    let permissions: any;
 
     if (streamingProvider?.completeStreaming) {
       // Build messages with optional conversation history
@@ -2160,7 +2577,6 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
         ['worker', 'engineering', 'coordinator'].includes(agentRole);
       const isResearchAgent = ['scout-1', 'oracle-1'].includes(agentId!) ||
         ['research', 'scout', 'oracle', 'specialist'].includes(agentRole);
-      let permissions;
       if (needsWriteAccess) {
         permissions = { allowedTools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'], blockedCommands: [] as RegExp[], allowedPaths: [] as string[], maxTokens: 200_000 };
       } else if (isResearchAgent) {
@@ -2171,23 +2587,30 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
       }
 
       // Streaming path — Claude Code provider with incremental tokens
-      const response = await streamingProvider.completeStreaming(
-        {
+      const firstAgentTurn = await streamAssistantTurn({
+        ws,
+        taskId: id,
+        agentId,
+        parentTaskId,
+        provider: streamingProvider,
+        request: {
           messages: taskMessages,
-          agentId: sessionKey,  // Use compound key so each conversation gets its own session
+          agentId: sessionKey,
           permissions,
         },
-        (data: { text: string; type: string }) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'task:token', taskId: id, text: data.text, tokenType: data.type, agentId }));
-            // Forward tokens to parent task so the main chat shows delegated agent progress
-            if (parentTaskId) {
-              ws.send(JSON.stringify({ type: 'task:token', taskId: parentTaskId, text: data.text, tokenType: data.type, agentId }));
-            }
-          }
-        }
-      );
-      finalContent = response.content;
+      });
+      finalContent = await resolveInteractiveQuestions({
+        ws,
+        taskId: id,
+        agentId,
+        provider: streamingProvider,
+        sessionKey,
+        systemPrompt: systemPrompt || '',
+        baseMessages: taskMessages.slice(1),
+        initialContent: firstAgentTurn.cleanContent,
+        initialQuestions: firstAgentTurn.questions,
+        permissions,
+      });
 
       // Send context usage update after streaming completes
       if (streamingProvider.sessions) {
@@ -2234,26 +2657,42 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
       ws.send(JSON.stringify({ type: 'task:token', taskId: id, text: '\n\n---\n*Processing your follow-up...*\n\n', tokenType: 'text' }));
 
       // Send follow-ups as continuation in the same session
-      const followupResponse = await streamingProvider.completeStreaming(
-        {
-          messages: [
-            { role: 'system', content: systemPrompt || '' },
-            { role: 'user', content: description },
-            { role: 'assistant', content: finalContent },
-            { role: 'user', content: followupText },
-          ],
+      const followupMessages = [
+        { role: 'user' as const, content: description },
+        { role: 'assistant' as const, content: finalContent },
+        { role: 'user' as const, content: followupText },
+      ];
+      const followupTurn = await streamAssistantTurn({
+        ws,
+        taskId: id,
+        agentId,
+        parentTaskId,
+        provider: streamingProvider,
+        request: {
+          messages: [{ role: 'system', content: systemPrompt || '' }, ...followupMessages],
           agentId: sessionKey,
+          permissions,
         },
-        (data: { text: string; type: string }) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'task:token', taskId: id, text: data.text, tokenType: data.type }));
-          }
-        }
-      );
-      finalContent += '\n\n---\n\n' + sanitizeAgentOutput(followupResponse.content);
+      });
+      const followupContent = await resolveInteractiveQuestions({
+        ws,
+        taskId: id,
+        agentId,
+        provider: streamingProvider,
+        sessionKey,
+        systemPrompt: systemPrompt || '',
+        baseMessages: followupMessages,
+        initialContent: followupTurn.cleanContent,
+        initialQuestions: followupTurn.questions,
+        permissions,
+      });
+      if (followupContent) {
+        finalContent += '\n\n---\n\n' + sanitizeAgentOutput(followupContent);
+      }
     }
     taskFollowups.delete(id); // Clean up
     taskToAgent.delete(id);   // Clean up agent tracking
+    taskQuestionResolvers.delete(id); // Clean up pending question waiters
     taskMapTimestamps.delete(id); // Clean up timestamp tracking
 
     // Save to memory (background — don't block response)
@@ -2283,6 +2722,7 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
   } catch (err) {
     taskFollowups.delete(id);
     taskToAgent.delete(id);
+    taskQuestionResolvers.delete(id);
     taskMapTimestamps.delete(id);
     taskAbortControllers.delete(id);
     const msg = err instanceof Error ? err.message : String(err);
@@ -2325,10 +2765,24 @@ export function startDashboard(): { server: ReturnType<typeof createServer>; app
 
 // ── Adversarial Review Loop ─────────────────────────────────────────────────
 
+/** Race a promise against a timeout. Rejects with an Error if the timeout fires first. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer!));
+}
+
 /**
  * Claude (Nova) ↔ Codex (Builder) iterative code review.
  * Nova reviews Builder's code critically. If issues are found, feedback goes
  * back to Builder for revision. Repeats up to MAX_ROUNDS.
+ *
+ * Timeouts prevent the loop from hanging indefinitely — the #1 cause of
+ * "agents stuck for 8 hours" reports.
  */
 async function runReviewLoop(
   ws: WebSocket,
@@ -2341,48 +2795,75 @@ async function runReviewLoop(
   novaSystemPrompt: string,
 ): Promise<{ finalCode: string; rounds: number; approved: boolean; history: Array<{ round: number; phase: string; content: string }> }> {
   const MAX_ROUNDS = 3;
+  const PER_STEP_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes per review or revision step
+  const TOTAL_TIMEOUT_MS = 10 * 60 * 1000;    // 10 minutes for the entire review loop
+  const loopStart = Date.now();
   let currentCode = initialCode;
   const history: Array<{ round: number; phase: string; content: string }> = [];
 
   for (let round = 1; round <= MAX_ROUNDS; round++) {
-    // Tell UI: Nova is reviewing
+    // Check overall timeout
+    if (Date.now() - loopStart > TOTAL_TIMEOUT_MS) {
+      console.warn(`[Review] Total review timeout reached after ${Math.round((Date.now() - loopStart) / 1000)}s — using latest code`);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'task:token', taskId, text: '\n\n*Review loop timed out — using the latest version.*\n\n', tokenType: 'text', agentId: 'nova-1' }));
+        ws.send(JSON.stringify({ type: 'review:complete', taskId, rounds: round - 1, approved: false }));
+      }
+      return { finalCode: currentCode, rounds: round - 1, approved: false, history };
+    }
+
+    // Tell UI: Nova is reviewing (visible to user so they know what's happening)
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'review:round', taskId, round, maxRounds: MAX_ROUNDS,
         phase: 'reviewing', agent: 'nova-1',
       }));
+      ws.send(JSON.stringify({
+        type: 'task:token', taskId,
+        text: `\n\n---\n*Code review round ${round}/${MAX_ROUNDS} — Nova is reviewing Builder's code...*\n\n`,
+        tokenType: 'text', agentId: 'nova-1',
+      }));
     }
 
-    // Nova reviews Builder's code
+    // Nova reviews Builder's code (with timeout)
     const reviewPrompt = round === 1
       ? `Review this code from Builder Prime (Codex). Be critical but constructive.\n\nOriginal task: ${originalTask}\n\nCode to review:\n${currentCode.slice(0, 8000)}\n\nEvaluate:\n1. Does it correctly solve the task?\n2. Are there bugs, edge cases, or security issues?\n3. Is the approach clean and maintainable?\n\nIf the code is good, respond with [APPROVED] and a brief note why.\nIf it needs changes, respond with [REVISE] followed by specific, actionable feedback.`
       : `Review this REVISED code from Builder Prime (round ${round}). They addressed your previous feedback.\n\nOriginal task: ${originalTask}\n\nRevised code:\n${currentCode.slice(0, 8000)}\n\nHas Builder adequately addressed the issues? If yes, respond with [APPROVED]. If not, respond with [REVISE] and remaining issues.`;
 
     let reviewContent = '';
-    await novaProvider.completeStreaming(
-      {
-        messages: [
-          { role: 'system', content: novaSystemPrompt },
-          { role: 'user', content: reviewPrompt },
-        ],
-        agentId: novaSessionKey,
-      },
-      (data: { text: string; type: string }) => {
-        // Accumulate review text silently — don't stream to parent task.
-        // The review is an internal Nova↔Builder process; the user only
-        // sees the final synthesis after all reviews/revisions complete.
-        reviewContent += data.text;
-      },
-    );
+    try {
+      await withTimeout(
+        novaProvider.completeStreaming(
+          {
+            messages: [
+              { role: 'system', content: novaSystemPrompt },
+              { role: 'user', content: reviewPrompt },
+            ],
+            agentId: novaSessionKey,
+          },
+          (data: { text: string; type: string }) => {
+            reviewContent += data.text;
+          },
+        ),
+        PER_STEP_TIMEOUT_MS,
+        `Review round ${round}`,
+      );
+    } catch (err) {
+      console.warn(`[Review] Round ${round} review timed out — auto-approving`);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'task:token', taskId, text: `\n\n*Review round ${round} timed out — auto-approving current code.*\n\n`, tokenType: 'text', agentId: 'nova-1' }));
+        ws.send(JSON.stringify({ type: 'review:complete', taskId, rounds: round, approved: false }));
+      }
+      return { finalCode: currentCode, rounds: round, approved: false, history };
+    }
 
     history.push({ round, phase: 'review', content: reviewContent.slice(0, 500) });
 
     // Check verdict
     if (reviewContent.includes('[APPROVED]')) {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'review:complete', taskId, rounds: round, approved: true,
-        }));
+        ws.send(JSON.stringify({ type: 'task:token', taskId, text: `\n\n*Code approved after ${round} round(s) of review.*\n\n`, tokenType: 'text', agentId: 'nova-1' }));
+        ws.send(JSON.stringify({ type: 'review:complete', taskId, rounds: round, approved: true }));
       }
       return { finalCode: currentCode, rounds: round, approved: true, history };
     }
@@ -2394,13 +2875,29 @@ async function runReviewLoop(
           type: 'review:round', taskId, round, maxRounds: MAX_ROUNDS,
           phase: 'revising', agent: 'builder-1',
         }));
+        ws.send(JSON.stringify({
+          type: 'task:token', taskId,
+          text: `\n\n*Nova requested changes — Builder is revising (round ${round + 1})...*\n\n`,
+          tokenType: 'text', agentId: 'nova-1',
+        }));
       }
 
       const revisionPrompt = `Nova (Claude) reviewed your code and requested changes:\n\n${reviewContent}\n\nOriginal task: ${originalTask}\n\nYour previous code is already applied. Address every point of feedback and revise the code.`;
       const subTaskId = `${taskId}-review-r${round}`;
-      // Don't forward revision tokens to parent — review loop is internal.
-      // Pass undefined as parentTaskId so tokens only go to the sub-task.
-      currentCode = await handleStreamingTask(ws, revisionPrompt, 'builder-1', subTaskId, conversationId, undefined);
+      try {
+        currentCode = await withTimeout(
+          handleStreamingTask(ws, revisionPrompt, 'builder-1', subTaskId, conversationId, undefined),
+          PER_STEP_TIMEOUT_MS,
+          `Revision round ${round}`,
+        );
+      } catch (err) {
+        console.warn(`[Review] Round ${round} revision timed out — using previous code`);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'task:token', taskId, text: `\n\n*Builder revision timed out — using previous version.*\n\n`, tokenType: 'text', agentId: 'nova-1' }));
+          ws.send(JSON.stringify({ type: 'review:complete', taskId, rounds: round, approved: false }));
+        }
+        return { finalCode: currentCode, rounds: round, approved: false, history };
+      }
 
       history.push({ round, phase: 'revision', content: currentCode.slice(0, 500) });
     }
@@ -2408,9 +2905,8 @@ async function runReviewLoop(
 
   // Max rounds reached
   if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      type: 'review:complete', taskId, rounds: MAX_ROUNDS, approved: false,
-    }));
+    ws.send(JSON.stringify({ type: 'task:token', taskId, text: `\n\n*Max review rounds (${MAX_ROUNDS}) reached — using latest version.*\n\n`, tokenType: 'text', agentId: 'nova-1' }));
+    ws.send(JSON.stringify({ type: 'review:complete', taskId, rounds: MAX_ROUNDS, approved: false }));
   }
   return { finalCode: currentCode, rounds: MAX_ROUNDS, approved: false, history };
 }

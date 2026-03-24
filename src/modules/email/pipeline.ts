@@ -11,24 +11,24 @@ import { extractDeliveryPhotoUrls, downloadDeliveryPhoto } from './delivery-phot
 import { extractTrackingInfo } from './tracking-extractor.js';
 
 // ── Hivemind event bus integration ─────────────────────────────────────────
-// Lazy-loaded to avoid circular deps and keep pipeline usable standalone
-let _emailBus: import('events').EventEmitter | null = null;
-function getEmailBus(): import('events').EventEmitter | null {
-  if (_emailBus === undefined) return null;
-  if (_emailBus === null) {
-    try {
-      // Dynamic import avoids hard dep — pipeline still works without Hivemind
-      const mod = require('./index.js');
-      _emailBus = mod.emailBus ?? null;
-    } catch {
-      _emailBus = undefined as any; // Mark as unavailable, stop retrying
-      return null;
-    }
+import { EventEmitter } from 'events';
+let _emailBus: EventEmitter | null = null;
+let _emailBusResolved = false;
+
+async function resolveEmailBus(): Promise<void> {
+  if (_emailBusResolved) return;
+  _emailBusResolved = true;
+  try {
+    const mod = await import('./index.js');
+    _emailBus = mod.emailBus ?? null;
+  } catch {
+    _emailBus = null;
   }
-  return _emailBus;
 }
+resolveEmailBus();
+
 function emitEmailEvent(event: string, data: unknown): void {
-  getEmailBus()?.emit(event, data);
+  _emailBus?.emit(event, data);
 }
 
 // ── Amazon Seller Alert Detection ───────────────────────────────────────────

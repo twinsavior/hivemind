@@ -918,12 +918,18 @@ describe("edge cases", () => {
   });
 
   it("saveProfile to read-only dir does not silently succeed", () => {
-    // Use a path with a reserved device name that can't be a directory on Windows,
-    // and /proc/0/ which is not writable on Linux/macOS
-    const impossiblePath = process.platform === "win32"
-      ? "\\\\.\\.\\NUL\\impossible\\profile.json"
-      : "/proc/0/impossible/profile.json";
-    expect(() => saveProfile(getDefaultProfile(), impossiblePath)).toThrow();
+    // Create a temp dir, then make it read-only so writeFileSync fails.
+    // On Windows CI (admin), chmod is a no-op, so skip there.
+    if (process.platform === "win32") return; // fs.chmod has no effect on Windows NTFS with admin
+    const readonlyDir = path.join(os.tmpdir(), `hivemind-ro-test-${Date.now()}`);
+    fs.mkdirSync(readonlyDir, { recursive: true });
+    fs.chmodSync(readonlyDir, 0o444);
+    try {
+      expect(() => saveProfile(getDefaultProfile(), path.join(readonlyDir, "profile.json"))).toThrow();
+    } finally {
+      fs.chmodSync(readonlyDir, 0o755);
+      fs.rmSync(readonlyDir, { recursive: true, force: true });
+    }
   });
 
   it("loadProfile handles empty file as corrupted", () => {

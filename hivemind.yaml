@@ -6,11 +6,11 @@ llm:
   primary:
     provider: anthropic
     model: "anthropic/claude-sonnet-4-20250514"
-    maxTokens: 4096
+    maxTokens: 16000
   fallback:
     provider: ollama
     model: llama3.2
-    maxTokens: 4096
+    maxTokens: 16000
 
 agents:
   coordinator:
@@ -31,14 +31,56 @@ agents:
 
 skills: []
 
+# ── Connectors ─────────────────────────────────────────────────────────────────
+# Connectors link your swarm to external platforms (Discord, Slack, Telegram, etc.).
+# Messages flow bidirectionally through connectors.
+#
+# triggerMode: "mention" (default) = only process @bot mentions and !hivemind prefix
+#              "all" = process every message in the channel
+# listenAllChannels: channel IDs where ALL messages are processed regardless of triggerMode
+#
+# Uncomment and configure the connectors you want to use:
 connectors: []
+  # - type: discord
+  #   name: discord
+  #   config:
+  #     token: $DISCORD_BOT_TOKEN
+  #     guildIds: []              # Empty = all guilds the bot is in
+  #     channelIds: []            # Empty = all channels (filter with triggerMode instead)
+  #     triggerMode: mention      # "mention" or "all"
+  #     listenAllChannels: []     # Channel IDs where all messages are processed
+  #
+  # - type: slack
+  #   name: slack
+  #   config:
+  #     token: $SLACK_BOT_TOKEN
+  #     channels: []
+  #     triggerMode: mention
+  #
+  # - type: telegram
+  #   name: telegram
+  #   config:
+  #     token: $TELEGRAM_BOT_TOKEN
+  #     allowedChatIds: []
+  #     triggerMode: all
+  #
+  # - type: webhook
+  #   name: ci-webhook
+  #   config:
+  #     inbound:
+  #       port: 9090
+  #       path: /webhook
+  #       secret: $WEBHOOK_SECRET
+  #     outbound:
+  #       url: https://hooks.example.com/hivemind
+  #       retries: 3
 
 # Security — owner verification for connector messages.
 # Messages from these platform user IDs get full OWNER trust.
 # All other connector messages are sandboxed to read-only.
 # Find your IDs:
-#   Slack:    Your member ID in profile → "..." → "Copy member ID"
-#   Discord:  Enable Developer Mode → right-click your name → "Copy User ID"
+#   Slack:    Your member ID in profile -> "..." -> "Copy member ID"
+#   Discord:  Enable Developer Mode -> right-click your name -> "Copy User ID"
 #   Telegram: Send /start to @userinfobot
 security:
   ownerIds:

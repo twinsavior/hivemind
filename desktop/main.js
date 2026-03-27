@@ -62,16 +62,43 @@ function findNode() {
 
 function startHivemindServer() {
   return new Promise((resolve, reject) => {
-    const tsxCli = path.join(HIVEMIND_DIR, 'node_modules', 'tsx', 'dist', 'cli.mjs');
-    const cliPath = path.join(HIVEMIND_DIR, 'src', 'cli', 'index.ts');
     const nodeBin = findNode();
+    let spawnCmd, spawnArgs, cwd;
 
-    // Run tsx directly via node to avoid shebang/PATH issues in macOS GUI apps.
-    // Use arch -arm64 to prevent Rosetta from forcing x86_64 on universal node binary.
-    console.log('[HIVEMIND] Starting server: arch -arm64', nodeBin, tsxCli, cliPath);
+    if (app.isPackaged) {
+      // Packaged app: run compiled JS from extraResources
+      const serverDir = path.join(process.resourcesPath, 'server');
+      const cliPath = path.join(serverDir, 'cli', 'index.js');
+      cwd = path.join(process.resourcesPath, '..');
 
-    hivemindProcess = spawn('/usr/bin/arch', ['-arm64', nodeBin, tsxCli, cliPath, 'up'], {
-      cwd: HIVEMIND_DIR,
+      if (process.platform === 'darwin') {
+        spawnCmd = '/usr/bin/arch';
+        spawnArgs = ['-arm64', nodeBin, cliPath, 'up'];
+      } else {
+        spawnCmd = nodeBin;
+        spawnArgs = [cliPath, 'up'];
+      }
+
+      console.log('[HIVEMIND] Starting packaged server:', spawnCmd, spawnArgs.join(' '));
+    } else {
+      // Dev mode: run TypeScript source via tsx
+      const tsxCli = path.join(HIVEMIND_DIR, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+      const cliPath = path.join(HIVEMIND_DIR, 'src', 'cli', 'index.ts');
+      cwd = HIVEMIND_DIR;
+
+      if (process.platform === 'darwin') {
+        spawnCmd = '/usr/bin/arch';
+        spawnArgs = ['-arm64', nodeBin, tsxCli, cliPath, 'up'];
+      } else {
+        spawnCmd = nodeBin;
+        spawnArgs = [tsxCli, cliPath, 'up'];
+      }
+
+      console.log('[HIVEMIND] Starting dev server:', spawnCmd, spawnArgs.join(' '));
+    }
+
+    hivemindProcess = spawn(spawnCmd, spawnArgs, {
+      cwd: cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, FORCE_COLOR: '0' },
       detached: false,
@@ -213,7 +240,7 @@ ipcMain.handle('get-metrics', async () => {
 
 // ── Folder / Repo Picker ──────────────────────────────────────────────────
 
-let activeWorkDir = HIVEMIND_DIR;
+let activeWorkDir = app.isPackaged ? (process.env.HOME || process.env.USERPROFILE || HIVEMIND_DIR) : HIVEMIND_DIR;
 const recentFolders = [];
 const RECENT_FILE = path.join(app.getPath('userData'), 'recent-folders.json');
 
@@ -410,7 +437,11 @@ app.on('window-all-closed', () => {
   }
   // Force kill anything on the port to prevent zombies on next launch
   try {
-    execSync(`lsof -ti :${HIVEMIND_PORT} | xargs kill -9 2>/dev/null || true`, { timeout: 3000 });
+    if (process.platform === 'win32') {
+      execSync(`netstat -ano | findstr :${HIVEMIND_PORT} | findstr LISTENING > nul && for /f "tokens=5" %a in ('netstat -ano ^| findstr :${HIVEMIND_PORT} ^| findstr LISTENING') do taskkill /F /PID %a`, { timeout: 3000 });
+    } else {
+      execSync(`lsof -ti :${HIVEMIND_PORT} | xargs kill -9 2>/dev/null || true`, { timeout: 3000 });
+    }
   } catch { /* ignore */ }
   app.quit();
 });
@@ -422,7 +453,11 @@ app.on('before-quit', () => {
     hivemindProcess = null;
   }
   try {
-    execSync(`lsof -ti :${HIVEMIND_PORT} | xargs kill -9 2>/dev/null || true`, { timeout: 3000 });
+    if (process.platform === 'win32') {
+      execSync(`for /f "tokens=5" %a in ('netstat -ano ^| findstr :${HIVEMIND_PORT} ^| findstr LISTENING') do taskkill /F /PID %a`, { timeout: 3000 });
+    } else {
+      execSync(`lsof -ti :${HIVEMIND_PORT} | xargs kill -9 2>/dev/null || true`, { timeout: 3000 });
+    }
   } catch { /* ignore */ }
 });
 

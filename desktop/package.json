@@ -1,6 +1,6 @@
 {
   "name": "hivemind-desktop",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "description": "HIVEMIND Desktop – AI-powered operations manager for Amazon, Walmart & eBay sellers",
   "main": "main.js",
   "private": true,
@@ -34,16 +34,20 @@
         "from": "../skills",
         "to": "skills",
         "filter": ["**/*"]
+      },
+      {
+        "from": "../package.json",
+        "to": "package.json"
       }
     ],
     "mac": {
       "category": "public.app-category.business",
       "target": ["dmg", "zip"],
-      "icon": "renderer/icon.icns"
+      "icon": "icon.icns"
     },
     "win": {
       "target": ["nsis"],
-      "icon": "renderer/icon.ico"
+      "icon": "icon.png"
     },
     "nsis": {
       "oneClick": true,

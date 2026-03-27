@@ -1560,6 +1560,51 @@
       background: rgba(99, 102, 241, 0.1);
     }
 
+    /* ── Update banner ────────────────────────────────────────────────────── */
+    #update-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: rgba(34, 197, 94, 0.1);
+      border-bottom: 1px solid rgba(34, 197, 94, 0.25);
+      font-size: 13px;
+      color: #4ade80;
+      font-weight: 500;
+      z-index: 100;
+    }
+    #update-banner .update-msg { flex: 1; }
+    #update-banner .update-relaunch {
+      padding: 4px 14px;
+      border-radius: 6px;
+      background: #22c55e;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    #update-banner .update-relaunch:hover { opacity: 0.9; }
+    #update-banner .update-dismiss {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+    }
+    #update-progress-bar {
+      display: none;
+      height: 2px;
+      background: rgba(34, 197, 94, 0.15);
+    }
+    #update-progress-fill {
+      height: 100%;
+      background: #22c55e;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
     /* ── Error toast ──────────────────────────────────────────────────────── */
     .error-msg {
       background: rgba(239, 68, 68, 0.15);
@@ -2136,6 +2181,12 @@
 
     <!-- Main Chat -->
     <div id="main">
+      <div id="update-banner">
+        <span class="update-msg" id="update-msg"></span>
+        <button class="update-relaunch" id="update-relaunch-btn">Relaunch</button>
+        <button class="update-dismiss" id="update-dismiss-btn" title="Dismiss">&times;</button>
+      </div>
+      <div id="update-progress-bar"><div id="update-progress-fill"></div></div>
       <div class="chat-header">
         <span class="chat-header-title" id="chat-title">New Chat</span>
         <span class="chat-header-agent" id="chat-agent-label"></span>
@@ -7129,6 +7180,44 @@
     window.hivemind.onServerLog((log) => {
       console.log('[HIVEMIND]', log);
     });
+
+    // ── Auto-update UI ────────────────────────────────────────────────────
+    if (window.hivemind.onUpdateStatus) {
+      window.hivemind.onUpdateStatus((data) => {
+        const banner = document.getElementById('update-banner');
+        const msg = document.getElementById('update-msg');
+        const progressBar = document.getElementById('update-progress-bar');
+        const progressFill = document.getElementById('update-progress-fill');
+
+        if (data.event === 'update-available') {
+          progressBar.style.display = 'block';
+        }
+
+        if (data.event === 'update-progress') {
+          progressBar.style.display = 'block';
+          progressFill.style.width = Math.round(data.percent) + '%';
+        }
+
+        if (data.event === 'update-downloaded') {
+          progressBar.style.display = 'none';
+          banner.style.display = 'flex';
+          msg.textContent = 'HIVEMIND ' + data.version + ' ready \u2014 relaunch to apply';
+        }
+
+        if (data.event === 'update-error') {
+          progressBar.style.display = 'none';
+          console.log('[Update error]', data.message);
+        }
+      });
+
+      document.getElementById('update-relaunch-btn').addEventListener('click', () => {
+        window.hivemind.installUpdate();
+      });
+
+      document.getElementById('update-dismiss-btn').addEventListener('click', () => {
+        document.getElementById('update-banner').style.display = 'none';
+      });
+    }
 
     // ── Init ──────────────────────────────────────────────────────────────
     pollStatus();

@@ -17,4 +17,9 @@ contextBridge.exposeInMainWorld('hivemind', {
   // Image / file attachments
   saveAttachment: (name, base64Data) => ipcRenderer.invoke('save-attachment', { name, base64Data }),
   browseImages: () => ipcRenderer.invoke('browse-images'),
+
+  // Auto-update
+  onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_e, data) => callback(data)),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
 });

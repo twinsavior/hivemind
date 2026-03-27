@@ -52,6 +52,8 @@ jobs:
       - name: Build desktop app
         working-directory: desktop
         run: ${{ matrix.build-cmd }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -61,6 +63,8 @@ jobs:
             desktop/dist-electron/*.dmg
             desktop/dist-electron/*.zip
             desktop/dist-electron/*.exe
+            desktop/dist-electron/*.yml
+            desktop/dist-electron/*.blockmap
           if-no-files-found: error
 
   create-release:

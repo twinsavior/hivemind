@@ -335,15 +335,15 @@ llm:
   primary:
     provider: claude-code
     model: claude-code
-    maxTokens: 4096
+    maxTokens: 16000
   code:
     provider: codex
     model: codex
-    maxTokens: 4096
+    maxTokens: 16000
   fallback:
     provider: ollama
     model: llama3.2
-    maxTokens: 4096
+    maxTokens: 16000
 
 agents:
   coordinator:

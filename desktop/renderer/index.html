@@ -4240,7 +4240,7 @@
       { key: 'llm', label: 'LLM Providers', fields: [
         { key: 'primary_provider', label: 'Primary Provider', type: 'select', value: 'claude-code', options: ['claude-code', 'anthropic', 'openai', 'ollama', 'codex'], description: 'Main LLM provider for research agents' },
         { key: 'code_provider', label: 'Code Provider', type: 'select', value: 'codex', options: ['codex', 'claude-code', 'anthropic', 'openai', 'ollama'], description: 'Provider for code-focused agents' },
-        { key: 'max_tokens', label: 'Max Tokens', type: 'number', value: 4096, description: 'Maximum token output per request' },
+        { key: 'max_tokens', label: 'Max Tokens', type: 'number', value: 16000, description: 'Maximum token output per request' },
         { key: 'temperature', label: 'Temperature', type: 'number', value: 0.7, description: 'Sampling temperature (0-2)' },
       ]},
       { key: 'agents', label: 'Agent Config', fields: [

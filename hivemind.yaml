@@ -6,11 +6,11 @@ llm:
   primary:
     provider: anthropic
     model: "anthropic/claude-sonnet-4-20250514"
-    maxTokens: 4096
+    maxTokens: 16000
   fallback:
     provider: ollama
     model: llama3.2
-    maxTokens: 4096
+    maxTokens: 16000
 
 agents:
   coordinator:

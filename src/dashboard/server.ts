@@ -3357,5 +3357,130 @@ export function getInjectedSwarmState() {
   return _injectedSwarmState;
 }
 
+// ─── Connector Task Submission ────────────────────────────────────────────────
+
+import type { ConnectorStatus } from '../connectors/connector-manager.js';
+
+/** Connector manager reference — set by upCommand after initialization. */
+let _connectorManager: { getStatuses(): ConnectorStatus[] } | null = null;
+
+export function setConnectorManager(cm: { getStatuses(): ConnectorStatus[] }) {
+  _connectorManager = cm;
+}
+
+/**
+ * Submit a task from a connector (Discord, Slack, etc.) and return the result.
+ *
+ * Unlike WebSocket-based tasks, this collects the full streamed response and
+ * returns it as a string. Used by ConnectorManager to bridge inbound messages
+ * to the task system.
+ */
+export async function submitConnectorTask(
+  description: string,
+  _taskSource: TaskSource,
+): Promise<string> {
+  const swarm = getInjectedSwarmState();
+  if (!swarm) throw new Error('Swarm not ready');
+
+  const nova = swarm.agents.get('nova-1');
+  if (!nova) throw new Error('Nova agent not available');
+
+  const id = `task-conn-${Date.now().toString(36)}`;
+  const novaSessionKey = `nova-1:connector:${id}`;
+
+  // Load context (simplified — no conversation history for connector tasks)
+  const metricsTracker = (swarm as any).metricsTracker;
+  const metricsContext = metricsTracker?.formatForPrompt?.() || '';
+  const [memoryContext, projectKnowledge, sellerContext] = await Promise.all([
+    loadMemoryContext(description),
+    loadProjectKnowledge(description),
+    loadSellerContext(),
+  ]);
+
+  const novaSystemPrompt = (nova as any).systemPrompt
+    + (projectKnowledge || '')
+    + (metricsContext ? `\n\n${metricsContext}` : '')
+    + (memoryContext ? `\n\n## Prior Context from Memory\n${memoryContext}` : '')
+    + (sellerContext || '');
+
+  // Emit task start event to bus
+  bus.emit('task:event', {
+    id: `evt-${Date.now().toString(36)}-conn`,
+    agentId: 'nova-1',
+    agentName: 'Nova',
+    agentType: 'coordinator',
+    action: 'coordinate (connector)',
+    detail: description.slice(0, 100),
+    timestamp: Date.now(),
+    status: 'started',
+  } satisfies TaskEvent);
+
+  const llm = (nova as any).llm;
+  let provider = llm?.getProvider?.('claude-code');
+  if (!provider?.completeStreaming) {
+    provider = llm?.getDefaultProvider?.();
+  }
+
+  if (!provider?.completeStreaming) {
+    throw new Error('No streaming LLM provider available');
+  }
+
+  // Collect the full response (no WebSocket streaming)
+  let fullContent = '';
+  await provider.completeStreaming(
+    {
+      messages: [
+        { role: 'system', content: novaSystemPrompt },
+        { role: 'user', content: description },
+      ],
+      agentId: novaSessionKey,
+    },
+    (data: { text: string; type: string }) => {
+      if (data.type === 'text') {
+        fullContent += data.text;
+      }
+    },
+  );
+
+  // Strip [ASK_USER] blocks from connector responses (no interactive UI)
+  const { cleanText } = extractAskUserBlocks(fullContent);
+
+  // Emit task completion
+  bus.emit('task:event', {
+    id: `evt-${Date.now().toString(36)}-conn-done`,
+    agentId: 'nova-1',
+    agentName: 'Nova',
+    agentType: 'coordinator',
+    action: 'coordinate (connector)',
+    detail: 'completed',
+    timestamp: Date.now(),
+    status: 'completed',
+  } satisfies TaskEvent);
+
+  // Save to memory in background (fire-and-forget)
+  saveTaskMemory(description, 'nova-1', cleanText || fullContent).catch(() => {});
+
+  return cleanText || fullContent;
+}
+
+// ─── Connector status REST endpoint ──────────────────────────────────────────
+
+app.get('/api/connectors', (_req, res) => {
+  if (!_connectorManager) {
+    res.json({ connectors: [] });
+    return;
+  }
+  res.json({ connectors: _connectorManager.getStatuses() });
+});
+
+// Broadcast connector status changes to WebSocket clients
+bus.on('connector:status', (statuses: ConnectorStatus[]) => {
+  broadcast({ type: 'connector:status', payload: statuses } as any);
+});
+
+bus.on('connector:message', (data: unknown) => {
+  broadcast({ type: 'connector:message', payload: data } as any);
+});
+
 export { app, server, bus, agents, broadcast, swarmGraph };
 export type { AgentInfo, SwarmMetrics, TaskEvent, WSMessage, SwarmGraphState, SwarmNode, SwarmEdge };

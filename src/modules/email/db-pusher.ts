@@ -476,8 +476,12 @@ export function coerceValue(value: unknown, hint?: 'number' | 'date' | 'string')
     return dateAttempt.toISOString().split('T')[0]; // "2026-03-05"
   }
 
-  // Strip common currency/unit suffixes and try to parse as number
-  const stripped = value.replace(/\s*(USD|EUR|GBP|CAD|AUD|JPY|CNY|INR|BRL|MXN|CHF|KRW|SEK|NOK|DKK|NZD|SGD|HKD|TWD|ZAR|PLN|CZK|HUF|ILS|THB|PHP|IDR|MYR|VND)\s*$/i, '').trim();
+  // Strip common currency prefixes AND suffixes and try to parse as number
+  const stripped = value
+    .replace(/^[\s$€£¥₹₩₱₫₴₦₵₡₣₤₧₨₪₭₮₯₲₳₽₾₿]+/, '') // currency symbols prefix
+    .replace(/\s*(USD|EUR|GBP|CAD|AUD|JPY|CNY|INR|BRL|MXN|CHF|KRW|SEK|NOK|DKK|NZD|SGD|HKD|TWD|ZAR|PLN|CZK|HUF|ILS|THB|PHP|IDR|MYR|VND)\s*$/i, '') // currency code suffix
+    .replace(/,/g, '') // thousand separators (1,234.56 → 1234.56)
+    .trim();
   const num = Number(stripped);
   if (!isNaN(num) && stripped !== '') return num;
 

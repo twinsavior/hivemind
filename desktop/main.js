@@ -111,7 +111,30 @@ function startHivemindServer() {
     hivemindProcess.on('exit', (code) => {
       console.error('[HIVEMIND process exit] code:', code);
       hivemindProcess = null;
-      if (!started) reject(new Error(`Server exited with code ${code}`));
+      if (!started) {
+        reject(new Error(`Server exited with code ${code}`));
+      } else {
+        // Auto-restart if the server crashes after it was already running
+        console.log('[HIVEMIND] Server died unexpectedly, restarting in 2 seconds...');
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('server-status', 'restarting');
+        }
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            console.log('[HIVEMIND] Restarting server...');
+            startHivemindServer()
+              .then(() => {
+                console.log('[HIVEMIND] Server restarted successfully');
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                  mainWindow.webContents.send('server-status', 'ready');
+                }
+              })
+              .catch((err) => {
+                console.error('[HIVEMIND] Server restart failed:', err.message);
+              });
+          }
+        }, 2000);
+      }
     });
 
     // Timeout: if server doesn't start in 30s, resolve anyway and let UI show error

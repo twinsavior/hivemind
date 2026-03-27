@@ -42,6 +42,8 @@ export interface SkillMetadata {
   tags?: string[];
   /** Author identifier */
   author?: string;
+  /** Optional skills are available via /slash-command but don't auto-trigger on user prompts */
+  optional?: boolean;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,10 +1,9 @@
-import { getSetting, getAllRules, getAllDestinations, getExtractionConfig, isEmailProcessed, isBlockedSender, insertProcessedEmail, deleteProcessedEmail, deleteOrdersByEmail, upsertOrder, createPipelineRun, completePipelineRun, getUpsertHistory, setUpsertHistory, getOrderItemPrices, updateOrderDeliveryPhoto, getExistingOrderItemNames, updateOrderSharedFields, deleteUnknownOrderItems, enqueuePushRetry, getDuePushQueueItems, updatePushQueueItem, getDestination, isSellerAlertProcessed, insertSellerAlert } from './db.js';
+import { getSetting, getAllRules, getAllDestinations, getExtractionConfig, isEmailProcessed, isEmailProcessedByContent, isBlockedSender, insertProcessedEmail, deleteProcessedEmail, deleteOrdersByEmail, upsertOrder, createPipelineRun, completePipelineRun, getUpsertHistory, setUpsertHistory, getOrderItemPrices, updateOrderDeliveryPhoto, getExistingOrderItemNames, updateOrderSharedFields, deleteUnknownOrderItems, enqueuePushRetry, getDuePushQueueItems, updatePushQueueItem, getDestination, isSellerAlertProcessed, insertSellerAlert, getAccountLastUid, setAccountLastUid } from './db.js';
 import { searchRecentMessages, getMessageMetadata, getMessageBody, getMessageHtml, getAttachments, getEnabledAccounts, getClientForAccount, type EmailClient } from './email-client.js';
 import { flagEmail } from './flag-engine.js';
-import { processEmail, processEmailWithInstructions, screenSubjectLines, extractPdfText } from './gemini-processor.js';
-import type { GeminiUsage } from './gemini-processor.js';
+import { processEmail, processEmailWithInstructions, screenSubjectLines, extractPdfText } from './llm-extractor.js';
+import type { LLMUsage } from './llm-extractor.js';
 import { pushToDestination, buildFields, coerceValue } from './db-pusher.js';
-import { calculateCost } from './pricing.js';
 import { getTemplate } from './retailer-templates.js';
 import { normalizeExtractedItems } from './item-normalizer.js';
 import { extractDeliveryPhotoUrls, downloadDeliveryPhoto } from './delivery-photo.js';
@@ -39,6 +38,27 @@ const AMAZON_ALERT_SENDERS = [
   'noreply@amazon.com',
   'payments-messages@amazon.com',
   'fba-noreply@amazon.com',
+  'shipment-tracking@amazon.com',
+  'seller-performance@amazon.com',
+];
+
+// Domain-based patterns for broader Amazon alert detection
+const AMAZON_ALERT_DOMAINS = [
+  '@amazon.com',
+  '@amazon.co.uk',
+  '@amazon.de',
+  '@amazon.ca',
+  '@amazonsellerservices.com',
+];
+
+const WALMART_ALERT_DOMAINS = [
+  '@walmart.com',
+  '@walmartcommerce.com',
+];
+
+const EBAY_ALERT_DOMAINS = [
+  '@ebay.com',
+  '@reply.ebay.com',
 ];
 
 const URGENCY_KEYWORDS: Record<string, string[]> = {
@@ -75,6 +95,27 @@ function classifyAlertType(subject: string): string {
   return 'other';
 }
 
+function isMarketplaceAlertSender(fromEmail: string | undefined): { isAlert: boolean; marketplace?: 'amazon' | 'walmart' | 'ebay' } {
+  if (!fromEmail) return { isAlert: false };
+  const lower = fromEmail.toLowerCase();
+  // Check exact Amazon senders first (most common)
+  if (AMAZON_ALERT_SENDERS.some(s => lower === s || lower.includes(s))) {
+    return { isAlert: true, marketplace: 'amazon' };
+  }
+  // Then check domain patterns for all marketplaces
+  if (AMAZON_ALERT_DOMAINS.some(d => lower.endsWith(d))) {
+    return { isAlert: true, marketplace: 'amazon' };
+  }
+  if (WALMART_ALERT_DOMAINS.some(d => lower.endsWith(d))) {
+    return { isAlert: true, marketplace: 'walmart' };
+  }
+  if (EBAY_ALERT_DOMAINS.some(d => lower.endsWith(d))) {
+    return { isAlert: true, marketplace: 'ebay' };
+  }
+  return { isAlert: false };
+}
+
+// Keep backwards-compatible wrapper
 function isAmazonAlertSender(fromEmail: string | undefined): boolean {
   if (!fromEmail) return false;
   const lower = fromEmail.toLowerCase();
@@ -287,6 +328,7 @@ export interface PipelineResult {
   emails_errored: number;
   error_message: string | null;
   duration_ms: number;
+  diagnostics: string[];
 }
 
 export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<PipelineResult> {
@@ -304,6 +346,7 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
   let emailsPushed = 0;
   let emailsSkipped = 0;
   let emailsErrored = 0;
+  const diagnostics: string[] = [];
 
   try {
     // 1. Load rules and destinations
@@ -362,7 +405,16 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
       }));
 
     const extractionConfig = getExtractionConfig();
-    const extractionEnabled = extractionConfig?.enabled;
+    // Extraction requires the LLM extractor to be injected (uses existing Claude subscription)
+    const { hasLLMExtractor } = await import('./llm-extractor.js');
+    const extractionEnabled = extractionConfig?.enabled && hasLLMExtractor();
+
+    // Diagnostics: rule count
+    const enabledRuleCount = rawRules.length;
+    diagnostics.push(`${enabledRuleCount} rule${enabledRuleCount !== 1 ? 's' : ''} enabled`);
+
+    // Diagnostics: extraction status
+    diagnostics.push(`LLM extraction: ${extractionEnabled ? 'active' : 'inactive'}`);
 
     // 2b. Load enabled accounts (multi-account support)
     const accounts = getEnabledAccounts();
@@ -370,6 +422,11 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
     const accountList = accounts.length > 0
       ? accounts.map(a => ({ account: a, client: getClientForAccount(a) }))
       : [{ account: null, client: null }]; // null = use legacy functions
+
+    // Diagnostics: account connection status
+    if (accounts.length === 0) {
+      diagnostics.push('No email accounts configured (using legacy connection)');
+    }
 
     // 3. Process each account
     for (const { account, client } of accountList) {
@@ -388,13 +445,29 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
 
       // Fetch recent emails for this account
       let emails: import('./types.js').EmailData[];
+      const sinceUid = (account?.type === 'imap' && accountId) ? getAccountLastUid(accountId) : null;
       try {
         emails = client
-          ? await client.searchRecentMessages(lookbackMinutes, maxEmails)
+          ? await client.searchRecentMessages(lookbackMinutes, maxEmails, sinceUid ?? undefined)
           : await searchRecentMessages(lookbackMinutes, maxEmails);
+        if (account) {
+          diagnostics.push(`Connected to ${account.email} (${account.type === 'imap' ? 'IMAP' : 'Gmail OAuth'})`);
+        }
       } catch (e) {
         console.error(`Pipeline ${accountLabel}: failed to fetch emails:`, e);
+        const errDetail = e instanceof Error ? e.message : String(e);
+        if (account) {
+          diagnostics.push(`FAILED to connect to ${account.email} (${account.type === 'imap' ? 'IMAP' : 'Gmail OAuth'}): ${errDetail}`);
+        } else {
+          diagnostics.push(`FAILED to connect to default account: ${errDetail}`);
+        }
         continue;
+      }
+
+      // Track highest UID seen for incremental sync
+      let highestUid = sinceUid ?? 0;
+      for (const em of emails) {
+        if (em.uid && em.uid > highestUid) highestUid = em.uid;
       }
       emailsScanned += emails.length;
 
@@ -424,8 +497,15 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
           continue;
         }
 
-        // Check if sender is blocked
-        if (emailMeta.from_email && isBlockedSender(emailMeta.from_email)) {
+        // Secondary dedup: check by from_email + subject + date (within 1 minute)
+        // Catches duplicates when IMAP Message-ID headers are missing or unreliable
+        if (isEmailProcessedByContent(emailMeta.from_email, emailMeta.subject, emailMeta.date)) {
+          emailsSkipped++;
+          continue;
+        }
+
+        // Check if sender is blocked (global or per-account)
+        if (emailMeta.from_email && isBlockedSender(emailMeta.from_email, accountId)) {
           insertProcessedEmail({
             gmail_message_id: emailMeta.message_id,
             thread_id: emailMeta.thread_id,
@@ -501,9 +581,7 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
       // Record skipped emails from screening
       for (const emailMeta of needsScreening) {
         if (!screenedPassIds.has(emailMeta.message_id)) {
-          const screenCost = screeningTokensPrompt > 0
-            ? calculateCost('gemini-3-flash-preview', screeningTokensPrompt, screeningTokensCompletion) / needsScreening.length
-            : undefined;
+          const screenCost = 0; // Free — uses existing Claude subscription
           insertProcessedEmail({
             gmail_message_id: emailMeta.message_id,
             thread_id: emailMeta.thread_id,
@@ -578,7 +656,7 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
           const mergedData: Record<string, unknown> = {};
 
           for (const [instructions, { ruleNames, expectedFields }] of instructionGroups) {
-            let result: { data: Record<string, unknown>; usage: GeminiUsage };
+            let result: { data: Record<string, unknown>; usage: LLMUsage };
 
             if (instructions === '') {
               // Global schema extraction
@@ -747,10 +825,8 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
 
         if (pushedDestinations.length > 0) emailsPushed++;
 
-        // Calculate cost
-        const estimatedCost = totalPromptTokens > 0 || totalCompletionTokens > 0
-          ? calculateCost('gemini-3-flash-preview', totalPromptTokens, totalCompletionTokens)
-          : undefined;
+        // Cost is $0 — uses existing Claude subscription
+        const estimatedCost = 0;
 
         // Record processed email
         const processedEmailId = insertProcessedEmail({
@@ -806,6 +882,13 @@ export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<Pipe
         });
       }
     }
+
+    // Update last_uid for incremental IMAP sync after processing this account's emails
+    if (account?.type === 'imap' && accountId && highestUid > 0) {
+      setAccountLastUid(accountId, highestUid);
+    }
+
+    } // end account loop
 
     // ── Amazon Seller Alert Detection ─────────────────────────────────────
     // Second pass: check ALL fetched emails for Amazon seller notifications
@@ -886,13 +969,34 @@ Return ONLY valid JSON: {"alert_type": "...", "urgency": "...", "summary": "..."
             summary: finalSummary,
             subject,
           });
+
+          // Push critical and high urgency alerts to webhook destinations
+          if (finalUrgency === 'critical' || finalUrgency === 'high') {
+            const webhookDests = destinations.filter(
+              d => d.type === 'slack' || d.type === 'discord' || d.type === 'webhook'
+            );
+            for (const dest of webhookDests) {
+              try {
+                await pushToDestination(
+                  { ...dest, field_mapping: {} },
+                  { subject, from_email: emailMeta.from_email, date: emailMeta.date },
+                  {
+                    alert_type: finalAlertType,
+                    urgency: finalUrgency,
+                    summary: finalSummary,
+                    raw_subject: subject,
+                  },
+                );
+              } catch (e) {
+                console.error(`Failed to push seller alert to destination ${dest.id}:`, e);
+              }
+            }
+          }
         }
       } catch (e) {
         console.error(`Alert detection failed for account ${accountId}:`, e);
       }
     }
-
-    } // end account loop
 
     const durationMs = Date.now() - startTime;
     completePipelineRun(runId, {
@@ -906,7 +1010,7 @@ Return ONLY valid JSON: {"alert_type": "...", "urgency": "...", "summary": "..."
       duration_ms: durationMs,
     });
 
-    const result = {
+    const result: PipelineResult = {
       run_id: runId,
       emails_scanned: emailsScanned,
       emails_flagged: emailsFlagged,
@@ -916,6 +1020,7 @@ Return ONLY valid JSON: {"alert_type": "...", "urgency": "...", "summary": "..."
       emails_errored: emailsErrored,
       error_message: null,
       duration_ms: durationMs,
+      diagnostics,
     };
     emitEmailEvent('email:pipeline-complete', result);
     return result;
@@ -946,6 +1051,7 @@ Return ONLY valid JSON: {"alert_type": "...", "urgency": "...", "summary": "..."
       emails_errored: emailsErrored,
       error_message: errMsg,
       duration_ms: durationMs,
+      diagnostics,
     };
   }
 }
@@ -1006,7 +1112,8 @@ export async function rescanSingleEmail(gmailMessageId: string): Promise<RescanR
     }));
 
   const config = getExtractionConfig();
-  const extractionEnabled = !!config?.enabled;
+  const { hasLLMExtractor: checkLLM } = await import('./llm-extractor.js');
+  const extractionEnabled = !!config?.enabled && checkLLM();
   const maxPdfsPerEmail = parseInt(getSetting('max_pdfs_per_email') ?? '3', 10);
 
   try {
@@ -1077,7 +1184,7 @@ export async function rescanSingleEmail(gmailMessageId: string): Promise<RescanR
 
       const mergedData: Record<string, unknown> = {};
       for (const [instructions, { ruleNames, expectedFields }] of instructionGroups) {
-        let result: { data: Record<string, unknown>; usage: GeminiUsage };
+        let result: { data: Record<string, unknown>; usage: LLMUsage };
         if (instructions === '') {
           result = await processEmail(emailDataWithBody, ruleNames, pdfTexts.length > 0 ? pdfTexts : undefined);
         } else {
@@ -1206,9 +1313,7 @@ export async function rescanSingleEmail(gmailMessageId: string): Promise<RescanR
       }
     }
 
-    const estimatedCost = totalPromptTokens > 0 || totalCompletionTokens > 0
-      ? calculateCost('gemini-3-flash-preview', totalPromptTokens, totalCompletionTokens)
-      : undefined;
+    const estimatedCost = 0; // Free — uses existing Claude subscription
 
     const status = pushedDestinations.length > 0 ? 'pushed' : (extractedData ? 'extracted' : 'flagged');
     const errorMessage = [

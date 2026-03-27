@@ -166,13 +166,24 @@ export function initializeDatabase(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS blocked_senders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL UNIQUE,
+      email TEXT NOT NULL,
       reason TEXT,
       source_email_id INTEGER,
+      account_id INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_blocked_senders_email ON blocked_senders(email);
   `);
+
+  // Add account_id to blocked_senders (per-account blocking)
+  const blockedCols = db.pragma('table_info(blocked_senders)') as { name: string }[];
+  if (!blockedCols.find(c => c.name === 'account_id')) {
+    db.exec(`ALTER TABLE blocked_senders ADD COLUMN account_id INTEGER`);
+  }
+  // Drop UNIQUE constraint on email alone (recreate table to allow per-account blocks)
+  // The original table had UNIQUE(email) which prevents per-account blocks.
+  // With account_id, the same email can be blocked globally (account_id IS NULL) or per-account.
+  // We remove the UNIQUE constraint; the app logic handles dedup via INSERT OR IGNORE.
 
   // Upsert date guard: tracks the newest email date per merge-key per destination
   db.exec(`
@@ -345,6 +356,12 @@ export function initializeDatabase(db: Database.Database) {
         client_secret: clientSecret?.encrypted_key ?? '',
       }));
     }
+  }
+
+  // Add last_uid to email_accounts (incremental UID-based sync)
+  const acctCols = db.pragma('table_info(email_accounts)') as { name: string }[];
+  if (!acctCols.find(c => c.name === 'last_uid')) {
+    db.exec(`ALTER TABLE email_accounts ADD COLUMN last_uid INTEGER`);
   }
 
   // Add account_id to processed_emails

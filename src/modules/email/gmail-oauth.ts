@@ -2,7 +2,10 @@ import { OAuth2Client } from 'google-auth-library';
 import { getGmailAuth, setGmailAuth, getSetting, getApiKey } from './db.js';
 import { encrypt, decrypt } from './crypto.js';
 
-const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/spreadsheets', // Required for Google Sheets destination push
+];
 
 function getGoogleCredentials(): { clientId: string; clientSecret: string } {
   const clientId = getSetting('google_client_id') || process.env.GOOGLE_CLIENT_ID;

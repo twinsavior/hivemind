@@ -396,11 +396,20 @@
       display: flex;
       align-items: center;
       padding: 0 24px;
+      padding-top: 8px;
       border-bottom: 1px solid var(--border);
       background: var(--bg-secondary);
       font-size: 14px;
       font-weight: 600;
       letter-spacing: 0.04em;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+    .dash-header button,
+    .dash-header input,
+    .dash-header select,
+    .dash-header a {
+      -webkit-app-region: no-drag;
     }
 
     .dash-content {
@@ -507,6 +516,53 @@
     }
 
     .skill-triggers { font-size: 10px; color: var(--text-muted); }
+
+    .skills-category-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .skills-category-tab {
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .skills-category-tab:hover { color: var(--text-secondary); }
+
+    .skills-category-tab.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--accent);
+    }
+
+    .skills-category-tab .tab-count {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-left: 6px;
+      background: var(--bg-input);
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+
+    .skills-category-tab.active .tab-count {
+      background: rgba(99,102,241,0.15);
+      color: var(--accent);
+    }
+
+    .skills-category-tab[data-category="recommended"] { color: #eab308; }
+    .skills-category-tab[data-category="recommended"].active { border-bottom-color: #eab308; }
+    .skills-category-tab[data-category="recommended"] .tab-count { background: rgba(234,179,8,0.12); color: #eab308; }
+    .skills-category-tab[data-category="recommended"].active .tab-count { background: rgba(234,179,8,0.2); color: #eab308; }
 
     /* ── Memory Page ──────────────────────────────────────────────────────── */
     .memory-layout {
@@ -1000,6 +1056,7 @@
       display: flex;
       gap: 4px;
       padding: 4px 0;
+      align-items: center;
     }
 
     .thinking-dot {
@@ -1016,6 +1073,41 @@
     @keyframes thinkBounce {
       0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
       40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Streaming cursor (blinking caret while tokens arrive) ────────────── */
+    .streaming-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: var(--accent);
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: cursorBlink 0.8s step-end infinite;
+    }
+
+    @keyframes cursorBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ── Thinking-between-tokens (shows when LLM is working on tool calls) ── */
+    .thinking-inline {
+      display: inline-flex;
+      gap: 3px;
+      padding: 0 4px;
+      vertical-align: middle;
+      opacity: 0;
+      animation: fadeInThinking 0.5s ease 0.8s forwards;
+    }
+
+    .thinking-inline .thinking-dot {
+      width: 4px;
+      height: 4px;
+    }
+
+    @keyframes fadeInThinking {
+      to { opacity: 1; }
     }
 
     /* ── Review & Delegation Banners ─────────────────────────────────────── */
@@ -1961,6 +2053,23 @@
       margin-top: 2px;
       padding-left: 30px;
     }
+    .ob-marketplace-cards { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+    .ob-marketplace-card { background:rgba(255,255,255,0.03); border:1px solid var(--border,#333); border-radius:12px; padding:16px; transition:border-color 0.2s; }
+    .ob-marketplace-card.connected { border-color:#22c55e44; background:rgba(34,197,94,0.04); }
+    .ob-mp-header { display:flex; align-items:center; gap:12px; }
+    .ob-mp-logo { font-size:24px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); border-radius:8px; }
+    .ob-mp-info { flex:1; }
+    .ob-mp-name { font-weight:600; font-size:14px; color:var(--text-primary,#eee); }
+    .ob-mp-desc { font-size:12px; color:var(--text-muted,#888); margin-top:2px; }
+    .ob-mp-status { font-size:13px; color:#22c55e; font-weight:600; }
+    .ob-mp-fields { display:flex; flex-direction:column; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border,#333); }
+    .ob-mp-help { font-size:12px; margin-top:4px; }
+    .ob-mp-help a { color:var(--accent,#7c5cff); text-decoration:none; }
+    .ob-mp-help a:hover { text-decoration:underline; }
+    .ob-mp-connect-status { font-size:13px; margin-top:8px; min-height:20px; }
+    .ob-btn-sm { padding:6px 16px; font-size:13px; border-radius:6px; background:var(--accent,#7c5cff); color:#fff; border:none; cursor:pointer; font-weight:500; }
+    .ob-btn-sm:hover { opacity:0.9; }
+    .ob-btn-sm:disabled { opacity:0.5; cursor:not-allowed; }
   </style>
 </head>
 <body class="app-loading">
@@ -1970,7 +2079,7 @@
     <div id="sidebar">
       <div class="sidebar-header">
         <h1>HIVEMIND</h1>
-        <div class="subtitle">Autonomous Agent Swarm</div>
+        <div class="subtitle">Seller Assistant</div>
       </div>
 
       <button class="new-session-btn" id="new-session-btn" title="New session">
@@ -1980,23 +2089,30 @@
 
       <div class="conversations-list" id="conversations-list"></div>
 
-      <div class="sidebar-section">
-        <div class="sidebar-section-title" id="agents-toggle">
-          <span class="collapse-arrow">&#9660;</span> Agents
-        </div>
-        <div class="sidebar-section-content" id="agents-content">
-          <div id="agent-list"></div>
-        </div>
-      </div>
+      <!-- Hidden agent list container — populated by JS but not shown in sidebar -->
+      <div id="agents-content" style="display:none;"><div id="agent-list"></div></div>
 
       <div class="sidebar-nav" id="sidebar-nav">
         <button class="sidebar-nav-item active" data-view="chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           Chat
         </button>
-        <button class="sidebar-nav-item" data-view="swarm">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><line x1="8" y1="8" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="8"/><line x1="8" y1="16" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="16"/></svg>
-          Swarm
+        <button class="sidebar-nav-item" data-view="ops-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button class="sidebar-nav-item" data-view="purchases">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Purchases & Shipments
+        </button>
+        <button class="sidebar-nav-item" data-view="alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Alerts
+          <span id="alert-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:auto;font-weight:600;"></span>
+        </button>
+        <button class="sidebar-nav-item" data-view="finances">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Finances
         </button>
         <button class="sidebar-nav-item" data-view="skills">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -2004,36 +2120,11 @@
         </button>
         <button class="sidebar-nav-item" data-view="memory">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-          Memory
+          Knowledge
         </button>
         <button class="sidebar-nav-item" data-view="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           Settings
-        </button>
-      </div>
-
-      <div style="padding:0 16px;margin-top:8px;margin-bottom:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#666;">Operations</div>
-      <div class="sidebar-nav" id="sidebar-nav-ops">
-        <button class="sidebar-nav-item" data-view="ops-dashboard">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          Dashboard
-        </button>
-        <button class="sidebar-nav-item" data-view="purchases">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          Purchases
-        </button>
-        <button class="sidebar-nav-item" data-view="shipments">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          Shipments
-        </button>
-        <button class="sidebar-nav-item" data-view="alerts">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          Alerts
-          <span id="alert-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:auto;font-weight:600;"></span>
-        </button>
-        <button class="sidebar-nav-item" data-view="email-config">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Email Config
         </button>
       </div>
 
@@ -2060,13 +2151,13 @@
         <div class="welcome" id="welcome-screen">
           <div class="welcome-logo">HIVEMIND</div>
           <div class="welcome-sub">
-            Your autonomous agent swarm is ready. Send a message and your agents will collaborate to get it done.
+            Your selling assistant is ready. Ask about policies, listings, sourcing, or anything else.
           </div>
           <div class="quick-actions">
-            <button class="quick-action" data-prompt="Research the latest trends in AI agents">Research AI trends</button>
-            <button class="quick-action" data-prompt="Write a Python script that scrapes product data">Write a scraper</button>
-            <button class="quick-action" data-prompt="Analyze the codebase and suggest improvements">Code review</button>
-            <button class="quick-action" data-prompt="Create a README.md for this project">Generate README</button>
+            <button class="quick-action" data-prompt="I got an account health notification on Amazon. Help me understand it and draft an appeal.">📦 Account health help</button>
+            <button class="quick-action" data-prompt="Help me calculate if this product is profitable to sell on Amazon. I'll give you the cost and ASIN.">💰 Is this profitable?</button>
+            <button class="quick-action" data-prompt="Draft a professional buyer message that's compliant with Amazon's communication policies.">✉️ Draft buyer message</button>
+            <button class="quick-action" data-prompt="Help me appeal a listing removal on Amazon. Walk me through the process step by step.">📋 Appeal a removal</button>
           </div>
         </div>
       </div>
@@ -2103,7 +2194,7 @@
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
             </svg>
           </button>
-          <textarea id="chat-input" placeholder="Send a message to the swarm..." rows="1"></textarea>
+          <textarea id="chat-input" placeholder="Ask anything about selling..." rows="1"></textarea>
           <button id="send-btn" title="Send (Enter)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -2154,6 +2245,7 @@
     <div id="page-skills" class="dashboard-page">
       <div class="dash-header">Skills Library</div>
       <div class="dash-content">
+        <div class="skills-category-tabs" id="skills-category-tabs"></div>
         <div class="skills-toolbar">
           <input type="text" id="skills-search" placeholder="Search skills...">
           <div id="skills-agent-filters"></div>
@@ -2198,17 +2290,30 @@
 
     <!-- Operations Dashboard -->
     <div id="page-ops-dashboard" class="dashboard-page">
-      <div class="dash-header">Operations Dashboard</div>
+      <div class="dash-header">Dashboard</div>
       <div class="dash-content" style="padding:20px;">
-        <div id="ops-kpi-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;"></div>
+        <!-- Seller Business Summary -->
+        <div id="seller-summary-section">
+          <div id="seller-kpi-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <div id="seller-action-items" style="margin-bottom:20px;"></div>
+        </div>
+
+        <!-- Account Health -->
+        <div id="seller-health-section" style="margin-bottom:20px;">
+          <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Account Health</h3>
+          <div id="seller-health-cards" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+        </div>
+
+        <!-- Alerts & Pipeline (existing + enhanced) -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div>
             <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Recent Alerts</h3>
             <div id="ops-recent-alerts" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
           <div>
-            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Pipeline Status</h3>
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Email Pipeline</h3>
             <div id="ops-pipeline-status" style="font-size:12px;color:var(--text-secondary);"></div>
+            <div id="ops-pipeline-history" style="margin-top:12px;"></div>
           </div>
         </div>
       </div>
@@ -2259,7 +2364,10 @@
 
     <!-- Alerts -->
     <div id="page-alerts" class="dashboard-page">
-      <div class="dash-header">Seller Alerts <button id="alerts-ack-all-btn" style="float:right;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text-secondary);cursor:pointer;">Acknowledge All</button></div>
+      <div class="dash-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Seller Alerts</span>
+        <button id="alerts-ack-all-btn" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:11px;color:var(--text-secondary);cursor:pointer;">Acknowledge All</button>
+      </div>
       <div class="dash-content" style="padding:20px;">
         <div id="alerts-critical" style="margin-bottom:16px;"></div>
         <div id="alerts-high" style="margin-bottom:16px;"></div>
@@ -2267,85 +2375,151 @@
       </div>
     </div>
 
+    <!-- Finances -->
+    <div id="page-finances" class="dashboard-page">
+      <div class="dash-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Finances</span>
+        <button id="finance-sync-btn" style="background:var(--accent,#7c5cff);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;font-weight:500;">Sync Now</button>
+      </div>
+      <div class="dash-content" style="padding:20px;">
+        <div id="finance-status"></div>
+        <div id="finance-capacity" style="margin-bottom:20px;"></div>
+        <div id="finance-accounts" style="margin-bottom:20px;"></div>
+        <div id="finance-transactions"></div>
+      </div>
+    </div>
+
     <!-- Email Config -->
     <div id="page-email-config" class="dashboard-page">
-      <div class="dash-header">Email Configuration</div>
+      <div class="dash-header">Email Setup</div>
       <div class="dash-content" style="padding:20px;overflow-y:auto;max-height:calc(100vh - 120px);">
         <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:8px;">
-          <button class="ec-tab active" data-tab="accounts" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;border-bottom:2px solid var(--accent);font-weight:500;">Accounts</button>
-          <button class="ec-tab" data-tab="pipeline" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Pipeline</button>
+          <button class="ec-tab active" data-tab="accounts" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-primary);cursor:pointer;border-bottom:2px solid var(--accent);font-weight:500;">Connect Email</button>
           <button class="ec-tab" data-tab="retailers" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Retailers</button>
+          <button class="ec-tab" data-tab="pipeline" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Advanced</button>
           <button class="ec-tab" data-tab="rules" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Rules</button>
           <button class="ec-tab" data-tab="destinations" style="background:none;border:none;padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;">Destinations</button>
         </div>
 
-        <!-- Accounts Tab -->
+        <!-- Accounts Tab — Grandparent-friendly version -->
         <div id="ec-panel-accounts" class="ec-panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <div>
-              <h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 2px;">Email Accounts</h3>
-              <p style="font-size:11px;color:var(--text-muted);margin:0;">IMAP works with any email provider. Gmail OAuth is faster but requires Google Cloud setup.</p>
-            </div>
-            <button id="ec-add-account-btn" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">+ Add Account</button>
+          <div style="margin-bottom:20px;">
+            <h3 style="font-size:16px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">Connect Your Email</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin:0;line-height:1.5;">HIVEMIND reads your purchase confirmation emails to automatically track orders, shipments, and costs. <strong style="color:var(--text-primary);">We only read emails — we never send, delete, or modify anything.</strong></p>
           </div>
-          <div id="ec-accounts-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+          <!-- Connected accounts list -->
+          <div id="ec-accounts-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+
           <!-- Add Account Form (hidden by default) -->
-          <div id="ec-account-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <h4 style="font-size:13px;font-weight:600;margin:0;color:var(--text-primary);">Add Email Account</h4>
-              <button id="ec-form-cancel" style="background:none;border:none;font-size:18px;color:var(--text-muted);cursor:pointer;line-height:1;">&times;</button>
-            </div>
-            <!-- Connection Type -->
-            <div style="margin-bottom:12px;">
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Connection Type</label>
-              <div style="display:flex;gap:6px;">
-                <button class="ec-type-btn selected" data-type="imap" style="flex:1;padding:10px;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:6px;cursor:pointer;font-size:12px;text-align:center;"><strong>IMAP</strong><br><span style="font-size:10px;opacity:0.8;">Works with any provider</span></button>
-                <button class="ec-type-btn" data-type="gmail_oauth" style="flex:1;padding:10px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;text-align:center;"><strong>Gmail OAuth</strong><br><span style="font-size:10px;opacity:0.6;">Faster, requires Google Cloud</span></button>
+          <div id="ec-account-form" style="display:none;margin-top:12px;">
+
+            <!-- Email provider choice cards -->
+            <div style="margin-bottom:16px;">
+              <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Which email do you use?</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="ec-provider-btn selected" data-provider="gmail" data-host="imap.gmail.com" data-port="993" style="flex:1;min-width:140px;padding:14px;background:rgba(124,92,255,0.1);color:var(--text-primary);border:2px solid var(--accent);border-radius:10px;cursor:pointer;font-size:13px;text-align:center;">
+                  <div style="font-size:24px;margin-bottom:6px;">📧</div>
+                  <strong>Gmail</strong>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Google email</div>
+                </button>
+                <button class="ec-provider-btn" data-provider="outlook" data-host="outlook.office365.com" data-port="993" style="flex:1;min-width:140px;padding:14px;background:rgba(255,255,255,0.03);color:var(--text-primary);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;text-align:center;">
+                  <div style="font-size:24px;margin-bottom:6px;">📬</div>
+                  <strong>Outlook / Hotmail</strong>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Microsoft email</div>
+                </button>
+                <button class="ec-provider-btn" data-provider="yahoo" data-host="imap.mail.yahoo.com" data-port="993" style="flex:1;min-width:140px;padding:14px;background:rgba(255,255,255,0.03);color:var(--text-primary);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;text-align:center;">
+                  <div style="font-size:24px;margin-bottom:6px;">💌</div>
+                  <strong>Yahoo Mail</strong>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Yahoo email</div>
+                </button>
+                <button class="ec-provider-btn" data-provider="custom" data-host="" data-port="993" style="flex:1;min-width:140px;padding:14px;background:rgba(255,255,255,0.03);color:var(--text-primary);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;text-align:center;">
+                  <div style="font-size:24px;margin-bottom:6px;">🔧</div>
+                  <strong>Other</strong>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Any email provider</div>
+                </button>
               </div>
             </div>
-            <!-- Common fields -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-              <div>
-                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Account Name</label>
-                <input type="text" id="ec-acc-name" placeholder="e.g. Work Gmail, Personal Outlook" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
-              </div>
-              <div>
-                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Email Address</label>
-                <input type="email" id="ec-acc-email" placeholder="you@gmail.com" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
-              </div>
+
+            <!-- Connection Type (hidden — auto-set to IMAP) -->
+            <div style="display:none;">
+              <button class="ec-type-btn selected" data-type="imap">IMAP</button>
+              <button class="ec-type-btn" data-type="gmail_oauth">Gmail OAuth</button>
             </div>
-            <!-- IMAP fields -->
-            <div id="ec-imap-fields">
-              <div style="margin-bottom:8px;">
-                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">App Password <span style="opacity:0.6;">(not your regular password)</span></label>
-                <input type="password" id="ec-acc-pass" placeholder="xxxx xxxx xxxx xxxx" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
-                <div id="ec-app-pass-help" style="font-size:10px;color:var(--text-muted);margin-top:3px;">Stored encrypted. Most providers require an app-specific password. <a id="ec-app-pass-link" href="https://support.google.com/accounts/answer/185833" target="_blank" style="color:var(--accent);">How to get an app password</a></div>
-              </div>
-              <!-- Provider presets -->
-              <details style="margin-bottom:8px;">
-                <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none;">Advanced Settings</summary>
-                <div style="margin-top:8px;">
-                  <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px;">Email Provider</label>
-                  <div style="display:flex;gap:4px;margin-bottom:8px;">
-                    <button class="ec-provider-btn selected" data-provider="gmail" data-host="imap.gmail.com" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--accent);color:#fff;border:1px solid var(--accent);">Gmail</button>
-                    <button class="ec-provider-btn" data-provider="outlook" data-host="outlook.office365.com" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">Outlook</button>
-                    <button class="ec-provider-btn" data-provider="yahoo" data-host="imap.mail.yahoo.com" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">Yahoo</button>
-                    <button class="ec-provider-btn" data-provider="custom" data-host="" data-port="993" style="padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">Custom</button>
-                  </div>
-                  <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
-                    <div>
-                      <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">IMAP Host</label>
-                      <input type="text" id="ec-acc-host" value="imap.gmail.com" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
-                    </div>
-                    <div>
-                      <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Port</label>
-                      <input type="number" id="ec-acc-port" value="993" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
-                    </div>
-                  </div>
+
+            <!-- Step-by-step guide for selected provider -->
+            <div id="ec-gmail-guide" style="margin-bottom:16px;display:flex;flex-direction:column;gap:28px;">
+              <div style="display:flex;gap:14px;align-items:flex-start;">
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;">1</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Turn on 2-Step Verification (if you haven't already)</div>
+                  <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">You need this turned on before you can create an App Password. Most people already have it on. Click below to check.</div>
+                  <a href="https://myaccount.google.com/signinoptions/two-step-verification" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;margin-bottom:4px;padding:8px 18px;font-size:12px;border-radius:6px;background:rgba(124,92,255,0.15);color:var(--accent,#7c5cff);border:1px solid rgba(124,92,255,0.3);cursor:pointer;text-decoration:none;font-weight:500;">Check 2-Step Verification →</a>
                 </div>
-              </details>
+              </div>
+              <div style="display:flex;gap:14px;align-items:flex-start;">
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;">2</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Create an App Password</div>
+                  <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">An App Password is a special password just for HIVEMIND. It's <strong>not</strong> your regular Google password. Click the link below, then:</div>
+                  <ol style="font-size:13px;color:var(--text-muted,#aaa);line-height:2;padding-left:20px;margin:10px 0;">
+                    <li>In the <em style="color:var(--accent);font-style:normal;">"App name"</em> field, type <strong>HIVEMIND</strong></li>
+                    <li>Click <em style="color:var(--accent);font-style:normal;">"Create"</em></li>
+                    <li>Google will show you a <strong>16-character password</strong> (looks like: <code style="background:rgba(255,255,255,0.06);padding:3px 8px;border-radius:4px;font-size:12px;">abcd efgh ijkl mnop</code>)</li>
+                    <li><strong>Copy that password</strong> — you'll paste it below</li>
+                  </ol>
+                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-bottom:4px;padding:8px 18px;font-size:12px;border-radius:6px;background:rgba(124,92,255,0.15);color:var(--accent,#7c5cff);border:1px solid rgba(124,92,255,0.3);cursor:pointer;text-decoration:none;font-weight:500;">Create App Password →</a>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;align-items:flex-start;">
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;">3</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:4px;">Enter your email and paste the App Password</div>
+                </div>
+              </div>
             </div>
-            <!-- Gmail OAuth info -->
+
+            <!-- Input fields -->
+            <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:12px;padding:20px;margin-bottom:16px;">
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Give this account a name <span style="color:#666;">(so you can tell them apart if you add more than one)</span></label>
+                  <input type="text" id="ec-acc-name" placeholder='e.g. "My Selling Gmail" or "Business Email"' style="width:100%;padding:10px 12px;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#444);border-radius:8px;color:var(--text-primary,#eee);font-size:13px;box-sizing:border-box;">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Your email address</label>
+                  <input type="email" id="ec-acc-email" placeholder="you@gmail.com" style="width:100%;padding:10px 12px;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#444);border-radius:8px;color:var(--text-primary,#eee);font-size:13px;box-sizing:border-box;">
+                </div>
+                <div id="ec-imap-fields">
+                  <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">App Password <span style="color:#666;">(the 16-character password from step 2 — NOT your regular password)</span></label>
+                  <input type="password" id="ec-acc-pass" placeholder="Paste your App Password here" style="width:100%;padding:10px 12px;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#444);border-radius:8px;color:var(--text-primary,#eee);font-size:13px;box-sizing:border-box;">
+                  <div id="ec-app-pass-help" style="display:none;"><a id="ec-app-pass-link" href="https://support.google.com/accounts/answer/185833" target="_blank" style="color:var(--accent);">Help</a></div>
+
+                  <!-- Advanced IMAP settings (hidden for custom provider) -->
+                  <details id="ec-imap-advanced" style="margin-top:10px;display:none;">
+                    <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;user-select:none;">Server settings (auto-filled — only change if something isn't working)</summary>
+                    <div style="margin-top:8px;display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                      <div>
+                        <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">Mail Server</label>
+                        <input type="text" id="ec-acc-host" value="imap.gmail.com" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+                      </div>
+                      <div>
+                        <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">Port</label>
+                        <input type="number" id="ec-acc-port" value="993" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </div>
+
+              <!-- Submit -->
+              <div style="margin-top:16px;">
+                <button id="ec-acc-submit" style="width:100%;padding:12px 20px;font-size:14px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-weight:600;">Connect My Email</button>
+                <div id="ec-acc-status" style="font-size:13px;color:var(--text-muted);margin-top:8px;text-align:center;"></div>
+              </div>
+            </div>
+
+            <!-- Gmail OAuth (hidden — advanced users only) -->
             <div id="ec-oauth-fields" style="display:none;">
               <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px;">
                 <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:6px;">Setup Steps</div>
@@ -2359,29 +2533,35 @@
                 If you haven't set up Google Cloud credentials yet, expand the "Google API Credentials" section below first. The OAuth flow will fail without them.
               </div>
             </div>
-            <!-- Submit -->
-            <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
-              <button id="ec-acc-submit" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;cursor:pointer;">Add Account</button>
-              <span id="ec-acc-status" style="font-size:11px;color:var(--text-muted);"></span>
-            </div>
+
+            <button id="ec-form-cancel" style="width:100%;padding:8px;background:none;border:1px solid var(--border,#333);border-radius:8px;color:var(--text-muted);font-size:13px;cursor:pointer;margin-top:4px;">Cancel</button>
           </div>
-          <!-- Google API Credentials (collapsible) -->
-          <details id="ec-google-creds-toggle" style="margin-top:16px;">
-            <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;user-select:none;">Google API Credentials (for Gmail OAuth)</summary>
+
+          <!-- No accounts yet — show big connect button -->
+          <div id="ec-no-accounts" style="text-align:center;padding:30px 20px;">
+            <div style="font-size:48px;margin-bottom:12px;">📮</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">No email accounts connected yet</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.5;">Connect your email so HIVEMIND can automatically track your purchases, shipments, and seller alerts.</div>
+            <button id="ec-add-account-btn" style="padding:12px 28px;font-size:14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:600;">Connect My Email</button>
+          </div>
+
+          <!-- Google API Credentials (collapsible — for advanced users) -->
+          <details id="ec-google-creds-toggle" style="margin-top:24px;">
+            <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;user-select:none;">Advanced: Google OAuth Credentials (most people don't need this)</summary>
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:8px;">
-              <p style="font-size:11px;color:var(--text-muted);margin:0 0 12px;line-height:1.5;">Required for Gmail OAuth only. IMAP users can skip this.<br>1. Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent);">Google Cloud Console</a> and create an OAuth 2.0 Client ID.<br>2. Add <code style="font-size:10px;background:var(--bg);padding:1px 4px;border-radius:3px;">http://localhost:4000/api/email/auth/gmail/callback</code> as an authorized redirect URI.<br>3. Copy the Client ID and Client Secret below.</p>
+              <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.5;">This is only for developers who want to use Gmail OAuth instead of App Passwords. <strong>Most users should use the App Password method above — it's easier and works just as well.</strong></p>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <div>
-                  <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Client ID</label>
-                  <input type="text" id="ec-google-client-id" placeholder="xxxx.apps.googleusercontent.com" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:11px;box-sizing:border-box;">
+                  <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">Google Client ID</label>
+                  <input type="text" id="ec-google-client-id" placeholder="xxxx.apps.googleusercontent.com" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:11px;box-sizing:border-box;">
                 </div>
                 <div>
-                  <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Client Secret</label>
-                  <input type="password" id="ec-google-client-secret" placeholder="GOCSPX-xxxx" style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:11px;box-sizing:border-box;">
+                  <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">Google Client Secret</label>
+                  <input type="password" id="ec-google-client-secret" placeholder="GOCSPX-xxxx" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:11px;box-sizing:border-box;">
                 </div>
               </div>
               <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
-                <button id="ec-google-save" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;">Save Credentials</button>
+                <button id="ec-google-save" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">Save</button>
                 <span id="ec-google-status" style="font-size:11px;color:var(--text-muted);"></span>
               </div>
             </div>
@@ -2506,7 +2686,7 @@
     // Runs BEFORE the rest of the app initializes. If first-run, the wizard
     // covers the entire screen and only reveals the chat after completion.
 
-    const OB_STEPS = ['welcome','identity','cofounder','tools','email-setup','email-rules','skillpacks','launch'];
+    const OB_STEPS = ['welcome','identity','cofounder','tools','marketplace-connect','bank-connect','email-setup','email-rules','skillpacks','launch'];
 
     const OB_COPY = {
       cofounderNames: [
@@ -2526,18 +2706,18 @@
         { value: 'no-nonsense', label: 'No-nonsense',          desc: 'Minimum words, maximum output. All signal, no filler.' },
       ],
       roles: [
-        { value: 'founder',   label: 'Founder / CEO' },
-        { value: 'developer', label: 'Developer' },
-        { value: 'designer',  label: 'Designer' },
-        { value: 'pm',        label: 'Product Manager' },
-        { value: 'student',   label: 'Student / Learner' },
-        { value: 'hobbyist',  label: 'Hobbyist / Maker' },
+        { value: 'private-label', label: 'Private Label Seller' },
+        { value: 'wholesale',     label: 'Wholesale Seller' },
+        { value: 'arbitrage',     label: 'Retail / Online Arbitrage' },
+        { value: 'dropship',      label: 'Dropshipper' },
+        { value: 'brand-owner',   label: 'Brand Owner' },
+        { value: 'new-seller',    label: 'New Seller / Getting Started' },
       ],
       stages: [
-        { value: 'idea',       label: 'Just an idea' },
-        { value: 'mvp',        label: 'Building the MVP' },
-        { value: 'beta',       label: 'In beta / testing' },
-        { value: 'production', label: 'Live in production' },
+        { value: 'idea',       label: 'Just getting started' },
+        { value: 'mvp',        label: 'Under $10k/month' },
+        { value: 'beta',       label: '$10k - $100k/month' },
+        { value: 'production', label: 'Over $100k/month' },
       ],
       workStyles: [
         { value: 'hands-on',  label: 'Hands-on — I review everything' },
@@ -2578,22 +2758,22 @@
       const has = p.length > 0;
       switch (personality) {
         case 'direct':
-          return has ? `${cofounderName} here. I've got the team ready. Tell me what's first for ${p}.`
-                     : `${cofounderName} here. Team's ready, ${u}. What are we building?`;
+          return has ? `${cofounderName} here. Ready to help you sell. What's the first thing you need?`
+                     : `${cofounderName} here. Team's ready, ${u}. What do you need help with?`;
         case 'warm':
-          return has ? `Hey ${u}! I'm ${cofounderName} — excited to work on ${p} together. The whole team is here. What should we start with?`
-                     : `Hey ${u}! I'm ${cofounderName}, and I'm really glad you're here. The team's assembled — what do you want to build?`;
+          return has ? `Hey ${u}! I'm ${cofounderName} — excited to help with your selling business. What should we start with?`
+                     : `Hey ${u}! I'm ${cofounderName}. Let me know what you need — policies, listings, appeals, anything.`;
         case 'technical':
-          return has ? `${cofounderName}, online. Swarm initialized with all agents reporting ready. Context loaded: ${p}. Awaiting first task.`
-                     : `${cofounderName}, online. All agents initialized and reporting ready. Awaiting your first task, ${u}.`;
+          return has ? `${cofounderName}, online. All marketplace integrations active. Ready to assist with ${p}. What's first?`
+                     : `${cofounderName}, online. All agents ready. Standing by for your first question, ${u}.`;
         case 'casual':
-          return has ? `Yo ${u}, it's ${cofounderName}. Crew's all here. Let's make ${p} happen — what's the move?`
-                     : `Yo ${u}! ${cofounderName} here. Got the whole crew standing by. What are we getting into?`;
+          return has ? `Yo ${u}, it's ${cofounderName}. Ready to crush it on the marketplaces. What's up?`
+                     : `Yo ${u}! ${cofounderName} here. What can I help you sell today?`;
         case 'no-nonsense':
-          return has ? `${cofounderName}. Ready. What's the priority for ${p}?`
+          return has ? `${cofounderName}. Ready. What's the priority?`
                      : `${cofounderName}. Ready. Go.`;
         default:
-          return `${cofounderName} here. Your swarm is ready, ${u}. What's first?`;
+          return `${cofounderName} here. Your selling assistant is ready, ${u}. What's first?`;
       }
     }
 
@@ -2662,6 +2842,8 @@
         identity: obStepIdentity,
         cofounder: obStepCofounder,
         tools: obStepTools,
+        'marketplace-connect': obStepMarketplaceConnect,
+        'bank-connect': obStepBankConnect,
         'email-setup': obStepEmailSetup,
         'email-rules': obStepEmailRules,
         skillpacks: obStepSkillpacks,
@@ -2690,8 +2872,7 @@
         <div class="ob-step-label">Welcome</div>
         <div class="ob-title">Welcome to HIVEMIND</div>
         <div class="ob-subtitle">
-          You're about to set up your own autonomous agent swarm —
-          a team of AI specialists that work together on your behalf.<br><br>
+          Your all-in-one AI assistant for Amazon, Walmart, and eBay sellers. Get help with policies, appeals, listings, sourcing, and everything in between.<br><br>
           This takes about 2 minutes.
         </div>
         <div class="ob-actions">
@@ -2701,7 +2882,7 @@
 
     function obStepIdentity() {
       return `
-        <div class="ob-step-label">Step 1 of 5 — About You</div>
+        <div class="ob-step-label">Step 1 of 7 — About You</div>
         <div class="ob-title">Who are you?</div>
         <div class="ob-subtitle">Quick context so your swarm knows who it's working with.</div>
 
@@ -2719,11 +2900,11 @@
           </select>
         </div>
         <div class="ob-field">
-          <label class="ob-label">What are you building?</label>
-          <textarea class="ob-textarea" id="ob-project" placeholder="A SaaS app, a CLI tool, a game — anything goes">${escapeHtml(obState.project)}</textarea>
+          <label class="ob-label">What do you sell? (categories, niches, etc.)</label>
+          <textarea class="ob-textarea" id="ob-project" placeholder="Electronics, toys, supplements, books — anything goes">${escapeHtml(obState.project)}</textarea>
         </div>
         <div class="ob-field">
-          <label class="ob-label">Where are you at with it?</label>
+          <label class="ob-label">Monthly revenue</label>
           <select class="ob-select" id="ob-stage">
             ${OB_COPY.stages.map(s =>
               `<option value="${s.value}" ${s.value === obState.projectStage ? 'selected' : ''}>${s.label}</option>`
@@ -2746,7 +2927,7 @@
 
     function obStepCofounder() {
       return `
-        <div class="ob-step-label">Step 2 of 5 — Your Co-Founder</div>
+        <div class="ob-step-label">Step 2 of 7 — Your Co-Founder</div>
         <div class="ob-title">Meet your co-founder</div>
         <div class="ob-subtitle">
           Every swarm has a coordinator — your AI co-founder.
@@ -2797,89 +2978,232 @@
       const codex = providers.find(p => p.id === 'codex');
       const hasClaude = claude && claude.installed;
       const hasCodex = codex && codex.installed;
-      const hasAny = hasClaude || hasCodex;
-
-      // Status banner — the key messaging
-      let bannerHtml = '';
-      if (providers.length === 0) {
-        bannerHtml = `<div class="ob-status-banner warn">⏳ Couldn't reach the server yet — provider detection will retry on next load.</div>`;
-      } else if (hasClaude && hasCodex) {
-        bannerHtml = `<div class="ob-status-banner good">✓ Fully loaded — Claude Code powers the swarm, Codex adds a second brain for code tasks.</div>`;
-      } else if (hasClaude) {
-        bannerHtml = `<div class="ob-status-banner good">✓ You're all set. Claude Code powers the entire swarm — all 6 agents work with just this.</div>`;
-      } else if (hasCodex) {
-        bannerHtml = `<div class="ob-status-banner warn">⚠ Codex only — Builder and Sentinel will work, but the rest of the swarm needs Claude Code.</div>`;
-      } else {
-        bannerHtml = `<div class="ob-status-banner warn">⚠ No CLI providers found. You'll need at least Claude Code to run the swarm.</div>`;
-      }
-
-      // Claude row — the primary provider
-      let claudeRow = '';
-      if (claude) {
-        claudeRow = `<div class="ob-provider-row">
-          <div class="ob-provider-icon ${hasClaude ? 'found' : 'missing'}">${hasClaude ? '✓' : '✗'}</div>
-          <div class="ob-provider-info">
-            <div class="ob-provider-name">Claude Code CLI <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— powers all agents</span></div>
-            <div class="ob-provider-detail">${hasClaude ? escapeHtml(claude.detail || 'Detected') : '<code>npm i -g @anthropic-ai/claude-code && claude login</code>'}</div>
-          </div>
-        </div>`;
-      }
-
-      // Codex row — explicitly optional
-      let codexRow = '';
-      if (codex) {
-        codexRow = `<div class="ob-provider-row ${hasCodex ? '' : 'optional-row'}">
-          <div class="ob-provider-icon ${hasCodex ? 'found' : 'optional'}">${hasCodex ? '✓' : '＋'}</div>
-          <div class="ob-provider-info">
-            <div class="ob-provider-name">Codex CLI <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— optional, adds a second brain for code</span></div>
-            <div class="ob-provider-detail">${hasCodex ? escapeHtml(codex.detail || 'Detected') : 'Not installed — not required. <code>npm i -g @openai/codex</code> if you want it.'}</div>
-          </div>
-        </div>`;
-      }
-
-      // Fallback if server didn't return providers
-      const fallbackRow = providers.length === 0
-        ? `<div class="ob-provider-row">
-            <div class="ob-provider-icon optional">?</div>
-            <div class="ob-provider-info">
-              <div class="ob-provider-name">Checking tools...</div>
-              <div class="ob-provider-detail">Could not reach the server yet</div>
-            </div>
-          </div>`
-        : '';
 
       return `
-        <div class="ob-step-label">Step 3 of 5 — Your Tools</div>
-        <div class="ob-title">Connect your tools</div>
+        <div class="ob-step-label">Step 3 of 7 — Connect Your AI</div>
+        <div class="ob-title">Connect your AI brain</div>
         <div class="ob-subtitle">
-          HIVEMIND uses CLI subscriptions — no API keys needed.
-          Claude Code is all you need to run the full swarm.
+          HIVEMIND is powered by Claude — Anthropic's AI. You need a Claude account to use HIVEMIND.
+          It's like having a brilliant assistant who knows everything about selling on Amazon, Walmart, and eBay.
         </div>
-        ${bannerHtml}
-        ${claudeRow}${codexRow}${fallbackRow}
-        <div style="margin-top:16px;">
-          <div class="ob-chip-hint" style="font-size:13px; color:var(--text-muted);">
-            You can always add or change tools later. Run <code style="color:var(--accent);">hivemind status</code> to check what's connected.
+
+        ${hasClaude ? `
+          <div style="margin:24px 0;padding:24px;background:rgba(34,197,94,0.06);border:1px solid #22c55e44;border-radius:12px;text-align:center;">
+            <div style="font-size:40px;margin-bottom:10px;">✅</div>
+            <div style="font-size:16px;font-weight:600;color:#22c55e;margin-bottom:4px;">Claude is connected!</div>
+            <div style="font-size:13px;color:var(--text-muted);">${escapeHtml(claude.detail || 'Ready to go')}</div>
+          </div>
+        ` : `
+          <div style="margin-top:24px;display:flex;flex-direction:column;gap:24px;">
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">1</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Get a Claude account</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">If you don't have one yet, sign up at claude.ai. You'll need either a <strong>Pro</strong> ($20/mo) or <strong>Max</strong> plan to use Claude Code.</div>
+                <a href="https://claude.ai" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;margin-bottom:4px;padding:8px 18px;font-size:12px;border-radius:6px;background:rgba(124,92,255,0.15);color:var(--accent,#7c5cff);border:1px solid rgba(124,92,255,0.3);cursor:pointer;text-decoration:none;font-weight:500;">Go to claude.ai →</a>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">2</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Install Claude Code</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">Open <strong>Terminal</strong> on your Mac (search for "Terminal" in Spotlight) and paste this command:</div>
+                <div style="margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border,#444);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                  <code style="flex:1;font-size:13px;color:#a5b4fc;word-break:break-all;">npm i -g @anthropic-ai/claude-code</code>
+                  <button id="ob-copy-install" style="padding:4px 10px;font-size:11px;border-radius:4px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;flex-shrink:0;">Copy</button>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted,#777);margin-top:6px;">Don't have npm? <a href="https://nodejs.org" target="_blank" rel="noopener" style="color:var(--accent);">Install Node.js first</a> (pick the LTS version), then try again.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">3</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Log in to Claude</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">In the same Terminal window, paste this command. It will open a browser window to log in with your Claude account:</div>
+                <div style="margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border,#444);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                  <code style="flex:1;font-size:13px;color:#a5b4fc;">claude login</code>
+                  <button id="ob-copy-login" style="padding:4px 10px;font-size:11px;border-radius:4px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;flex-shrink:0;">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">4</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Come back here and click "Check Connection"</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;margin-bottom:10px;">Once you've logged in, click the button below and we'll verify everything is working.</div>
+                <button id="ob-check-claude" style="padding:10px 24px;font-size:14px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-weight:600;">Check Connection</button>
+                <div id="ob-claude-status" style="font-size:13px;margin-top:8px;"></div>
+              </div>
+            </div>
+          </div>
+        `}
+
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border,#333);">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <div style="font-size:20px;">🤖</div>
+            <div>
+              <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);">OpenAI Codex <span style="font-size:11px;font-weight:400;color:var(--text-muted,#888);">— optional</span></div>
+              <div style="font-size:12px;color:var(--text-muted,#888);margin-top:2px;">Adds a second AI for code tasks. Not required — Claude handles everything on its own.</div>
+            </div>
+            <div style="margin-left:auto;font-size:13px;font-weight:600;color:${hasCodex ? '#22c55e' : 'var(--text-muted,#666)'};">${hasCodex ? '✓ Connected' : 'Not installed'}</div>
+          </div>
+          ${!hasCodex ? `
+            <details style="margin-top:8px;">
+              <summary style="font-size:12px;color:var(--accent,#7c5cff);cursor:pointer;">How to install Codex (optional)</summary>
+              <div style="margin-top:10px;font-size:13px;color:var(--text-muted,#aaa);line-height:1.6;">
+                <div style="margin-bottom:8px;">Open Terminal and run:</div>
+                <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border,#444);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <code style="flex:1;font-size:13px;color:#a5b4fc;">npm i -g @openai/codex</code>
+                  <button id="ob-copy-codex" style="padding:4px 10px;font-size:11px;border-radius:4px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;flex-shrink:0;">Copy</button>
+                </div>
+                <div>You'll need an <a href="https://platform.openai.com" target="_blank" rel="noopener" style="color:var(--accent);">OpenAI account</a> with API access.</div>
+              </div>
+            </details>
+          ` : ''}
+        </div>
+
+        <div class="ob-actions" style="margin-top:20px;">
+          <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary" id="ob-next">${hasClaude ? 'Continue' : 'Skip for Now'}</button>
+        </div>`;
+    }
+
+    function obStepMarketplaceConnect() {
+      const amazonConnected = obState.amazonConnected || false;
+      const walmartConnected = obState.walmartConnected || false;
+      const ebayConnected = obState.ebayConnected || false;
+      const anyConnected = amazonConnected || walmartConnected || ebayConnected;
+
+      return `
+        <div class="ob-step-label">Step 4 of 7 — Connect Your Accounts</div>
+        <div class="ob-title">Connect your seller accounts</div>
+        <div class="ob-subtitle">
+          HIVEMIND can pull live data from your marketplace accounts — orders, inventory, shipments, and account health alerts.
+          <strong>This is optional.</strong> You can set this up later in Settings.
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:20px;">
+          <div style="background:rgba(255,255,255,0.03);border:1px solid ${amazonConnected ? '#22c55e44' : 'var(--border,#333)'};border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;">
+            <div style="font-size:24px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:10px;">🛒</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);">Amazon Seller Central</div>
+              <div style="font-size:12px;color:var(--text-muted,#888);margin-top:2px;">Orders, FBA shipments, inventory, account health</div>
+            </div>
+            <div style="font-size:13px;font-weight:600;color:${amazonConnected ? '#22c55e' : 'var(--text-muted,#666)'};">${amazonConnected ? '✓ Connected' : 'Set up in Settings'}</div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid ${walmartConnected ? '#22c55e44' : 'var(--border,#333)'};border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;">
+            <div style="font-size:24px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:10px;">🔵</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);">Walmart Marketplace</div>
+              <div style="font-size:12px;color:var(--text-muted,#888);margin-top:2px;">Items, orders, inventory, returns</div>
+            </div>
+            <div style="font-size:13px;font-weight:600;color:${walmartConnected ? '#22c55e' : 'var(--text-muted,#666)'};">${walmartConnected ? '✓ Connected' : 'Set up in Settings'}</div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid ${ebayConnected ? '#22c55e44' : 'var(--border,#333)'};border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;">
+            <div style="font-size:24px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:10px;">🟡</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);">eBay</div>
+              <div style="font-size:12px;color:var(--text-muted,#888);margin-top:2px;">Listings, orders, seller metrics, finances</div>
+            </div>
+            <div style="font-size:13px;font-weight:600;color:${ebayConnected ? '#22c55e' : 'var(--text-muted,#666)'};">${ebayConnected ? '✓ Connected' : 'Set up in Settings'}</div>
           </div>
         </div>
+
+        <div style="margin-top:16px;padding:12px;background:rgba(124,92,255,0.06);border-radius:8px;border:1px solid rgba(124,92,255,0.15);">
+          <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">
+            <strong style="color:var(--text-primary,#ccc);">You can connect these anytime.</strong>
+            Go to <strong style="color:var(--accent,#7c5cff);">Settings → Seller Accounts</strong> to connect your marketplace accounts with a step-by-step guide.
+          </div>
+        </div>
+
         <div class="ob-actions">
           <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
           <button class="ob-btn ob-btn-primary" id="ob-next">Continue</button>
         </div>`;
     }
 
+    function obStepBankConnect() {
+      const bankConnected = obState.bankConnected || false;
+
+      return `
+        <div class="ob-step-label">Step 5 of 7 — Track Your Spending</div>
+        <div class="ob-title">Connect your bank accounts</div>
+        <div class="ob-subtitle">
+          Know exactly how much you can spend on sourcing. HIVEMIND connects to your credit cards and bank accounts
+          through <strong>SimpleFIN Bridge</strong> to show real-time balances and track spending.
+          <br><br><strong>This is optional</strong> — you can set this up later in the Finances tab.
+        </div>
+
+        ${bankConnected ? `
+          <div style="margin:24px 0;padding:24px;background:rgba(34,197,94,0.06);border:1px solid #22c55e44;border-radius:12px;text-align:center;">
+            <div style="font-size:40px;margin-bottom:10px;">✅</div>
+            <div style="font-size:16px;font-weight:600;color:#22c55e;margin-bottom:4px;">Bank accounts connected!</div>
+            <div style="font-size:13px;color:var(--text-muted);">Your balances and transactions are now syncing.</div>
+          </div>
+        ` : `
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:20px;">
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">1</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Create a SimpleFIN account & connect your banks</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">
+                  Click the button below to open SimpleFIN Bridge. Sign up ($1.50/month), connect your bank accounts,
+                  then click <strong>"Create Setup Token"</strong>. The token will be copied to your clipboard automatically.
+                </div>
+                <button id="ob-open-simplefin" style="display:inline-block;margin-top:10px;padding:10px 20px;font-size:13px;border-radius:8px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;font-weight:600;">Open SimpleFIN Bridge →</button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">2</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Paste your Setup Token</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;margin-bottom:10px;">
+                  Come back here and paste the token. If it was copied to your clipboard, just click "Paste from Clipboard".
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                  <input type="text" id="ob-simplefin-token" placeholder="Paste your setup token here..." style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--border,#444);background:var(--bg-secondary,#1a1a2e);color:var(--text-primary);font-size:13px;" />
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button id="ob-paste-clipboard" style="padding:8px 16px;border-radius:6px;background:rgba(124,92,255,0.15);color:var(--accent,#7c5cff);border:1px solid rgba(124,92,255,0.3);cursor:pointer;font-size:12px;font-weight:500;">📋 Paste from Clipboard</button>
+                  <button id="ob-connect-bank" style="padding:8px 16px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-weight:600;font-size:12px;">Connect</button>
+                </div>
+                <div id="ob-bank-status" style="font-size:12px;margin-top:8px;min-height:16px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--border,#333);">
+            <div style="font-size:12px;color:var(--text-muted,#888);line-height:1.5;">
+              <strong style="color:var(--text-primary,#ccc);">🔒 Your data stays private.</strong>
+              HIVEMIND never sees your bank login credentials. SimpleFIN provides read-only access to balances and transactions. All data is stored locally on your computer, encrypted at rest.
+            </div>
+          </div>
+        `}
+
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary" id="ob-next">${bankConnected ? 'Continue' : 'Skip for Now'}</button>
+        </div>`;
+    }
+
     // ── Curated Skill Packs ────────────────────────────────────────────
     const CURATED_SKILL_PACKS = [
       {
-        name: 'HIVEMIND Core',
-        description: '11 built-in skills for development, research, and communication',
-        skills: ['git-workflow', 'code-generate', 'codebase-map', 'adversarial-review', 'slack-notify', 'smoke-test', 'debug-server', 'uptime-check', 'trend-analysis', 'web-research', 'chrome-cdp'],
+        name: 'Seller Essentials',
+        description: 'Core skills for marketplace sellers — Amazon, Walmart & eBay policy experts, A2A arbitrage playbook, browser automation, account health monitoring',
+        skills: ['amazon-seller-expert', 'walmart-seller-expert', 'ebay-seller-expert', 'a2a-arbitrage-expert', 'chrome-cdp', 'web-research', 'trend-analysis', 'uptime-check', 'slack-notify', 'git-workflow', 'code-generate', 'codebase-map', 'debug-server'],
         alwaysIncluded: true,
         gitUrl: null,
       },
       {
-        name: 'gstack by Garry Tan',
-        description: '28 engineering workflow skills — office hours, code review, QA, shipping, deployment',
+        name: "Saul's Recommended — gstack by Garry Tan",
+        description: 'Marketing, SEO, copywriting, and growth skills to boost your selling business',
         skills: ['office-hours', 'plan-ceo-review', 'plan-eng-review', 'plan-design-review', 'review', 'qa', 'ship', 'design-review', 'investigate', 'retro', 'codex', 'browse'],
         alwaysIncluded: false,
         gitUrl: 'https://github.com/garrytan/gstack',
@@ -2909,7 +3233,7 @@
       }).join('');
 
       return `
-        <div class="ob-step-label">Step 4 of 5 — Skill Packs</div>
+        <div class="ob-step-label">Step 7 of 7 — Skill Packs</div>
         <div class="ob-title">Available Skill Packs</div>
         <div class="ob-subtitle">
           Skills are reusable capabilities your agents can use.
@@ -3027,6 +3351,114 @@
         });
       }
 
+      if (step === 'tools') {
+        // Copy buttons
+        const copyInstall = document.getElementById('ob-copy-install');
+        if (copyInstall) copyInstall.addEventListener('click', () => {
+          navigator.clipboard.writeText('npm i -g @anthropic-ai/claude-code');
+          copyInstall.textContent = 'Copied!';
+          setTimeout(() => { copyInstall.textContent = 'Copy'; }, 2000);
+        });
+        const copyLogin = document.getElementById('ob-copy-login');
+        if (copyLogin) copyLogin.addEventListener('click', () => {
+          navigator.clipboard.writeText('claude login');
+          copyLogin.textContent = 'Copied!';
+          setTimeout(() => { copyLogin.textContent = 'Copy'; }, 2000);
+        });
+        const copyCodex = document.getElementById('ob-copy-codex');
+        if (copyCodex) copyCodex.addEventListener('click', () => {
+          navigator.clipboard.writeText('npm i -g @openai/codex');
+          copyCodex.textContent = 'Copied!';
+          setTimeout(() => { copyCodex.textContent = 'Copy'; }, 2000);
+        });
+        // Check connection button
+        const checkBtn = document.getElementById('ob-check-claude');
+        if (checkBtn) checkBtn.addEventListener('click', async () => {
+          const statusEl = document.getElementById('ob-claude-status');
+          checkBtn.disabled = true; checkBtn.textContent = 'Checking...';
+          try {
+            // Re-fetch providers to see if Claude is now installed
+            const res = await fetch(_baseHttp + '/api/onboarding/providers');
+            if (res.ok) {
+              const data = await res.json();
+              obState.providers = Array.isArray(data.providers) ? data.providers : [];
+              const claude = obState.providers.find(p => p.id === 'claude-code');
+              if (claude && claude.installed) {
+                if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✓ Claude is connected! Click Continue.</span>';
+                // Re-render to show the success state
+                setTimeout(() => obRenderStep(), 1500);
+                return;
+              }
+            }
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Claude wasn\'t detected yet. Make sure you ran both commands in Terminal, then try again.</span>';
+            checkBtn.disabled = false; checkBtn.textContent = 'Check Connection';
+          } catch {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Couldn\'t check — server may still be starting up. Try again in a moment.</span>';
+            checkBtn.disabled = false; checkBtn.textContent = 'Check Connection';
+          }
+        });
+      }
+
+      if (step === 'marketplace-connect') {
+        // Marketplace connections are now done in Settings — this step is informational only
+      }
+
+      if (step === 'bank-connect') {
+        const openBtn = document.getElementById('ob-open-simplefin');
+        if (openBtn) openBtn.addEventListener('click', () => {
+          window.open('https://beta-bridge.simplefin.org/simplefin/create', '_blank');
+        });
+
+        const pasteBtn = document.getElementById('ob-paste-clipboard');
+        const tokenInput = document.getElementById('ob-simplefin-token');
+        if (pasteBtn && tokenInput) pasteBtn.addEventListener('click', async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (text && text.length > 20) {
+              tokenInput.value = text.trim();
+              pasteBtn.textContent = '✓ Pasted';
+              setTimeout(() => { pasteBtn.textContent = '📋 Paste from Clipboard'; }, 2000);
+            } else {
+              pasteBtn.textContent = 'Nothing in clipboard';
+              setTimeout(() => { pasteBtn.textContent = '📋 Paste from Clipboard'; }, 2000);
+            }
+          } catch {
+            pasteBtn.textContent = 'Clipboard access denied';
+            setTimeout(() => { pasteBtn.textContent = '📋 Paste from Clipboard'; }, 2000);
+          }
+        });
+
+        const connectBtn = document.getElementById('ob-connect-bank');
+        const statusEl = document.getElementById('ob-bank-status');
+        if (connectBtn && tokenInput) connectBtn.addEventListener('click', async () => {
+          const token = tokenInput.value.trim();
+          if (!token) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Paste your setup token first</span>';
+            return;
+          }
+          connectBtn.disabled = true; connectBtn.textContent = 'Connecting...';
+          if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted);">Connecting to SimpleFIN and syncing your accounts...</span>';
+          try {
+            const res = await fetch(_baseHttp + '/api/finance/connect', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ setupToken: token }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              obState.bankConnected = true;
+              if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">Connected! Found ' + data.accountCount + ' account(s).</span>';
+              setTimeout(() => obRenderStep(), 1500);
+            } else {
+              if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">' + escapeHtml(data.error || 'Connection failed') + '</span>';
+              connectBtn.disabled = false; connectBtn.textContent = 'Connect';
+            }
+          } catch (e) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Connection error. Make sure you pasted the full token.</span>';
+            connectBtn.disabled = false; connectBtn.textContent = 'Connect';
+          }
+        });
+      }
+
       if (step === 'skillpacks') {
         document.querySelectorAll('.ob-pack').forEach(packEl => {
           const idx = parseInt(packEl.dataset.packIdx, 10);
@@ -3044,30 +3476,64 @@
         });
       }
 
-      // Email setup step bindings
       if (step === 'email-setup') {
-        const gmailBtn = document.getElementById('ob-gmail-btn');
-        if (gmailBtn) gmailBtn.addEventListener('click', () => {
-          const statusEl = document.getElementById('ob-email-status');
-          if (statusEl) statusEl.textContent = 'Redirecting to Gmail OAuth...';
-          window.open(_baseHttp + '/api/email/auth/gmail', '_blank');
-          if (statusEl) statusEl.innerHTML = 'Complete the Google sign-in in your browser, then click <strong>Skip for now</strong> to continue.';
+        // Provider card selection
+        document.querySelectorAll('.ob-email-provider').forEach(btn => {
+          btn.addEventListener('click', () => {
+            obState.emailProvider = btn.dataset.provider;
+            document.querySelectorAll('.ob-email-provider').forEach(b => {
+              const sel = b.dataset.provider === obState.emailProvider;
+              b.style.background = sel ? 'rgba(124,92,255,0.1)' : 'rgba(255,255,255,0.03)';
+              b.style.borderColor = sel ? 'var(--accent,#7c5cff)' : 'var(--border,#333)';
+            });
+            const hostInput = document.getElementById('ob-imap-host');
+            if (hostInput) hostInput.value = btn.dataset.host || 'imap.gmail.com';
+            // Update the app password link based on provider
+            const linkEl = document.getElementById('ob-email-apppass-link');
+            if (linkEl) {
+              if (btn.dataset.provider === 'gmail') {
+                linkEl.href = 'https://myaccount.google.com/apppasswords';
+                linkEl.textContent = 'Create App Password →';
+              } else if (btn.dataset.provider === 'outlook') {
+                linkEl.href = 'https://account.live.com/proofs/manage/additional';
+                linkEl.textContent = 'Create App Password →';
+              } else if (btn.dataset.provider === 'yahoo') {
+                linkEl.href = 'https://login.yahoo.com/account/security/app-passwords';
+                linkEl.textContent = 'Create App Password →';
+              }
+            }
+          });
         });
+        // Connect email button
         const imapBtn = document.getElementById('ob-imap-btn');
         if (imapBtn) imapBtn.addEventListener('click', async () => {
           const statusEl = document.getElementById('ob-email-status');
-          const email = document.getElementById('ob-imap-email')?.value;
-          const password = document.getElementById('ob-imap-password')?.value;
+          const email = document.getElementById('ob-imap-email')?.value?.trim();
+          const password = document.getElementById('ob-imap-password')?.value?.trim();
           const host = document.getElementById('ob-imap-host')?.value || 'imap.gmail.com';
-          if (!email || !password) { if (statusEl) statusEl.textContent = 'Email and password required.'; return; }
-          if (statusEl) statusEl.textContent = 'Testing connection...';
+          if (!email || !password) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Please enter your email and App Password.</span>'; return; }
+          if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent);">Testing connection...</span>';
+          imapBtn.disabled = true; imapBtn.textContent = 'Connecting...';
           try {
             const resp = await fetch(_baseHttp + '/api/email/auth/imap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, host, port: 993, tls: true }) });
             const data = await resp.json();
-            if (data.success) { if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">Connected! Click Continue.</span>'; }
-            else { if (statusEl) statusEl.textContent = data.error || 'Connection failed.'; }
-          } catch (e) { if (statusEl) statusEl.textContent = 'Connection error: ' + e.message; }
+            if (data.success) {
+              obState.emailConnected = true;
+              if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">✓ Connected! Click Continue.</span>';
+              const nextBtn = document.getElementById('ob-next');
+              if (nextBtn) nextBtn.textContent = 'Continue';
+            } else {
+              if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">' + escapeHtml(data.error || 'Connection failed. Double-check your App Password.') + '</span>';
+              imapBtn.disabled = false; imapBtn.textContent = 'Connect My Email';
+            }
+          } catch (e) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Error: ' + escapeHtml(e.message) + '</span>'; imapBtn.disabled = false; imapBtn.textContent = 'Connect My Email'; }
         });
+        // Gmail OAuth button (if it exists)
+        const gmailBtn = document.getElementById('ob-gmail-btn');
+        if (gmailBtn) gmailBtn.addEventListener('click', () => {
+          window.open(_baseHttp + '/api/email/auth/gmail', '_blank');
+        });
+        // Back/next via class-based buttons
         document.querySelectorAll('.ob-prev').forEach(b => b.addEventListener('click', () => { obSetError(); obState.step--; obRenderStep(); }));
         document.querySelectorAll('.ob-next').forEach(b => b.addEventListener('click', () => { obSetError(); obState.step++; obRenderStep(); }));
       }
@@ -3098,6 +3564,17 @@
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: rid + '-auto', template_id: rid, enabled: true }),
               });
+            } catch {}
+          }
+          // Auto-enable the pipeline and trigger first scan if email is connected
+          if (obState.emailConnected && (obState.selectedRetailers || []).length > 0) {
+            try {
+              await fetch(_baseHttp + '/api/email/pipeline/toggle', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: true }),
+              });
+              // Trigger first scan in background (don't wait for it)
+              fetch(_baseHttp + '/api/email/pipeline/run', { method: 'POST' }).catch(() => {});
             } catch {}
           }
           obState.step++; obRenderStep();
@@ -3133,28 +3610,70 @@
 
     // ── Email Setup Step ────────────────────────────────────────────────────
     function obStepEmailSetup() {
+      const emailConnected = obState.emailConnected || false;
+
       return `
-        <div class="ob-step-label">Step 5 of ${OB_STEPS.length}</div>
-        <h2 class="ob-title">Connect Your Email</h2>
-        <p class="ob-subtitle">Track purchases, shipments, and Amazon account health automatically.</p>
-        <div style="display:flex;flex-direction:column;gap:12px;margin:20px 0;">
-          <button id="ob-gmail-btn" class="ob-btn-primary" style="padding:12px;border-radius:8px;font-size:14px;cursor:pointer;background:#4285f4;color:white;border:none;">
-            Connect Gmail (Recommended)
-          </button>
-          <div style="text-align:center;color:var(--text-muted);font-size:12px;">or</div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <input type="email" id="ob-imap-email" placeholder="Email address" class="ob-input" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
-            <input type="password" id="ob-imap-password" placeholder="App password" class="ob-input" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
-            <input type="text" id="ob-imap-host" placeholder="IMAP host (e.g. imap.gmail.com)" value="imap.gmail.com" class="ob-input" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
-            <button id="ob-imap-btn" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);cursor:pointer;font-size:13px;">Connect IMAP</button>
+        <div class="ob-step-label">Step 6 of 7 — Connect Your Email</div>
+        <div class="ob-title">Connect your email</div>
+        <div class="ob-subtitle">
+          HIVEMIND reads your purchase confirmation emails to automatically track orders, shipments, and costs.
+          <strong>We only read emails — we never send, delete, or modify anything.</strong>
+        </div>
+
+        ${emailConnected ? `
+          <div style="margin:20px 0;padding:20px;background:rgba(34,197,94,0.06);border:1px solid #22c55e44;border-radius:12px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:8px;">✅</div>
+            <div style="font-size:15px;font-weight:600;color:#22c55e;">Email connected!</div>
           </div>
-          <div id="ob-email-status" style="text-align:center;font-size:12px;color:var(--text-muted);"></div>
-        </div>
-        <div style="display:flex;gap:10px;justify-content:space-between;">
-          <button class="ob-btn-secondary ob-prev">Back</button>
-          <button class="ob-btn-secondary ob-next">Skip for now</button>
-        </div>
-      `;
+        ` : `
+          <div style="margin-top:20px;">
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary,#eee);margin-bottom:14px;">Which email do you use for purchases?</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+              <button class="ob-email-provider selected" data-provider="gmail" data-host="imap.gmail.com" style="flex:1;min-width:120px;padding:14px 12px;background:rgba(124,92,255,0.1);color:var(--text-primary,#eee);border:2px solid var(--accent,#7c5cff);border-radius:10px;cursor:pointer;font-size:13px;text-align:center;">
+                <div style="font-size:22px;margin-bottom:4px;">📧</div>
+                <strong>Gmail</strong>
+              </button>
+              <button class="ob-email-provider" data-provider="outlook" data-host="outlook.office365.com" style="flex:1;min-width:120px;padding:14px 12px;background:rgba(255,255,255,0.03);color:var(--text-primary,#eee);border:2px solid var(--border,#333);border-radius:10px;cursor:pointer;font-size:13px;text-align:center;">
+                <div style="font-size:22px;margin-bottom:4px;">📬</div>
+                <strong>Outlook</strong>
+              </button>
+              <button class="ob-email-provider" data-provider="yahoo" data-host="imap.mail.yahoo.com" style="flex:1;min-width:120px;padding:14px 12px;background:rgba(255,255,255,0.03);color:var(--text-primary,#eee);border:2px solid var(--border,#333);border-radius:10px;cursor:pointer;font-size:13px;text-align:center;">
+                <div style="font-size:22px;margin-bottom:4px;">💌</div>
+                <strong>Yahoo</strong>
+              </button>
+            </div>
+
+            <div id="ob-email-guide" style="display:flex;flex-direction:column;gap:16px;margin-bottom:20px;">
+              <div style="display:flex;gap:12px;align-items:flex-start;">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Create an App Password</div>
+                  <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;">Click the button below, type <strong>HIVEMIND</strong> as the app name, then copy the password Google gives you.</div>
+                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;padding:5px 12px;font-size:11px;border-radius:5px;background:rgba(124,92,255,0.15);color:var(--accent,#7c5cff);border:1px solid rgba(124,92,255,0.3);cursor:pointer;text-decoration:none;font-weight:500;" id="ob-email-apppass-link">Create App Password →</a>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;align-items:flex-start;">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">2</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:6px;">Paste it below with your email</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+              <input type="email" id="ob-imap-email" placeholder="Your email address" class="ob-input" style="padding:10px 12px;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#444);border-radius:8px;color:var(--text-primary,#eee);font-size:13px;">
+              <input type="password" id="ob-imap-password" placeholder="Paste your App Password here (NOT your regular password)" class="ob-input" style="padding:10px 12px;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#444);border-radius:8px;color:var(--text-primary,#eee);font-size:13px;">
+              <input type="hidden" id="ob-imap-host" value="imap.gmail.com">
+              <button id="ob-imap-btn" style="padding:10px;background:#22c55e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">Connect My Email</button>
+            </div>
+            <div id="ob-email-status" style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+          </div>
+        `}
+
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-secondary ob-prev" id="ob-back">Back</button>
+          <button class="ob-btn ob-btn-primary ob-next" id="ob-next">${emailConnected ? 'Continue' : 'Skip for Now'}</button>
+        </div>`;
     }
 
     // ── Email Rules Step ─────────────────────────────────────────────────────
@@ -3180,7 +3699,7 @@
       if (!obState.prepCenter) obState.prepCenter = '';
 
       return `
-        <div class="ob-step-label">Step 6 of ${OB_STEPS.length}</div>
+        <div class="ob-step-label">Retailers &amp; Sourcing</div>
         <h2 class="ob-title">Where Do You Source?</h2>
         <p class="ob-subtitle">Select the stores you buy from. We'll track purchase emails from these retailers.</p>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0;max-height:260px;overflow-y:auto;">
@@ -3265,6 +3784,10 @@
       // Reload profile into the chat UI
       if (typeof loadProfile === 'function') await loadProfile();
 
+      // Navigate to Dashboard so seller sees their data immediately
+      const dashBtn = document.querySelector('.sidebar-nav-item[data-view="ops-dashboard"]');
+      if (dashBtn) dashBtn.click();
+
       // Clean up the overlay after transition
       setTimeout(() => { if (root) root.innerHTML = ''; }, 600);
     }
@@ -3320,12 +3843,12 @@
     const activeTasks = new Map();
 
     const agentMeta = {
-      'nova-1':     { name: 'Nova',            role: 'Co-Founder & CEO',      provider: 'Claude',  icon: 'N' },
-      'scout-1':    { name: 'Scout Alpha',    role: 'Research & Analysis',   provider: 'Claude',  icon: 'S' },
-      'builder-1':  { name: 'Builder Prime',  role: 'Code Generation',       provider: 'Codex',   icon: 'B' },
-      'sentinel-1': { name: 'Sentinel Watch',  role: 'Monitoring & Security', provider: 'Codex',   icon: 'W' },
-      'oracle-1':   { name: 'Oracle Insight',  role: 'Strategy & Prediction', provider: 'Claude',  icon: 'O' },
-      'courier-1':  { name: 'Courier Express', role: 'Communication',         provider: 'Claude',  icon: 'C' },
+      'nova-1':     { name: 'Nova',            role: 'Your Selling Partner',       provider: 'Claude',  icon: 'N' },
+      'scout-1':    { name: 'Scout Alpha',    role: 'Product & Market Research', provider: 'Claude',  icon: 'S' },
+      'builder-1':  { name: 'Builder Prime',  role: 'Listing & Content',         provider: 'Codex',   icon: 'B' },
+      'sentinel-1': { name: 'Sentinel Watch',  role: 'Account Health Monitor',    provider: 'Codex',   icon: 'W' },
+      'oracle-1':   { name: 'Oracle Insight',  role: 'Pricing & Profitability',   provider: 'Claude',  icon: 'O' },
+      'courier-1':  { name: 'Courier Express', role: 'Buyer & Support Comms',     provider: 'Claude',  icon: 'C' },
     };
 
     // ── Profile-based personalization ────────────────────────────────────
@@ -3408,10 +3931,11 @@
     const pageAlerts = $('#page-alerts');
     const pageEmailConfig = $('#page-email-config');
 
+    const pageFinances = $('#page-finances');
     const pageMap = {
       chat: mainChat, swarm: pageSwarm, skills: pageSkills, memory: pageMemory, settings: pageSettings,
       'ops-dashboard': pageOpsDashboard, purchases: pagePurchases, shipments: pageShipments, alerts: pageAlerts,
-      'email-config': pageEmailConfig,
+      finances: pageFinances, 'email-config': pageEmailConfig,
     };
 
     document.querySelectorAll('.sidebar-nav-item').forEach(btn => {
@@ -3437,9 +3961,10 @@
           if (view === 'memory') loadMemoryPage();
           if (view === 'settings') loadSettingsPage();
           if (view === 'ops-dashboard') loadOpsDashboard();
-          if (view === 'purchases') loadPurchasesPage();
+          if (view === 'purchases') { loadPurchasesPage(); loadShipmentsPage(); }
           if (view === 'shipments') loadShipmentsPage();
           if (view === 'alerts') loadAlertsPage();
+          if (view === 'finances') loadFinancesPage();
           if (view === 'email-config') loadEmailConfig();
         }
       });
@@ -3448,8 +3973,24 @@
     // ── Skills Page Logic ─────────────────────────────────────────────────
     let skillsData = null;
     let skillsAgentFilter = 'all';
+    let skillsCategoryFilter = 'recommended';
 
-    const agentColors = { scout: '#06b6d4', builder: '#6366f1', communicator: '#22c55e', monitor: '#f59e0b', analyst: '#a78bfa', nova: '#ef4444', any: '#94a3b8' };
+    const agentColors = { scout: '#06b6d4', builder: '#6366f1', communicator: '#22c55e', monitor: '#f59e0b', analyst: '#a78bfa', nova: '#ef4444', any: '#94a3b8', coordinator: '#ef4444' };
+
+    // Saul's Recommended skills — curated picks shown to all users
+    const RECOMMENDED_SKILLS = {
+      'gstack': { note: "Gary's all-in-one dev workflow — QA, deploy, design review, and 30+ slash commands. The Swiss Army knife.", author: 'Gary' },
+    };
+
+    // Skills with optional: true go to Dev Tools. Everything else is Marketplace.
+    // Recommended skills live in their own tab but also appear in their natural category.
+    function getSkillCategory(skill) {
+      return skill.optional ? 'devtools' : 'marketplace';
+    }
+
+    function isRecommended(skill) {
+      return RECOMMENDED_SKILLS.hasOwnProperty(skill.name);
+    }
 
     async function loadSkillsPage() {
       if (!skillsData) {
@@ -3457,24 +3998,55 @@
           const res = await fetch(`${_baseHttp}/api/skills`);
           skillsData = res.ok ? await res.json() : [];
         } catch { skillsData = []; }
-        // Fallback demo data if API returns empty
         if (skillsData.length === 0) {
           skillsData = [
-            { name: 'web-research', version: '1.0.0', agent: 'scout', description: 'Deep web research with source verification', triggers: ['research', 'find information'], tags: ['research', 'web'], enabled: true },
-            { name: 'code-generate', version: '1.0.0', agent: 'builder', description: 'Generate production-ready code from specs', triggers: ['generate code', 'implement'], tags: ['code', 'generation'], enabled: true },
-            { name: 'slack-notify', version: '1.0.0', agent: 'communicator', description: 'Send notifications via Slack', triggers: ['notify', 'slack message'], tags: ['communication', 'slack'], enabled: true },
-            { name: 'uptime-check', version: '1.0.0', agent: 'monitor', description: 'Monitor service uptime and latency', triggers: ['check uptime', 'monitor'], tags: ['monitoring', 'health'], enabled: false },
-            { name: 'trend-analysis', version: '1.0.0', agent: 'analyst', description: 'Analyze trends and forecast outcomes', triggers: ['analyze trends', 'predict'], tags: ['analysis', 'prediction'], enabled: true },
-            { name: 'chrome-cdp', version: '1.0.0', agent: 'scout', description: 'Browser automation via Chrome DevTools Protocol', triggers: ['browse', 'screenshot', 'click'], tags: ['browser', 'automation'], enabled: true },
+            { name: 'amazon-seller-expert', version: '1.0.0', agent: 'analyst', description: 'Comprehensive Amazon Seller Central knowledge base', triggers: ['amazon seller', 'seller central'], tags: ['marketplace', 'amazon', 'seller'], enabled: true, optional: false },
+            { name: 'walmart-seller-expert', version: '1.0.0', agent: 'analyst', description: 'Comprehensive Walmart Marketplace seller knowledge base', triggers: ['walmart seller', 'walmart marketplace'], tags: ['marketplace', 'walmart', 'seller'], enabled: true, optional: false },
+            { name: 'web-research', version: '1.0.0', agent: 'scout', description: 'Deep web research with source verification', triggers: ['research', 'find information'], tags: ['research', 'web'], enabled: true, optional: false },
+            { name: 'chrome-cdp', version: '1.0.0', agent: 'scout', description: 'Browser automation via Chrome DevTools Protocol', triggers: ['browse', 'screenshot', 'click'], tags: ['browser', 'automation'], enabled: true, optional: false },
           ];
         }
       }
+      renderSkillsCategoryTabs();
       renderSkillsFilters();
       renderSkills();
     }
 
+    function renderSkillsCategoryTabs() {
+      const recommendedCount = skillsData.filter(s => isRecommended(s)).length;
+      const marketplaceCount = skillsData.filter(s => getSkillCategory(s) === 'marketplace').length;
+      const devtoolsCount = skillsData.filter(s => getSkillCategory(s) === 'devtools').length;
+      const container = $('#skills-category-tabs');
+      const tabs = [
+        { id: 'recommended', label: "Saul's Recommended", count: recommendedCount },
+        { id: 'marketplace', label: 'Marketplace', count: marketplaceCount },
+        { id: 'devtools', label: 'Dev Tools', count: devtoolsCount },
+        { id: 'all', label: 'All Skills', count: skillsData.length },
+      ];
+      container.innerHTML = tabs.map(t =>
+        `<button class="skills-category-tab ${skillsCategoryFilter === t.id ? 'active' : ''}" data-category="${t.id}">${t.label}<span class="tab-count">${t.count}</span></button>`
+      ).join('');
+      container.querySelectorAll('.skills-category-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          skillsCategoryFilter = btn.dataset.category;
+          skillsAgentFilter = 'all';
+          container.querySelectorAll('.skills-category-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderSkillsFilters();
+          renderSkills();
+        });
+      });
+    }
+
+    function getFilteredByCategory() {
+      if (skillsCategoryFilter === 'all') return skillsData;
+      if (skillsCategoryFilter === 'recommended') return skillsData.filter(s => isRecommended(s));
+      return skillsData.filter(s => getSkillCategory(s) === skillsCategoryFilter);
+    }
+
     function renderSkillsFilters() {
-      const agents = ['all', ...new Set(skillsData.map(s => s.agent))];
+      const categorySkills = getFilteredByCategory();
+      const agents = ['all', ...new Set(categorySkills.map(s => s.agent))];
       const container = $('#skills-agent-filters');
       container.innerHTML = agents.map(a =>
         `<button class="filter-btn ${skillsAgentFilter === a ? 'active' : ''}" data-agent="${a}">${a}</button>`
@@ -3492,26 +4064,41 @@
     function renderSkills() {
       const search = ($('#skills-search')?.value || '').toLowerCase();
       const filtered = skillsData.filter(s => {
-        const matchText = !search || s.name.includes(search) || s.description.toLowerCase().includes(search);
+        let matchCategory;
+        if (skillsCategoryFilter === 'all') matchCategory = true;
+        else if (skillsCategoryFilter === 'recommended') matchCategory = isRecommended(s);
+        else matchCategory = getSkillCategory(s) === skillsCategoryFilter;
+        const matchText = !search || s.name.includes(search) || s.description.toLowerCase().includes(search)
+          || (s.tags || []).some(t => t.toLowerCase().includes(search))
+          || (s.triggers || []).some(t => t.toLowerCase().includes(search));
         const matchAgent = skillsAgentFilter === 'all' || s.agent === skillsAgentFilter;
-        return matchText && matchAgent;
+        return matchCategory && matchText && matchAgent;
       });
 
-      $('#skills-stats').textContent = `${skillsData.length} skills registered \u00B7 ${skillsData.filter(s => s.enabled).length} enabled \u00B7 ${new Set(skillsData.map(s => s.agent)).size} agent types`;
+      const categorySkills = getFilteredByCategory();
+      $('#skills-stats').textContent = `${categorySkills.length} skills \u00B7 ${categorySkills.filter(s => s.enabled).length} enabled \u00B7 ${filtered.length} shown`;
 
       const grid = $('#skills-grid');
       grid.innerHTML = filtered.map(skill => {
         const color = agentColors[skill.agent] || '#6366f1';
-        return `<div class="skill-card">
+        const rec = RECOMMENDED_SKILLS[skill.name];
+        const recBadge = rec ? `<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:6px;margin-bottom:2px;">
+            <span style="font-size:11px;color:#eab308;font-weight:600;">Saul's Pick</span>
+            <span style="font-size:11px;color:var(--text-secondary);">${escapeHtml(rec.note)}</span>
+          </div>` : '';
+        const authorBadge = rec && rec.author ? `<span style="font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(234,179,8,0.12);color:#eab308;font-weight:600;">by ${escapeHtml(rec.author)}</span>` : '';
+        return `<div class="skill-card" ${rec ? 'style="border-color:rgba(234,179,8,0.3);"' : ''}>
           <div class="skill-header">
             <div style="display:flex;align-items:center;gap:8px;">
               <span class="skill-name">${escapeHtml(skill.name)}</span>
               <span class="skill-version">v${escapeHtml(skill.version)}</span>
+              ${authorBadge}
             </div>
             <div class="skill-toggle ${skill.enabled ? 'on' : ''}" data-skill="${escapeHtml(skill.name)}"><div class="knob"></div></div>
           </div>
+          ${recBadge}
           <div class="skill-desc">${escapeHtml(skill.description)}</div>
-          <div style="display:flex;align-items:center;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span class="skill-agent-badge" style="background:${color}20;color:${color}">${escapeHtml(skill.agent)}</span>
             ${skill.tags.map(t => `<span class="skill-tag">${escapeHtml(t)}</span>`).join('')}
           </div>
@@ -3677,6 +4264,8 @@
         { key: 'auth_enabled', label: 'Require Password', type: 'toggle', value: false, description: 'Protect dashboard with a password' },
         { key: 'metrics_interval', label: 'Metrics Interval (ms)', type: 'number', value: 2000, description: 'How often to broadcast metrics via WebSocket' },
       ]},
+      { key: 'marketplace', label: 'Seller Accounts', fields: [], customRender: true },
+      { key: 'email', label: 'Email Setup', fields: [], customRender: true },
     ];
     let activeSettingsSection = 'llm';
     let settingsDirty = false;
@@ -3710,10 +4299,398 @@
       }
     }
 
+    // Track which marketplace setup guides are expanded
+    const mpGuideOpen = { amazon: false, walmart: false, ebay: false };
+
+    async function renderMarketplaceSettings(panel) {
+      panel.innerHTML = '<h3>Seller Accounts</h3><div style="color:var(--text-muted);font-size:13px;">Loading...</div>';
+      let status = { amazon: { connected: false }, walmart: { connected: false }, ebay: { connected: false } };
+      try {
+        const resp = await fetch(_baseHttp + '/api/seller/status');
+        status = await resp.json();
+      } catch {}
+
+      const sty = `
+        <style>
+          .mp-card{background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:12px;padding:20px;margin-bottom:16px;transition:border-color .2s}
+          .mp-card.connected{border-color:#22c55e44;background:rgba(34,197,94,0.04)}
+          .mp-hdr{display:flex;align-items:center;gap:14px}
+          .mp-icon{font-size:28px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:10px}
+          .mp-title{font-weight:600;font-size:15px;color:var(--text-primary,#eee)}
+          .mp-what{font-size:12px;color:var(--text-muted,#888);margin-top:3px;line-height:1.4}
+          .mp-badge{font-size:13px;color:#22c55e;font-weight:600;margin-left:auto;white-space:nowrap}
+          .mp-setup-btn{margin-top:14px;padding:10px 20px;font-size:14px;border-radius:8px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;font-weight:500;width:100%}
+          .mp-setup-btn:hover{opacity:.9}
+          .mp-guide{margin-top:16px;border-top:1px solid var(--border,#333);padding-top:16px}
+          .mp-step{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start}
+          .mp-step-num{width:28px;height:28px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;margin-top:2px}
+          .mp-step-body{flex:1}
+          .mp-step-title{font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:4px}
+          .mp-step-desc{font-size:13px;color:var(--text-muted,#aaa);line-height:1.5}
+          .mp-step-desc em{color:var(--accent,#7c5cff);font-style:normal;font-weight:500}
+          .mp-open-btn{display:inline-block;margin-top:8px;padding:6px 14px;font-size:12px;border-radius:6px;background:rgba(124,92,255,0.15);color:var(--accent,#7c5cff);border:1px solid rgba(124,92,255,0.3);cursor:pointer;text-decoration:none;font-weight:500}
+          .mp-open-btn:hover{background:rgba(124,92,255,0.25)}
+          .mp-paste-box{margin-top:8px}
+          .mp-paste-box input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border,#444);background:var(--bg-secondary,#1a1a2e);color:var(--text-primary,#eee);font-size:13px;margin-bottom:8px;box-sizing:border-box}
+          .mp-paste-box input::placeholder{color:#666}
+          .mp-paste-label{font-size:12px;color:var(--text-muted,#888);margin-bottom:4px;display:block}
+          .mp-connect-btn{padding:10px 20px;font-size:14px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-weight:600;width:100%;margin-top:4px}
+          .mp-connect-btn:hover{opacity:.9}
+          .mp-connect-btn:disabled{opacity:.5;cursor:not-allowed}
+          .mp-disconnect-btn{padding:8px 16px;font-size:13px;border-radius:6px;background:transparent;color:#ef4444;border:1px solid #ef444466;cursor:pointer;font-weight:500}
+          .mp-disconnect-btn:hover{background:rgba(239,68,68,0.1)}
+          .mp-status-msg{font-size:13px;margin-top:10px;min-height:20px}
+          .mp-tip{font-size:12px;color:var(--text-muted,#777);background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-top:12px;line-height:1.5}
+          .mp-tip strong{color:var(--text-primary,#ccc)}
+        </style>`;
+
+      // ── Amazon Card ──────────────────────────────────────────────────
+      const amzConnected = status.amazon?.connected;
+      const amzDate = status.amazon?.connectedAt;
+      const amzGuide = mpGuideOpen.amazon;
+
+      const amazonCard = `<div class="mp-card ${amzConnected ? 'connected' : ''}">
+        <div class="mp-hdr">
+          <div class="mp-icon">🛒</div>
+          <div>
+            <div class="mp-title">Amazon Seller Central</div>
+            <div class="mp-what">See your orders, FBA shipments, inventory levels, and account health alerts — all inside HIVEMIND.</div>
+          </div>
+          ${amzConnected ? `<div class="mp-badge">✓ Connected${amzDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(amzDate).toLocaleDateString() + '</span>' : ''}</div>` : ''}
+        </div>
+        ${amzConnected ? `
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;align-items:center;gap:12px;">
+            <span style="font-size:13px;color:var(--text-muted);">Your Amazon account is connected and pulling live data.</span>
+            <button class="mp-disconnect-btn" id="mp-disconnect-amazon" style="margin-left:auto;">Disconnect</button>
+          </div>
+        ` : `
+          ${!amzGuide ? `
+            <button class="mp-setup-btn" id="mp-start-amazon">Connect My Amazon Account</button>
+            <div class="mp-tip">⏱ Takes about 5 minutes. You'll need to be logged into your <strong>Amazon Seller Central</strong> account.</div>
+          ` : `
+            <div class="mp-guide">
+              <div class="mp-step">
+                <div class="mp-step-num">1</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Open Amazon Developer Central</div>
+                  <div class="mp-step-desc">Click the button below. This opens the page where you create an app that lets HIVEMIND read your seller data. <strong>Log in with the same account you use for Seller Central.</strong></div>
+                  <a class="mp-open-btn" href="https://developer.amazonservices.com/sp/apps" target="_blank" rel="noopener">Open Amazon Developer Central →</a>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">2</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Register as a developer (if you haven't already)</div>
+                  <div class="mp-step-desc">If Amazon asks you to register, fill in your info. For <em>"What type of application?"</em> choose <em>"Private seller application"</em>. This just means it's for your own account.</div>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">3</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Create a new app</div>
+                  <div class="mp-step-desc">Click <em>"Add new app client"</em>. Give it any name you want (like "HIVEMIND"). For the API type, choose <em>"SP API"</em>. For the IAM ARN field, you can enter <em>arn:aws:iam::user/hivemind</em> — Amazon no longer requires this but the form might still ask.</div>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">4</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Authorize the app for your account</div>
+                  <div class="mp-step-desc">After creating the app, look for an <em>"Authorize"</em> or <em>"Self authorize"</em> button next to it. Click it. This gives the app permission to access your seller data. Amazon will generate a <strong>Refresh Token</strong> — keep this page open.</div>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">5</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Copy and paste your credentials below</div>
+                  <div class="mp-step-desc">You need three things from that page. Copy each one and paste it in the box below.</div>
+                  <div class="mp-paste-box">
+                    <label class="mp-paste-label">Client ID <span style="color:#666;">(under "LWA credentials" — starts with "amzn1.application")</span></label>
+                    <input id="mp-amz-client-id" type="text" placeholder="Paste your Client ID here" autocomplete="off" />
+                    <label class="mp-paste-label">Client Secret <span style="color:#666;">(click "View" to reveal it, then copy)</span></label>
+                    <input id="mp-amz-client-secret" type="password" placeholder="Paste your Client Secret here" autocomplete="off" />
+                    <label class="mp-paste-label">Refresh Token <span style="color:#666;">(from the "Self authorize" step — long string of characters)</span></label>
+                    <input id="mp-amz-refresh-token" type="password" placeholder="Paste your Refresh Token here" autocomplete="off" />
+                  </div>
+                  <button class="mp-connect-btn" id="mp-connect-amazon">Connect My Amazon Account</button>
+                </div>
+              </div>
+            </div>
+          `}
+        `}
+        <div id="mp-status-amazon" class="mp-status-msg"></div>
+      </div>`;
+
+      // ── Walmart Card ─────────────────────────────────────────────────
+      const wmtConnected = status.walmart?.connected;
+      const wmtDate = status.walmart?.connectedAt;
+      const wmtGuide = mpGuideOpen.walmart;
+
+      const walmartCard = `<div class="mp-card ${wmtConnected ? 'connected' : ''}">
+        <div class="mp-hdr">
+          <div class="mp-icon">🔵</div>
+          <div>
+            <div class="mp-title">Walmart Marketplace</div>
+            <div class="mp-what">See your Walmart items, orders, inventory, and returns inside HIVEMIND.</div>
+          </div>
+          ${wmtConnected ? `<div class="mp-badge">✓ Connected${wmtDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(wmtDate).toLocaleDateString() + '</span>' : ''}</div>` : ''}
+        </div>
+        ${wmtConnected ? `
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;align-items:center;gap:12px;">
+            <span style="font-size:13px;color:var(--text-muted);">Your Walmart account is connected and pulling live data.</span>
+            <button class="mp-disconnect-btn" id="mp-disconnect-walmart" style="margin-left:auto;">Disconnect</button>
+          </div>
+        ` : `
+          ${!wmtGuide ? `
+            <button class="mp-setup-btn" id="mp-start-walmart">Connect My Walmart Account</button>
+            <div class="mp-tip">⏱ Takes about 2 minutes. You'll need to be logged into your <strong>Walmart Seller Center</strong> account.</div>
+          ` : `
+            <div class="mp-guide">
+              <div class="mp-step">
+                <div class="mp-step-num">1</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Open Walmart's API Key page</div>
+                  <div class="mp-step-desc">Click the button below. This opens the page where Walmart gives you your API keys. <strong>Log in with your Seller Center account.</strong></div>
+                  <a class="mp-open-btn" href="https://developer.walmart.com/generateKey" target="_blank" rel="noopener">Open Walmart API Keys →</a>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">2</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Generate your API keys</div>
+                  <div class="mp-step-desc">If you don't already have keys, click <em>"Generate Key"</em>. Walmart will show you two values: a <strong>Client ID</strong> and a <strong>Client Secret</strong>. If you already have keys, they'll be shown on the page.</div>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">3</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Copy and paste them below</div>
+                  <div class="mp-step-desc">Copy each value and paste it in the box below.</div>
+                  <div class="mp-paste-box">
+                    <label class="mp-paste-label">Client ID</label>
+                    <input id="mp-wmt-client-id" type="text" placeholder="Paste your Client ID here" autocomplete="off" />
+                    <label class="mp-paste-label">Client Secret</label>
+                    <input id="mp-wmt-client-secret" type="password" placeholder="Paste your Client Secret here" autocomplete="off" />
+                  </div>
+                  <button class="mp-connect-btn" id="mp-connect-walmart">Connect My Walmart Account</button>
+                </div>
+              </div>
+            </div>
+          `}
+        `}
+        <div id="mp-status-walmart" class="mp-status-msg"></div>
+      </div>`;
+
+      // ── eBay Card ────────────────────────────────────────────────────
+      const ebayConnected = status.ebay?.connected;
+      const ebayDate = status.ebay?.connectedAt;
+      const ebayGuide = mpGuideOpen.ebay;
+
+      const ebayCard = `<div class="mp-card ${ebayConnected ? 'connected' : ''}">
+        <div class="mp-hdr">
+          <div class="mp-icon">🟡</div>
+          <div>
+            <div class="mp-title">eBay</div>
+            <div class="mp-what">See your eBay listings, orders, seller metrics, and financial transactions inside HIVEMIND.</div>
+          </div>
+          ${ebayConnected ? `<div class="mp-badge">✓ Connected${ebayDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(ebayDate).toLocaleDateString() + '</span>' : ''}</div>` : ''}
+        </div>
+        ${ebayConnected ? `
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;align-items:center;gap:12px;">
+            <span style="font-size:13px;color:var(--text-muted);">Your eBay account is connected and pulling live data.</span>
+            <button class="mp-disconnect-btn" id="mp-disconnect-ebay" style="margin-left:auto;">Disconnect</button>
+          </div>
+        ` : `
+          ${!ebayGuide ? `
+            <button class="mp-setup-btn" id="mp-start-ebay">Connect My eBay Account</button>
+            <div class="mp-tip">⏱ Takes about 5 minutes. You'll need an <strong>eBay developer account</strong> (free to create).</div>
+          ` : `
+            <div class="mp-guide">
+              <div class="mp-step">
+                <div class="mp-step-num">1</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Sign up for an eBay developer account</div>
+                  <div class="mp-step-desc">Click the button below. If you don't have a developer account yet, sign up — it's free and instant. <strong>Use the same email as your eBay seller account.</strong></div>
+                  <a class="mp-open-btn" href="https://developer.ebay.com/signin" target="_blank" rel="noopener">Open eBay Developer Portal →</a>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">2</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Create an application</div>
+                  <div class="mp-step-desc">Once logged in, go to <em>"Application access keys"</em> and click <em>"Create a keyset"</em>. Choose <em>"Production"</em> (not Sandbox). Give it any name like "HIVEMIND".</div>
+                  <a class="mp-open-btn" href="https://developer.ebay.com/my/keys" target="_blank" rel="noopener">Go to Application Keys →</a>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">3</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Get your Redirect URI (RuName)</div>
+                  <div class="mp-step-desc">On the same keys page, look for <em>"User Tokens"</em> and click it. Under <em>"OAuth Redirect Settings"</em>, add a redirect URL. Use: <em>https://localhost:4000/ebay/callback</em>. eBay will show you a <strong>RuName</strong> — copy it.</div>
+                </div>
+              </div>
+              <div class="mp-step">
+                <div class="mp-step-num">4</div>
+                <div class="mp-step-body">
+                  <div class="mp-step-title">Copy and paste your credentials below</div>
+                  <div class="mp-step-desc">Go back to your application keys page. You need three things:</div>
+                  <div class="mp-paste-box">
+                    <label class="mp-paste-label">App ID <span style="color:#666;">(also called "Client ID" — shown on the keys page)</span></label>
+                    <input id="mp-ebay-client-id" type="text" placeholder="Paste your App ID here" autocomplete="off" />
+                    <label class="mp-paste-label">Cert ID <span style="color:#666;">(also called "Client Secret" — shown on the keys page)</span></label>
+                    <input id="mp-ebay-client-secret" type="password" placeholder="Paste your Cert ID here" autocomplete="off" />
+                    <label class="mp-paste-label">RuName <span style="color:#666;">(the redirect name from step 3)</span></label>
+                    <input id="mp-ebay-redirect-uri" type="text" placeholder="Paste your RuName here" autocomplete="off" />
+                  </div>
+                  <button class="mp-connect-btn" id="mp-connect-ebay">Connect My eBay Account</button>
+                </div>
+              </div>
+            </div>
+          `}
+        `}
+        <div id="mp-status-ebay" class="mp-status-msg"></div>
+      </div>`;
+
+      panel.innerHTML = sty + `
+        <h3>Seller Accounts</h3>
+        <div style="color:var(--text-muted);font-size:13px;margin-bottom:8px;line-height:1.5;">
+          Connect your marketplace accounts so HIVEMIND can see your live data — orders, inventory, shipments, and account health.<br>
+          <strong style="color:var(--text-primary,#ccc);">Your login credentials never leave your computer.</strong> Everything is encrypted and stored locally.
+        </div>
+      ` + amazonCard + walmartCard + ebayCard;
+
+      // ── Bind "Start Setup" buttons ──────────────────────────────────
+      const startAmz = document.getElementById('mp-start-amazon');
+      if (startAmz) startAmz.addEventListener('click', () => { mpGuideOpen.amazon = true; renderMarketplaceSettings(panel); });
+      const startWmt = document.getElementById('mp-start-walmart');
+      if (startWmt) startWmt.addEventListener('click', () => { mpGuideOpen.walmart = true; renderMarketplaceSettings(panel); });
+      const startEbay = document.getElementById('mp-start-ebay');
+      if (startEbay) startEbay.addEventListener('click', () => { mpGuideOpen.ebay = true; renderMarketplaceSettings(panel); });
+
+      // ── Bind connect buttons ────────────────────────────────────────
+      const amzBtn = document.getElementById('mp-connect-amazon');
+      if (amzBtn) amzBtn.addEventListener('click', async () => {
+        const statusEl = document.getElementById('mp-status-amazon');
+        const clientId = document.getElementById('mp-amz-client-id')?.value?.trim();
+        const clientSecret = document.getElementById('mp-amz-client-secret')?.value?.trim();
+        const refreshToken = document.getElementById('mp-amz-refresh-token')?.value?.trim();
+        if (!clientId || !clientSecret || !refreshToken) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Please fill in all three fields above.</span>'; return; }
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent);">Testing your connection... this may take a few seconds.</span>';
+        amzBtn.disabled = true; amzBtn.textContent = 'Connecting...';
+        try {
+          const r = await fetch(_baseHttp + '/api/seller/connect/amazon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId, clientSecret, refreshToken, region: 'na' }) });
+          const d = await r.json();
+          if (d.success) { mpGuideOpen.amazon = false; if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">✓ Connected successfully!</span>'; setTimeout(() => renderMarketplaceSettings(panel), 1500); }
+          else { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Connection failed: ' + escapeHtml(d.error || 'Please double-check your credentials and try again.') + '</span>'; amzBtn.disabled = false; amzBtn.textContent = 'Connect My Amazon Account'; }
+        } catch (e) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Something went wrong: ' + escapeHtml(e.message) + '</span>'; amzBtn.disabled = false; amzBtn.textContent = 'Connect My Amazon Account'; }
+      });
+
+      const wmtBtn = document.getElementById('mp-connect-walmart');
+      if (wmtBtn) wmtBtn.addEventListener('click', async () => {
+        const statusEl = document.getElementById('mp-status-walmart');
+        const clientId = document.getElementById('mp-wmt-client-id')?.value?.trim();
+        const clientSecret = document.getElementById('mp-wmt-client-secret')?.value?.trim();
+        if (!clientId || !clientSecret) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Please fill in both fields above.</span>'; return; }
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent);">Testing your connection...</span>';
+        wmtBtn.disabled = true; wmtBtn.textContent = 'Connecting...';
+        try {
+          const r = await fetch(_baseHttp + '/api/seller/connect/walmart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId, clientSecret }) });
+          const d = await r.json();
+          if (d.success) { mpGuideOpen.walmart = false; if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">✓ Connected successfully!</span>'; setTimeout(() => renderMarketplaceSettings(panel), 1500); }
+          else { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Connection failed: ' + escapeHtml(d.error || 'Please double-check your credentials.') + '</span>'; wmtBtn.disabled = false; wmtBtn.textContent = 'Connect My Walmart Account'; }
+        } catch (e) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Something went wrong: ' + escapeHtml(e.message) + '</span>'; wmtBtn.disabled = false; wmtBtn.textContent = 'Connect My Walmart Account'; }
+      });
+
+      const ebayBtn = document.getElementById('mp-connect-ebay');
+      if (ebayBtn) ebayBtn.addEventListener('click', async () => {
+        const statusEl = document.getElementById('mp-status-ebay');
+        const clientId = document.getElementById('mp-ebay-client-id')?.value?.trim();
+        const clientSecret = document.getElementById('mp-ebay-client-secret')?.value?.trim();
+        const redirectUri = document.getElementById('mp-ebay-redirect-uri')?.value?.trim();
+        if (!clientId || !clientSecret || !redirectUri) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Please fill in all three fields above.</span>'; return; }
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent);">Setting up your eBay connection...</span>';
+        ebayBtn.disabled = true; ebayBtn.textContent = 'Connecting...';
+        try {
+          await fetch(_baseHttp + '/api/seller/connect/ebay/configure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId, clientSecret, redirectUri }) });
+          const urlResp = await fetch(_baseHttp + '/api/seller/connect/ebay/auth-url');
+          const urlData = await urlResp.json();
+          if (urlData.url) {
+            window.open(urlData.url, '_blank');
+            if (statusEl) statusEl.innerHTML = `
+              <div style="margin-top:8px;padding:12px;background:rgba(124,92,255,0.08);border-radius:8px;border:1px solid rgba(124,92,255,0.2);">
+                <div style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">Almost done! Complete the sign-in on eBay.</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">After you approve the connection on eBay's website, they'll show you a code. Copy that code and paste it below.</div>
+                <input class="ob-input" id="mp-ebay-code" type="text" placeholder="Paste the code from eBay here" style="margin-bottom:8px;" />
+                <button class="mp-connect-btn" id="mp-ebay-exchange">Finish Connecting eBay</button>
+              </div>`;
+            setTimeout(() => {
+              const exBtn = document.getElementById('mp-ebay-exchange');
+              if (exBtn) exBtn.addEventListener('click', async () => {
+                const code = document.getElementById('mp-ebay-code')?.value?.trim();
+                if (!code) { if (statusEl) statusEl.querySelector('.mp-connect-btn').insertAdjacentHTML('afterend', '<div style="color:#fca5a5;font-size:13px;margin-top:4px;">Please paste the code from eBay first.</div>'); return; }
+                exBtn.disabled = true; exBtn.textContent = 'Finishing...';
+                try {
+                  const r = await fetch(_baseHttp + '/api/seller/connect/ebay/callback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+                  const d = await r.json();
+                  if (d.success) { mpGuideOpen.ebay = false; if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">✓ Connected successfully!</span>'; setTimeout(() => renderMarketplaceSettings(panel), 1500); }
+                  else { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Connection failed: ' + escapeHtml(d.error || 'The code may have expired. Try again.') + '</span>'; ebayBtn.disabled = false; ebayBtn.textContent = 'Connect My eBay Account'; }
+                } catch (e2) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Something went wrong: ' + escapeHtml(e2.message) + '</span>'; }
+              });
+            }, 100);
+          }
+        } catch (e) { if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Something went wrong: ' + escapeHtml(e.message) + '</span>'; ebayBtn.disabled = false; ebayBtn.textContent = 'Connect My eBay Account'; }
+      });
+
+      // ── Bind disconnect buttons ─────────────────────────────────────
+      ['amazon', 'walmart', 'ebay'].forEach(mp => {
+        const btn = document.getElementById('mp-disconnect-' + mp);
+        if (btn) btn.addEventListener('click', async () => {
+          btn.disabled = true; btn.textContent = 'Disconnecting...';
+          try {
+            await fetch(_baseHttp + '/api/seller/disconnect/' + mp, { method: 'POST' });
+            mpGuideOpen[mp] = false;
+            setTimeout(() => renderMarketplaceSettings(panel), 500);
+          } catch { btn.textContent = 'Error'; btn.disabled = false; }
+        });
+      });
+    }
+
     function renderSettingsPanel() {
       const section = settingsSections.find(s => s.key === activeSettingsSection);
       if (!section) return;
       const panel = $('#settings-panel');
+
+      // Cleanup: move email content back if it was borrowed
+      if (panel._emailCleanup) panel._emailCleanup();
+
+      // Custom marketplace panel
+      if (section.key === 'marketplace') {
+        renderMarketplaceSettings(panel);
+        return;
+      }
+
+      // Email setup — render inline in settings panel
+      if (section.key === 'email') {
+        const emailPage = document.getElementById('page-email-config');
+        if (emailPage) {
+          const emailContent = emailPage.querySelector('.dash-content');
+          if (emailContent) {
+            panel.innerHTML = '';
+            // Move the email content into the settings panel temporarily
+            panel.appendChild(emailContent);
+            emailContent.style.display = '';
+            // Trigger the email config page loader
+            if (typeof loadEmailConfig === 'function') loadEmailConfig();
+            // Store a cleanup function to move content back when leaving this tab
+            panel._emailCleanup = () => {
+              emailPage.appendChild(emailContent);
+              panel._emailCleanup = null;
+            };
+          }
+        } else {
+          panel.innerHTML = '<h3>Email Setup</h3><div style="color:var(--text-muted);">Email module not loaded.</div>';
+        }
+        return;
+      }
 
       panel.innerHTML = `<h3>${section.label}</h3>` + section.fields.map(f => {
         let control = '';
@@ -3826,13 +4803,13 @@
           <div class="welcome" id="welcome-screen">
             <div class="welcome-logo">HIVEMIND</div>
             <div class="welcome-sub">
-              Your autonomous agent swarm is ready. Send a message and your agents will collaborate to get it done.
+              Your selling assistant is ready. Ask about policies, listings, sourcing, or anything else.
             </div>
             <div class="quick-actions">
-              <button class="quick-action" data-prompt="Research the latest trends in AI agents">Research AI trends</button>
-              <button class="quick-action" data-prompt="Write a Python script that scrapes product data">Write a scraper</button>
-              <button class="quick-action" data-prompt="Analyze the codebase and suggest improvements">Code review</button>
-              <button class="quick-action" data-prompt="Create a README.md for this project">Generate README</button>
+              <button class="quick-action" data-prompt="I got an account health notification on Amazon. Help me understand it and draft an appeal.">📦 Account health help</button>
+              <button class="quick-action" data-prompt="Help me calculate if this product is profitable to sell on Amazon. I'll give you the cost and ASIN.">💰 Is this profitable?</button>
+              <button class="quick-action" data-prompt="Draft a professional buyer message that's compliant with Amazon's communication policies.">✉️ Draft buyer message</button>
+              <button class="quick-action" data-prompt="Help me appeal a listing removal on Amazon. Walk me through the process step by step.">📋 Appeal a removal</button>
             </div>
           </div>
         `;
@@ -3976,13 +4953,15 @@
       createConversation();
     });
 
-    // ── Agents toggle ──────────────────────────────────────────────────────
-    document.getElementById('agents-toggle').addEventListener('click', () => {
-      const title = document.getElementById('agents-toggle');
-      const content = document.getElementById('agents-content');
-      title.classList.toggle('collapsed');
-      content.classList.toggle('collapsed');
-    });
+    // ── Agents toggle (if present in sidebar) ─────────────────────────────
+    const agentsToggleEl = document.getElementById('agents-toggle');
+    if (agentsToggleEl) {
+      agentsToggleEl.addEventListener('click', () => {
+        agentsToggleEl.classList.toggle('collapsed');
+        const content = document.getElementById('agents-content');
+        if (content) content.classList.toggle('collapsed');
+      });
+    }
 
     // ── Auto-resize textarea ──────────────────────────────────────────────
     function autoResize() {
@@ -4971,19 +5950,35 @@
     let lastAgentData = { agents: [] };
 
     // ── Server communication ──────────────────────────────────────────────
+    let _wasOffline = false;
+    let _fastPollTimer = null;
+    function _startFastPoll() {
+      if (!_wasOffline) _wasOffline = true;
+      // Poll every 2 seconds when offline (instead of every 10) for faster recovery
+      if (!_fastPollTimer) {
+        _fastPollTimer = setInterval(pollStatus, 2000);
+      }
+    }
     async function pollStatus() {
       try {
         const health = await window.hivemind.getHealth();
         if (health.status === 'ok') {
           statusDot.className = 'status-indicator online';
           statusText.textContent = 'Connected';
+          if (_wasOffline) {
+            _wasOffline = false;
+            if (_fastPollTimer) { clearInterval(_fastPollTimer); _fastPollTimer = null; }
+            connectWebSocket(); // Reconnect WS immediately on recovery
+          }
         } else {
           statusDot.className = 'status-indicator offline';
-          statusText.textContent = 'Offline';
+          statusText.textContent = 'Reconnecting...';
+          _startFastPoll();
         }
       } catch {
         statusDot.className = 'status-indicator offline';
-        statusText.textContent = 'Offline';
+        statusText.textContent = 'Reconnecting...';
+        _startFastPoll();
       }
 
       try {
@@ -5027,6 +6022,17 @@
             if (msg.type === 'task:token') {
               const rt = runningTasks.get(msg.taskId);
               if (rt) {
+                // Remove thinking dots on first real content (text, status, or action)
+                if (!rt._firstTokenReceived && streamingTextEl) {
+                  rt._firstTokenReceived = true;
+                  const thinking = streamingTextEl.querySelector('.thinking');
+                  if (thinking) thinking.remove();
+                }
+
+                // Track last token time for pause detection
+                rt._lastTokenTime = Date.now();
+                if (rt._pauseTimer) clearTimeout(rt._pauseTimer);
+
                 if (msg.tokenType === 'status') {
                   // Status messages — only update DOM if this conv is visible
                   if (isTaskVisible(msg.taskId) && streamingTextEl) {
@@ -5064,16 +6070,31 @@
                     const actionsHtml = rt.actions?.length ? renderActionsDropdown(rt.actions) : '';
                     // Preserve any active question card so tokens don't wipe it
                     const questionHtml = rt.activeQuestionHtml || '';
-                    streamingTextEl.innerHTML = actionsHtml + renderMarkdown(streamBuffer) + questionHtml;
+                    // Append blinking cursor to show streaming is active
+                    const cursorHtml = '<span class="streaming-cursor"></span>';
+                    streamingTextEl.innerHTML = actionsHtml + renderMarkdown(streamBuffer) + cursorHtml + questionHtml;
                     highlightCodeBlocks(streamingTextEl);
                     scrollToBottom();
                   }
+
+                  // Set pause timer — if no token arrives for 3s, show thinking dots inline
+                  // This covers LLM "thinking" pauses during tool use, etc.
+                  rt._pauseTimer = setTimeout(() => {
+                    if (isTaskVisible(msg.taskId) && streamingTextEl) {
+                      const cursor = streamingTextEl.querySelector('.streaming-cursor');
+                      if (cursor) {
+                        cursor.outerHTML = '<span class="thinking-inline"><span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span></span>';
+                      }
+                    }
+                  }, 3000);
                 }
               }
             }
 
             if (msg.type === 'task:complete') {
               const rt = runningTasks.get(msg.taskId);
+              // Clear pause timer and remove any streaming indicators
+              if (rt?._pauseTimer) clearTimeout(rt._pauseTimer);
               const taskConvId = rt?.convId;
               const rawFinalContent = msg.content || rt?.buffer || streamBuffer;
               const wasVisible = isTaskVisible(msg.taskId);
@@ -5177,11 +6198,9 @@
                   if (avatarEl) avatarEl.textContent = meta.icon;
                 }
               }
-              // Remove thinking dots if they're still showing
-              if (isTaskVisible(msg.taskId) && streamingTextEl) {
-                const thinking = streamingTextEl.querySelector('.thinking');
-                if (thinking) thinking.remove();
-              }
+              // DON'T remove thinking dots here — keep them until actual text arrives.
+              // task:start fires immediately, but the LLM may take 5-15s to produce
+              // its first token. Dots stay visible until first task:token with text.
             }
 
             // ── Interactive question card from agent ──
@@ -5691,40 +6710,330 @@
     // ── Ops Dashboard ───────────────────────────────────────────────────────
     async function loadOpsDashboard() {
       try {
-        const [dashRes, pipeRes] = await Promise.all([
+        const [dashRes, pipeRes, briefingRes, healthRes, statusRes] = await Promise.all([
           fetch(_baseHttp + '/api/email/dashboard').then(r => r.json()).catch(() => null),
           fetch(_baseHttp + '/api/email/pipeline/status').then(r => r.json()).catch(() => null),
+          fetch(_baseHttp + '/api/seller/briefing').then(r => r.json()).catch(() => null),
+          fetch(_baseHttp + '/api/seller/health').then(r => r.json()).catch(() => null),
+          fetch(_baseHttp + '/api/seller/status').then(r => r.json()).catch(() => null),
         ]);
 
-        const kpis = $('#ops-kpi-cards');
-        if (kpis && dashRes) {
-          kpis.innerHTML = [
-            makeKpiCard('Spent This Week', '$' + (dashRes.spent_this_week || 0).toFixed(2)),
-            makeKpiCard('In Transit', dashRes.in_transit || 0),
-            makeKpiCard('Unread Alerts', dashRes.unread_alerts || 0, dashRes.unread_alerts > 0 ? '#ef4444' : undefined),
-            makeKpiCard('Email Accounts', dashRes.has_accounts ? 'Connected' : 'Not Set Up', dashRes.has_accounts ? '#22c55e' : '#f97316'),
-          ].join('');
+        // ── Seller Business KPIs ──────────────────────────────────
+        const sellerKpis = $('#seller-kpi-cards');
+        if (sellerKpis) {
+          const anyConnected = statusRes && (statusRes.amazon?.connected || statusRes.walmart?.connected || statusRes.ebay?.connected);
+          if (briefingRes && anyConnected) {
+            const cards = [
+              makeKpiCard('Revenue (24h)', '$' + (briefingRes.totalRevenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})),
+              makeKpiCard('Orders (24h)', briefingRes.totalOrders || 0),
+              makeKpiCard('Active Shipments', briefingRes.activeShipments || 0),
+            ];
+            // Add alert count if any
+            const criticalCount = (briefingRes.alerts || []).filter(a => a.severity === 'critical').length;
+            const warningCount = (briefingRes.alerts || []).filter(a => a.severity === 'warning').length;
+            const emailAlerts = dashRes ? (dashRes.unread_alerts || 0) : 0;
+            const totalAlerts = criticalCount + warningCount + emailAlerts;
+            cards.push(makeKpiCard('Alerts', totalAlerts, totalAlerts > 0 ? (criticalCount > 0 ? '#ef4444' : '#f97316') : '#22c55e'));
+
+            // Per-marketplace revenue breakdown
+            if (briefingRes.summaries && briefingRes.summaries.length > 1) {
+              briefingRes.summaries.forEach(s => {
+                const mpName = s.marketplace.charAt(0).toUpperCase() + s.marketplace.slice(1);
+                cards.push(makeKpiCard(mpName + ' Revenue', '$' + (s.recentRevenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})));
+              });
+            }
+
+            // Add financial data if SimpleFIN connected
+            try {
+              const finData = await fetch(_baseHttp + '/api/finance/capacity').then(r => r.json()).catch(() => null);
+              if (finData && finData.totalCreditLimit > 0) {
+                cards.push(makeKpiCard('Available Credit', '$' + (finData.totalAvailableCredit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}), '#22c55e'));
+                cards.push(makeKpiCard('Spent This Week', '$' + (finData.spentThisWeek || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})));
+              }
+            } catch {}
+
+            sellerKpis.innerHTML = cards.join('');
+          } else {
+            // No marketplaces connected — show setup prompt
+            sellerKpis.innerHTML = `
+              <div style="grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center;">
+                <div style="font-size:28px;margin-bottom:8px;">📊</div>
+                <div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Connect your seller accounts to see business data</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Go to Settings → Seller Accounts to connect Amazon, Walmart, or eBay.</div>
+                <button onclick="document.querySelector('[data-view=settings]').click();" style="padding:8px 20px;border-radius:8px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:500;">Open Settings</button>
+              </div>`;
+          }
         }
 
+        // ── Suggested Actions ─────────────────────────────────────
+        const actionsEl = $('#seller-action-items');
+        if (actionsEl && briefingRes && briefingRes.suggestedActions && briefingRes.suggestedActions.length > 0) {
+          actionsEl.innerHTML = `
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">Action Items</h3>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              ${briefingRes.suggestedActions.map(action => `
+                <div style="background:rgba(124,92,255,0.06);border:1px solid rgba(124,92,255,0.15);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                  <span style="color:var(--accent,#7c5cff);font-weight:600;">→</span> ${escapeHtml(action)}
+                </div>`).join('')}
+            </div>`;
+        } else if (actionsEl) {
+          actionsEl.innerHTML = '';
+        }
+
+        // ── Account Health Cards ──────────────────────────────────
+        const healthEl = $('#seller-health-cards');
+        if (healthEl && statusRes) {
+          const marketplaces = ['amazon', 'walmart', 'ebay'];
+          const healthCards = marketplaces.filter(mp => statusRes[mp]?.connected).map(mp => {
+            const mpName = mp.charAt(0).toUpperCase() + mp.slice(1);
+            const mpAlerts = (healthRes?.alerts || []).filter(a => a.marketplace === mp);
+            const criticals = mpAlerts.filter(a => a.severity === 'critical').length;
+            const warnings = mpAlerts.filter(a => a.severity === 'warning').length;
+            let healthColor = '#22c55e'; let healthLabel = 'Healthy';
+            if (criticals > 0) { healthColor = '#ef4444'; healthLabel = criticals + ' Critical'; }
+            else if (warnings > 0) { healthColor = '#f97316'; healthLabel = warnings + ' Warning' + (warnings > 1 ? 's' : ''); }
+            const icon = mp === 'amazon' ? '🛒' : mp === 'walmart' ? '🔵' : '🟡';
+            return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;min-width:200px;">
+              <span style="font-size:20px;">${icon}</span>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${mpName}</div>
+                <div style="font-size:12px;color:var(--text-muted);">${mpAlerts.length} alert${mpAlerts.length !== 1 ? 's' : ''}</div>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:${healthColor};background:${healthColor}15;padding:4px 10px;border-radius:6px;">${healthLabel}</div>
+            </div>`;
+          });
+          if (healthCards.length > 0) {
+            healthEl.innerHTML = healthCards.join('');
+            $('#seller-health-section').style.display = '';
+          } else {
+            $('#seller-health-section').style.display = 'none';
+          }
+        } else if (healthEl) {
+          $('#seller-health-section').style.display = 'none';
+        }
+
+        // ── Email Alerts (existing) ───────────────────────────────
         const alertsEl = $('#ops-recent-alerts');
-        if (alertsEl && dashRes) {
-          const allAlerts = [...(dashRes.critical_alerts || []), ...(dashRes.high_alerts || [])];
+        if (alertsEl) {
+          // Combine email alerts + marketplace health alerts
+          const emailAlerts = dashRes ? [...(dashRes.critical_alerts || []), ...(dashRes.high_alerts || [])] : [];
+          const apiAlerts = (healthRes?.alerts || []).filter(a => a.severity === 'critical' || a.severity === 'warning').map(a => ({
+            urgency: a.severity === 'critical' ? 'critical' : 'high',
+            summary: a.title || a.description,
+            alert_type: a.marketplace + ' ' + a.type,
+            acknowledged: false,
+            _isApiAlert: true,
+          }));
+          const allAlerts = [...apiAlerts, ...emailAlerts];
           alertsEl.innerHTML = allAlerts.length > 0
-            ? allAlerts.slice(0, 5).map(makeAlertCard).join('')
-            : '<div style="font-size:12px;color:var(--text-muted);">No active alerts</div>';
+            ? allAlerts.slice(0, 8).map(a => a._isApiAlert ? makeApiAlertCard(a) : makeAlertCard(a)).join('')
+            : '<div style="font-size:12px;color:var(--text-muted);">No active alerts — you\'re in good shape.</div>';
         }
 
+        // ── Email Pipeline (existing) ─────────────────────────────
         const pipeEl = $('#ops-pipeline-status');
         if (pipeEl && pipeRes) {
           const lastRun = pipeRes.last_run_stats;
+          const lastErr = pipeRes.last_error;
           pipeEl.innerHTML = `
-            <div style="margin-bottom:6px;"><strong>Status:</strong> ${pipeRes.enabled ? 'Running' : 'Paused'} (every ${pipeRes.intervalMinutes || '?'}min)</div>
+            <div style="margin-bottom:6px;"><strong>Status:</strong> ${pipeRes.enabled ? '🟢 Running' : '⏸ Paused'} (every ${pipeRes.intervalMinutes || '?'}min)</div>
             ${lastRun ? `<div style="margin-bottom:4px;"><strong>Last run:</strong> ${lastRun.emails_scanned} scanned, ${lastRun.emails_flagged} flagged, ${lastRun.emails_pushed} pushed</div>` : '<div>No runs yet</div>'}
+            ${lastErr ? `<div style="color:#ef4444;margin-bottom:4px;"><strong>Last error:</strong> ${escapeHtml(lastErr)}</div>` : ''}
             <div><strong>Rules:</strong> ${pipeRes.rules_count || 0} | <strong>Destinations:</strong> ${pipeRes.destinations_count || 0}</div>
             <div style="margin-top:8px;"><strong>Accounts:</strong> ${pipeRes.accounts_count || 0} connected</div>
+            ${lastRun?.diagnostics?.length ? `<div style="margin-top:8px;padding:8px;background:rgba(124,92,255,0.08);border-radius:4px;font-size:11px;"><strong>Diagnostics:</strong><br>${lastRun.diagnostics.map(d => '• ' + escapeHtml(d)).join('<br>')}</div>` : ''}
           `;
         }
+
+        // Pipeline run history
+        const historyEl = $('#ops-pipeline-history');
+        if (historyEl) {
+          try {
+            const runs = await fetch(_baseHttp + '/api/email/pipeline/history?limit=5').then(r => r.json()).catch(() => []);
+            if (runs.length > 0) {
+              historyEl.innerHTML = `
+                <h4 style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">Recent Runs</h4>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  ${runs.map(r => {
+                    const ts = new Date(r.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                    const date = new Date(r.started_at).toLocaleDateString([], {month:'short',day:'numeric'});
+                    const hasErr = r.error_message;
+                    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;background:var(--surface);border-radius:4px;font-size:11px;">
+                      <span style="color:var(--text-muted);min-width:80px;">${date} ${ts}</span>
+                      <span style="color:${hasErr ? '#ef4444' : 'var(--text-secondary)'};">${r.emails_scanned || 0} scanned</span>
+                      <span style="color:var(--accent);">${r.emails_flagged || 0} flagged</span>
+                      <span style="color:var(--text-muted);">${r.trigger || ''}</span>
+                      ${hasErr ? '<span style="color:#ef4444;" title="' + escapeHtml(r.error_message) + '">⚠</span>' : ''}
+                    </div>`;
+                  }).join('')}
+                </div>
+              `;
+            }
+          } catch {}
+        }
       } catch (e) { console.error('Ops dashboard load error:', e); }
+    }
+
+    function makeApiAlertCard(alert) {
+      const color = urgencyColors[alert.urgency] || '#6b7280';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+        <span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;">${escapeHtml(alert.urgency)}</span>
+        <span style="font-size:12px;color:var(--text-primary);flex:1;">${escapeHtml(alert.summary || 'Alert')}</span>
+        <span style="font-size:11px;color:var(--text-muted);">${escapeHtml(alert.alert_type || '')}</span>
+      </div>`;
+    }
+
+    // ── Finances Page ─────────────────────────────────────────────────────
+    async function loadFinancesPage() {
+      const statusEl = $('#finance-status');
+      const capacityEl = $('#finance-capacity');
+      const accountsEl = $('#finance-accounts');
+      const txnEl = $('#finance-transactions');
+
+      try {
+        const statusRes = await fetch(_baseHttp + '/api/finance/status').then(r => r.json()).catch(() => ({ connected: false }));
+
+        if (!statusRes.connected) {
+          // Show SimpleFIN connection UI
+          if (statusEl) statusEl.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;">
+              <div style="font-size:36px;margin-bottom:12px;">💳</div>
+              <div style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Track Your Spending</div>
+              <div style="font-size:14px;color:var(--text-muted);max-width:500px;margin:0 auto 24px;line-height:1.6;">
+                Connect your bank and credit card accounts to see balances, track spending, and know exactly how much you can spend on sourcing.
+                <br><br>Powered by <strong>SimpleFIN Bridge</strong> ($1.50/month). Your data stays on your computer.
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:16px;max-width:400px;margin:0 auto;">
+                <div style="text-align:left;width:100%;">
+                  <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Step 1: Create a SimpleFIN account</div>
+                  <a href="https://beta-bridge.simplefin.org/simplefin/create" target="_blank" rel="noopener" style="display:inline-block;padding:8px 18px;font-size:13px;border-radius:6px;background:rgba(124,92,255,0.15);color:var(--accent,#7c5cff);border:1px solid rgba(124,92,255,0.3);cursor:pointer;text-decoration:none;font-weight:500;">Open SimpleFIN Bridge →</a>
+                </div>
+                <div style="text-align:left;width:100%;">
+                  <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Step 2: Paste your Setup Token</div>
+                  <div style="display:flex;gap:8px;">
+                    <input type="text" id="simplefin-token" placeholder="Paste your setup token here..." style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--border,#444);background:var(--bg-secondary,#1a1a2e);color:var(--text-primary);font-size:13px;" />
+                    <button id="simplefin-connect-btn" style="padding:10px 20px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap;">Connect</button>
+                  </div>
+                  <div id="simplefin-connect-status" style="font-size:12px;margin-top:8px;min-height:16px;"></div>
+                </div>
+              </div>
+            </div>`;
+          if (capacityEl) capacityEl.innerHTML = '';
+          if (accountsEl) accountsEl.innerHTML = '';
+          if (txnEl) txnEl.innerHTML = '';
+
+          // Bind connect button
+          const connectBtn = $('#simplefin-connect-btn');
+          const tokenInput = $('#simplefin-token');
+          const connectStatus = $('#simplefin-connect-status');
+          if (connectBtn) connectBtn.addEventListener('click', async () => {
+            const token = tokenInput?.value?.trim();
+            if (!token) { if (connectStatus) connectStatus.innerHTML = '<span style="color:#fca5a5;">Please paste your setup token</span>'; return; }
+            connectBtn.disabled = true; connectBtn.textContent = 'Connecting...';
+            if (connectStatus) connectStatus.innerHTML = '<span style="color:var(--text-muted);">Connecting to SimpleFIN and syncing your accounts...</span>';
+            try {
+              const res = await fetch(_baseHttp + '/api/finance/connect', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setupToken: token }),
+              });
+              const data = await res.json();
+              if (data.success) {
+                if (connectStatus) connectStatus.innerHTML = '<span style="color:#22c55e;">Connected! Found ' + data.accountCount + ' account(s). Loading...</span>';
+                setTimeout(() => loadFinancesPage(), 1000);
+              } else {
+                if (connectStatus) connectStatus.innerHTML = '<span style="color:#fca5a5;">' + escapeHtml(data.error || 'Connection failed') + '</span>';
+                connectBtn.disabled = false; connectBtn.textContent = 'Connect';
+              }
+            } catch (e) {
+              if (connectStatus) connectStatus.innerHTML = '<span style="color:#fca5a5;">Connection error. Is the server running?</span>';
+              connectBtn.disabled = false; connectBtn.textContent = 'Connect';
+            }
+          });
+          return;
+        }
+
+        // ── Connected: show spending capacity + accounts + transactions ──
+        if (statusEl) statusEl.innerHTML = `
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+            Connected to SimpleFIN · Last synced: ${statusRes.lastSyncAt ? new Date(statusRes.lastSyncAt).toLocaleString() : 'never'}
+            <button id="finance-disconnect-btn" style="margin-left:12px;background:none;border:1px solid #ef444466;border-radius:4px;padding:2px 8px;font-size:10px;color:#ef4444;cursor:pointer;">Disconnect</button>
+          </div>`;
+        const disconnectBtn = $('#finance-disconnect-btn');
+        if (disconnectBtn) disconnectBtn.addEventListener('click', async () => {
+          if (!confirm('Disconnect SimpleFIN? Your synced data will remain in the database.')) return;
+          await fetch(_baseHttp + '/api/finance/disconnect', { method: 'POST' });
+          loadFinancesPage();
+        });
+
+        // Sync button
+        const syncBtn = $('#finance-sync-btn');
+        if (syncBtn) syncBtn.addEventListener('click', async () => {
+          syncBtn.disabled = true; syncBtn.textContent = 'Syncing...';
+          await fetch(_baseHttp + '/api/finance/sync', { method: 'POST' }).catch(() => {});
+          syncBtn.disabled = false; syncBtn.textContent = 'Sync Now';
+          loadFinancesPage();
+        });
+
+        // Fetch capacity + transactions in parallel
+        const [capRes, txnRes] = await Promise.all([
+          fetch(_baseHttp + '/api/finance/capacity').then(r => r.json()).catch(() => null),
+          fetch(_baseHttp + '/api/finance/transactions?limit=50').then(r => r.json()).catch(() => null),
+        ]);
+
+        // ── Spending Capacity Cards ──
+        if (capacityEl && capRes) {
+          capacityEl.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+              ${makeKpiCard('Available Credit', '$' + (capRes.totalAvailableCredit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}), '#22c55e')}
+              ${makeKpiCard('Total Credit Limit', '$' + (capRes.totalCreditLimit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}))}
+              ${makeKpiCard('Spent This Week', '$' + (capRes.spentThisWeek || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}), capRes.spentThisWeek > 5000 ? '#f97316' : undefined)}
+              ${makeKpiCard('Spent Today', '$' + (capRes.spentToday || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}))}
+            </div>`;
+        }
+
+        // ── Account Cards ──
+        if (accountsEl && capRes?.accounts) {
+          accountsEl.innerHTML = `
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Accounts</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${capRes.accounts.map(a => {
+                const availStr = a.availableCredit != null ? '$' + a.availableCredit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' available' : '';
+                const typeLabel = a.accountType === 'credit_card' ? '💳' : a.accountType === 'checking' ? '🏦' : a.accountType === 'savings' ? '🐖' : '💰';
+                return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+                  <span style="font-size:18px;">${typeLabel}</span>
+                  <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${escapeHtml(a.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(a.institution || '')}</div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div style="font-size:15px;font-weight:600;color:var(--text-primary);">$${Math.abs(a.balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    ${availStr ? `<div style="font-size:11px;color:#22c55e;">${availStr}</div>` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>`;
+        }
+
+        // ── Recent Transactions ──
+        if (txnEl && txnRes?.rows) {
+          const catColors = { sourcing: '#6366f1', shipping: '#06b6d4', prep: '#f59e0b', marketplace_fees: '#ef4444', marketplace_payout: '#22c55e', other: '#6b7280' };
+          txnEl.innerHTML = `
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary);">Recent Transactions</h3>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              ${txnRes.rows.length > 0 ? txnRes.rows.map(t => {
+                const catColor = catColors[t.category] || catColors.other;
+                const isIncome = t.amount > 0;
+                return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);">
+                  <div style="font-size:12px;color:var(--text-muted);min-width:70px;">${t.posted ? new Date(t.posted).toLocaleDateString() : 'Pending'}</div>
+                  <div style="flex:1;font-size:12px;color:var(--text-primary);">${escapeHtml(t.description)}</div>
+                  <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${catColor}20;color:${catColor};">${t.category.replace('_', ' ')}</span>
+                  <div style="font-size:13px;font-weight:600;color:${isIncome ? '#22c55e' : 'var(--text-primary)'};min-width:80px;text-align:right;">${isIncome ? '+' : '-'}$${Math.abs(t.amount).toFixed(2)}</div>
+                </div>`;
+              }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No transactions yet. Click "Sync Now" to pull your latest data.</div>'}
+            </div>`;
+        }
+
+      } catch (e) { console.error('Finances page load error:', e); }
     }
 
     // ── Purchases Page ──────────────────────────────────────────────────────
@@ -5886,11 +7195,17 @@
     // ── Alert Badge Polling ─────────────────────────────────────────────────
     async function pollAlertBadge() {
       try {
-        const data = await fetch(_baseHttp + '/api/email/alerts/count').then(r => r.json()).catch(() => ({ count: 0 }));
+        const [emailData, healthData] = await Promise.all([
+          fetch(_baseHttp + '/api/email/alerts/count').then(r => r.json()).catch(() => ({ count: 0 })),
+          fetch(_baseHttp + '/api/seller/health').then(r => r.json()).catch(() => ({ alerts: [] })),
+        ]);
+        const emailCount = emailData.count || 0;
+        const apiCount = (healthData.alerts || []).filter(a => a.severity === 'critical' || a.severity === 'warning').length;
+        const totalCount = emailCount + apiCount;
         const badge = $('#alert-badge');
         if (badge) {
-          if (data.count > 0) {
-            badge.textContent = String(data.count);
+          if (totalCount > 0) {
+            badge.textContent = String(totalCount);
             badge.style.display = 'inline';
           } else {
             badge.style.display = 'none';
@@ -5926,8 +7241,14 @@
     setTimeout(() => {
       document.querySelectorAll('.ec-tab').forEach(tab => tab.addEventListener('click', () => { ecCurrentTab = tab.dataset.tab; ecSwitchTab(ecCurrentTab); }));
       // Account form bindings
-      const addBtn = $('#ec-add-account-btn'); if (addBtn) addBtn.addEventListener('click', () => { const f=$('#ec-account-form'); if(f) f.style.display = f.style.display==='none'?'block':'none'; });
-      const cancelBtn = $('#ec-form-cancel'); if (cancelBtn) cancelBtn.addEventListener('click', () => { const f=$('#ec-account-form'); if(f) f.style.display='none'; });
+      const addBtn = $('#ec-add-account-btn'); if (addBtn) addBtn.addEventListener('click', () => {
+        const f=$('#ec-account-form'); if(f) f.style.display = 'block';
+        const noAcct=$('#ec-no-accounts'); if(noAcct) noAcct.style.display = 'none';
+      });
+      const cancelBtn = $('#ec-form-cancel'); if (cancelBtn) cancelBtn.addEventListener('click', () => {
+        const f=$('#ec-account-form'); if(f) f.style.display='none';
+        ecLoadAccounts(); // Re-show the empty state if no accounts
+      });
       // Connection type toggle
       document.querySelectorAll('.ec-type-btn').forEach(btn => btn.addEventListener('click', () => {
         ecAccountType = btn.dataset.type;
@@ -5940,12 +7261,23 @@
       // Provider presets
       document.querySelectorAll('.ec-provider-btn').forEach(btn => btn.addEventListener('click', () => {
         ecSelectedProvider = btn.dataset.provider;
-        document.querySelectorAll('.ec-provider-btn').forEach(b => { b.style.background = b.dataset.provider===ecSelectedProvider ? 'var(--accent)' : 'var(--bg)'; b.style.color = b.dataset.provider===ecSelectedProvider ? '#fff' : 'var(--text-primary)'; b.style.borderColor = b.dataset.provider===ecSelectedProvider ? 'var(--accent)' : 'var(--border)'; });
+        // Update card styles
+        document.querySelectorAll('.ec-provider-btn').forEach(b => {
+          const isSelected = b.dataset.provider === ecSelectedProvider;
+          b.style.background = isSelected ? 'rgba(124,92,255,0.1)' : 'rgba(255,255,255,0.03)';
+          b.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+        });
+        // Update host/port
         const p = EC_PROVIDERS[ecSelectedProvider];
         const h=$('#ec-acc-host'), po=$('#ec-acc-port'), link=$('#ec-app-pass-link');
         if (h && p.host) h.value = p.host;
         if (po) po.value = p.port;
         if (link) { if (p.helpUrl) { link.href = p.helpUrl; link.textContent = p.helpText; link.style.display = 'inline'; } else { link.style.display = 'none'; } }
+        // Show/hide the step-by-step guide based on provider
+        const guide = $('#ec-gmail-guide');
+        const advanced = $('#ec-imap-advanced');
+        if (guide) guide.style.display = (ecSelectedProvider === 'custom') ? 'none' : '';
+        if (advanced) advanced.style.display = (ecSelectedProvider === 'custom') ? '' : 'none';
       }));
       // Submit account
       const submitBtn = $('#ec-acc-submit'); if (submitBtn) submitBtn.addEventListener('click', ecSubmitAccount);
@@ -6017,10 +7349,14 @@
         const list = $('#ec-accounts-list');
         if (!list) return;
 
+        const noAccountsEl = $('#ec-no-accounts');
+        const formEl = $('#ec-account-form');
         if (!accounts.length) {
-          list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No email accounts connected. Add one above to start tracking purchases.</div>';
+          list.innerHTML = '';
+          if (noAccountsEl) noAccountsEl.style.display = '';
           return;
         }
+        if (noAccountsEl) noAccountsEl.style.display = 'none';
 
         list.innerHTML = accounts.map(a => `
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;display:flex;align-items:center;gap:12px;">

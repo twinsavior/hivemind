@@ -155,12 +155,12 @@ const PERSONALITY_OPTIONS: Array<{ value: PersonalityStyle; label: string; promp
 ];
 
 const DEFAULT_AGENTS: Record<AgentId, AgentProfile> = {
-  "nova-1": { id: "nova-1", name: "Nova", icon: "🐝", roleLabel: "Co-Founder & CEO" },
-  "scout-1": { id: "scout-1", name: "Scout Alpha", icon: "S", roleLabel: "Research & Analysis" },
-  "builder-1": { id: "builder-1", name: "Builder Prime", icon: "B", roleLabel: "Code Generation" },
-  "sentinel-1": { id: "sentinel-1", name: "Sentinel Watch", icon: "W", roleLabel: "Monitoring & Security" },
-  "oracle-1": { id: "oracle-1", name: "Oracle Insight", icon: "O", roleLabel: "Strategy & Prediction" },
-  "courier-1": { id: "courier-1", name: "Courier Express", icon: "C", roleLabel: "Communication" },
+  "nova-1": { id: "nova-1", name: "Nova", icon: "🐝", roleLabel: "Your Selling Partner" },
+  "scout-1": { id: "scout-1", name: "Scout Alpha", icon: "S", roleLabel: "Product & Market Research" },
+  "builder-1": { id: "builder-1", name: "Builder Prime", icon: "B", roleLabel: "Listing & Content" },
+  "sentinel-1": { id: "sentinel-1", name: "Sentinel Watch", icon: "W", roleLabel: "Account Health Monitor" },
+  "oracle-1": { id: "oracle-1", name: "Oracle Insight", icon: "O", roleLabel: "Pricing & Profitability" },
+  "courier-1": { id: "courier-1", name: "Courier Express", icon: "C", roleLabel: "Buyer & Support Comms" },
 };
 
 function nowIso(): string {

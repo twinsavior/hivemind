@@ -51,11 +51,13 @@ function validateMetadata(raw: Record<string, unknown>): string[] {
     issues.push("'name' must be kebab-case (lowercase alphanumeric + hyphens)");
   }
 
-  if (typeof raw["version"] !== "string" || !/^\d+\.\d+\.\d+/.test(raw["version"])) {
-    issues.push("'version' must be a valid semver string");
+  // version is optional for external skills — default to "0.0.0" later if missing
+  if (raw["version"] !== undefined && typeof raw["version"] !== "string") {
+    issues.push("'version' must be a string if provided");
   }
 
-  if (typeof raw["agent"] !== "string" || !VALID_AGENTS.has(raw["agent"] as AgentRole)) {
+  // agent is optional — external skills (gstack, etc.) may not have it
+  if (raw["agent"] !== undefined && (typeof raw["agent"] !== "string" || !VALID_AGENTS.has(raw["agent"] as AgentRole))) {
     issues.push(`'agent' must be one of: ${[...VALID_AGENTS].join(", ")}`);
   }
 
@@ -63,8 +65,9 @@ function validateMetadata(raw: Record<string, unknown>): string[] {
     issues.push("'description' is required");
   }
 
-  if (!Array.isArray(raw["triggers"]) || raw["triggers"].length === 0) {
-    issues.push("'triggers' must be a non-empty array of strings");
+  // triggers are optional — external skills may embed trigger info in description
+  if (raw["triggers"] !== undefined && (!Array.isArray(raw["triggers"]) || raw["triggers"].length === 0)) {
+    issues.push("'triggers' must be a non-empty array of strings if provided");
   }
 
   if (raw["timeout"] !== undefined && (typeof raw["timeout"] !== "number" || raw["timeout"] <= 0)) {
@@ -109,15 +112,20 @@ function parseSkillFile(filePath: string, content: string): SkillDefinition {
 
   const metadata: SkillMetadata = {
     name: rawMeta["name"] as string,
-    version: rawMeta["version"] as string,
-    agent: rawMeta["agent"] as AgentRole,
+    version: (typeof rawMeta["version"] === "string" && rawMeta["version"].trim() !== "") ? rawMeta["version"] : "0.0.0",
+    // For agent: default to "coordinator" if not specified (external skills)
+    agent: (VALID_AGENTS.has(rawMeta["agent"] as AgentRole) ? rawMeta["agent"] : "coordinator") as AgentRole,
     description: rawMeta["description"] as string,
-    triggers: rawMeta["triggers"] as string[],
+    // For triggers: if not provided, extract keywords from the skill name
+    triggers: Array.isArray(rawMeta["triggers"]) && rawMeta["triggers"].length > 0
+      ? rawMeta["triggers"] as string[]
+      : [rawMeta["name"] as string],
     dependencies: (rawMeta["dependencies"] as string[]) ?? [],
     requiredSecrets: (rawMeta["requiredSecrets"] as string[]) ?? [],
     timeout: (rawMeta["timeout"] as number) ?? 300,
     tags: (rawMeta["tags"] as string[]) ?? [],
     author: (rawMeta["author"] as string) ?? "hivemind",
+    optional: rawMeta["optional"] === true,
   };
 
   return {
@@ -214,11 +222,16 @@ export class SkillLoader {
       return loaded;
     }
 
+    // Directories to skip when scanning for skills
+    const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".next", "__pycache__"]);
+
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       const info = await stat(fullPath);
 
       if (info.isDirectory()) {
+        // Skip known non-skill directories
+        if (SKIP_DIRS.has(entry)) continue;
         // Recurse into subdirectories
         const nested = await this.loadDirectory(fullPath);
         loaded.push(...nested);

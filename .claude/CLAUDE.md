@@ -13,6 +13,8 @@ HIVEMIND is an open-source autonomous agent swarm platform for the Buy Box / Fli
 - `src/dashboard/` — Express + WebSocket server, task orchestration hub
 - `src/cli/` — CLI entry point, agent init, system prompts
 - `src/modules/email/` — Email parsing module (see below)
+- `src/modules/discord/` — Discord setup wizard API routes + config writer
+- `src/connectors/` — Platform connectors (Discord, Slack, Telegram, Webhook) + ConnectorManager
 - `desktop/` — Electron app, chat UI (vanilla HTML/JS, no framework)
 - `skills/` — Built-in skills (folders with YAML frontmatter). See `skills/SKILL_DESIGN_GUIDE.md` for design principles
 
@@ -42,10 +44,12 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 6. **Skills are folders, not just markdown.** Wrong: one big SKILL.md with everything. Right: SKILL.md + references/, examples/, scripts/ for progressive disclosure. See `skills/SKILL_DESIGN_GUIDE.md`.
 7. **Email module has its own tsconfig.** Wrong: add email module files to main `tsconfig.json`. Right: use `tsconfig.email.json` and `require()` (not `import()`) from main code to avoid strict type-checking the email module.
 8. **Email module DB path must be configured.** Wrong: assume `process.cwd()`. Right: call `initEmailModule(dataDir)` before any email functions. The DB and encryption key are stored in the configured `dataDir`.
+9. **Connectors are initialized from `hivemind.yaml`.** The `connectors` array in YAML is parsed at startup, env vars resolved (`$DISCORD_BOT_TOKEN`), and ConnectorManager handles lifecycle. Discord setup wizard in Settings > Connectors auto-writes to `.env` and `hivemind.yaml`.
+10. **Trust enforcement for connector tasks.** UNTRUSTED connector sources get restricted context (no seller data, no memory, no metrics) and a trust boundary in the system prompt. Owner IDs in `security.ownerIds` must be valid 17-20 digit Discord snowflakes.
 
 ## Key Commands
 - `pnpm dev` — Start development mode
 - `pnpm build` / `npx tsc` — Build
-- `pnpm test` — Run tests (Vitest, 489 tests across 9 files)
+- `pnpm test` — Run tests (Vitest, 518 tests across 11 files)
 - `npx tsc --noEmit` — Type-check main project
 - `npx tsc -p tsconfig.email.json --noEmit` — Type-check email module

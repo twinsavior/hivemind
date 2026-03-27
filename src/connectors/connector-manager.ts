@@ -205,12 +205,12 @@ export class ConnectorManager extends EventEmitter {
       authorName: msg.author.name,
     };
 
-    // Broadcast to dashboard bus
+    // Broadcast to dashboard bus (redact content for untrusted sources)
     this.bus.emit("connector:message", {
       connector: connectorName,
       channel: msg.channel,
       author: msg.author.name,
-      content: content.slice(0, 200),
+      content: trustLevel === TrustLevel.OWNER ? content.slice(0, 200) : "[message from external user]",
       trust: trustLevel,
       timestamp: msg.timestamp,
     });
@@ -413,7 +413,8 @@ export class ConnectorManager extends EventEmitter {
       if (res.ok) {
         const data = await res.json() as { id: string };
         this.botUserIds.set(name, data.id);
-        console.log(`[Connector] ${name}: bot user ID = ${data.id}`);
+        // Bot user ID discovered (used for @mention detection)
+        // Don't log the ID — it's not sensitive but avoids unnecessary disclosure
       }
     } catch {
       // Non-critical — mention detection won't work but !hivemind prefix still will

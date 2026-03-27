@@ -74,11 +74,11 @@ llm:
   primary:
     provider: anthropic
     model: "${primaryModel}"
-    maxTokens: 4096
+    maxTokens: 16000
   fallback:
     provider: ollama
     model: llama3.2
-    maxTokens: 4096
+    maxTokens: 16000
 
 agents:
   coordinator:

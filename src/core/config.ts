@@ -52,7 +52,7 @@ const DEFAULT_CONFIG: HivemindConfig = {
   llm: {
     provider: "anthropic",
     model: "claude-sonnet-4-20250514",
-    maxTokens: 4096,
+    maxTokens: 16000,
     temperature: 0.7,
   },
   swarm: {

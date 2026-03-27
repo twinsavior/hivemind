@@ -155,6 +155,7 @@ export interface EmailData {
   date: string;
   body?: string;
   has_attachments?: boolean;
+  uid?: number;
 }
 
 export interface ExtractedData {

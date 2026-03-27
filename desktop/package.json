@@ -1,14 +1,58 @@
 {
   "name": "hivemind-desktop",
   "version": "1.0.0",
-  "description": "HIVEMIND Desktop – multi-agent AI swarm",
+  "description": "HIVEMIND Desktop – AI-powered operations manager for Amazon, Walmart & eBay sellers",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder --mac --win"
+  },
+  "build": {
+    "appId": "com.hivemind.desktop",
+    "productName": "HIVEMIND",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "!node_modules"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../skills",
+        "to": "skills",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "target": ["dmg", "zip"],
+      "icon": "renderer/icon.icns"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "renderer/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true
+    }
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
   }
 }

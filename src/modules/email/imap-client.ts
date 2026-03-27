@@ -334,22 +334,38 @@ export function createImapClientForAccount(accountConfig: ImapAccountConfig) {
   }
 
   return {
-    searchRecentMessages: (sinceMinutes?: number, maxResults?: number): Promise<EmailData[]> =>
+    searchRecentMessages: (sinceMinutes?: number, maxResults?: number, sinceUid?: number): Promise<EmailData[]> =>
       withConn(async (client) => {
         const lock = await client.getMailboxLock('INBOX');
         try {
-          const cutoffDate = new Date(Date.now() - (sinceMinutes ?? 20) * 60 * 1000);
-          const searchDate = new Date(cutoffDate);
-          searchDate.setDate(searchDate.getDate() - 1);
-          const searchResult = await client.search({ since: searchDate }, { uid: true });
-          const uids = Array.isArray(searchResult) ? searchResult : [];
+          let uids: number[];
+
+          if (sinceUid && sinceUid > 0) {
+            // UID-based incremental search: fetch all messages with UID > sinceUid
+            const searchResult = await client.search({ uid: `${sinceUid + 1}:*` as any }, { uid: true });
+            uids = Array.isArray(searchResult) ? searchResult : [];
+            // Filter out the sinceUid itself if IMAP server includes it
+            uids = uids.filter(u => u > sinceUid);
+          } else {
+            // Fallback: date-based search
+            const cutoffDate = new Date(Date.now() - (sinceMinutes ?? 20) * 60 * 1000);
+            const searchDate = new Date(cutoffDate);
+            searchDate.setDate(searchDate.getDate() - 1);
+            const searchResult = await client.search({ since: searchDate }, { uid: true });
+            uids = Array.isArray(searchResult) ? searchResult : [];
+          }
           if (uids.length === 0) return [];
+
+          const cutoffDate = new Date(Date.now() - (sinceMinutes ?? 20) * 60 * 1000);
           const output: EmailData[] = [];
           for await (const msg of client.fetch(uids, { envelope: true, uid: true, bodyStructure: true }, { uid: true })) {
             const env = msg.envelope;
             if (!env) continue;
-            const msgDate = env.date ? new Date(env.date) : new Date();
-            if (msgDate < cutoffDate) continue;
+            // Only apply date filter for date-based search (not UID-based)
+            if (!sinceUid) {
+              const msgDate = env.date ? new Date(env.date) : new Date();
+              if (msgDate < cutoffDate) continue;
+            }
             const from = env.from?.[0];
             output.push({
               message_id: extractMessageId(env),
@@ -359,6 +375,7 @@ export function createImapClientForAccount(accountConfig: ImapAccountConfig) {
               from_name: from?.name || '',
               snippet: '',
               date: env.date ? new Date(env.date).toUTCString() : '',
+              uid: msg.uid,
             });
           }
           output.sort((a, b) => (b.date ? new Date(b.date).getTime() : 0) - (a.date ? new Date(a.date).getTime() : 0));

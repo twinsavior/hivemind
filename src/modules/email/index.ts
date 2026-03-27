@@ -13,6 +13,7 @@ export { startScheduler, triggerManualRun, getSchedulerStatus } from './schedule
 export { runPipeline, processRetryQueue } from './pipeline.js';
 export { flagEmail } from './flag-engine.js';
 export { getTemplate } from './retailer-templates.js';
+export { setLLMExtractor, hasLLMExtractor } from './llm-extractor.js';
 
 // Re-export DB functions needed by routes
 export {
@@ -30,7 +31,7 @@ export {
   getPurchaseStats, getPurchaseSpendTrend, getPurchasesByRetailer,
   getSellerAlerts, getUnacknowledgedAlertCount, acknowledgeAlert, acknowledgeAllAlerts,
   getAllEmailAccounts, getEmailAccount, createEmailAccount, updateEmailAccount, deleteEmailAccount,
-  getProcessedEmailStats, getCostToday, getWeeklyStats,
+  getProcessedEmailStats, getCostToday, getWeeklyStats, getRecentPipelineRuns,
   getPushQueueStats, getPushQueueItems, deletePushQueueItem, retryPushQueueItem,
   setEmailDbPath,
 } from './db.js';

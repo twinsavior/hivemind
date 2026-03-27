@@ -21,6 +21,10 @@ import {
   agentListCommand,
   configCommand,
   taskCommand,
+  packAddCommand,
+  packUpdateCommand,
+  packListCommand,
+  packRemoveCommand,
 } from "./commands.js";
 
 import {
@@ -262,6 +266,36 @@ function createProgram(): Command {
     .description("List all active agents")
     .option("--all", "Include stopped agents")
     .action(agentListCommand);
+
+  // ── Skills (pack manager) sub-commands ──────────────────────────────────
+
+  const skills = program
+    .command("skills")
+    .description("Manage external skill packs from git repositories");
+
+  skills
+    .command("add")
+    .description("Install a skill pack from a git repository")
+    .argument("<git-url>", "Git URL of the skill pack (e.g. https://github.com/garrytan/gstack)")
+    .option("-n, --name <name>", "Custom name for the pack (defaults to repo name)")
+    .action(packAddCommand);
+
+  skills
+    .command("update")
+    .description("Update one or all installed skill packs")
+    .argument("[pack-name]", "Pack to update (updates all if omitted)")
+    .action(packUpdateCommand);
+
+  skills
+    .command("list")
+    .description("List all installed skill packs")
+    .action(packListCommand);
+
+  skills
+    .command("remove")
+    .description("Remove an installed skill pack")
+    .argument("<pack-name>", "Name of the pack to remove")
+    .action(packRemoveCommand);
 
   return program;
 }

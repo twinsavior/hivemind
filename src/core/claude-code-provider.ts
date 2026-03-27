@@ -176,8 +176,8 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
           }
           resolve({ text: extractResponse(stdout), raw: stdout });
         } else {
-          const allOutput = stderr + stdout;
-          const isSessionError = allOutput.includes('session') || allOutput.includes('resume') || allOutput.includes('error_during_execution');
+          const isSessionError = stderr.includes('session') || stderr.includes('resume') || stderr.includes('error_during_execution')
+            || stdout.includes('"error"') || stdout.includes('invalid_session');
           if (isSessionError) {
             this.sessions.resetSession(agentId);
             // Auto-retry once without --resume if this was a stale session failure
@@ -187,7 +187,7 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
               return;
             }
           }
-          reject(new Error(`Claude Code failed (exit ${code}): ${stderr.trim() || stdout.slice(0, 300)}`));
+          reject(new Error(`Claude Code failed (exit ${code}): ${stderr.trim() || stdout.slice(0, 500)}`));
         }
       });
 
@@ -365,9 +365,10 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
           resolve({ text: response.trim() || '(completed with no text output)', raw: rawOutput, tokenUsage: capturedUsage });
         } else {
           // If session resume failed, reset and auto-retry without --resume.
-          // Check both stderr and stdout (JSON errors come via stdout).
-          const allOutput = stderr + rawOutput;
-          const isSessionError = allOutput.includes('session') || allOutput.includes('resume') || allOutput.includes('error_during_execution');
+          // Check stderr for actual session/resume errors (NOT stdout — stdout always has "session_id" in init JSON).
+          // Only match actual session/resume errors — NOT generic API errors in stdout
+          const isSessionError = stderr.includes('session') || stderr.includes('resume') || stderr.includes('error_during_execution')
+            || rawOutput.includes('invalid_session') || rawOutput.includes('session_expired');
           if (isSessionError) {
             this.sessions.resetSession(agentId);
             // Auto-retry once without --resume if this was a stale session failure
@@ -378,7 +379,20 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
               return;
             }
           }
-          reject(new Error(`Claude Code failed (exit ${code}): ${stderr.trim() || rawOutput.slice(0, 300)}`));
+          // Show the actual error, not the init JSON — find the last error/result line
+          const lines = rawOutput.trim().split('\n');
+          let errorDetail = '';
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const msg = JSON.parse(lines[i] as string);
+              if (msg.type === 'result' || msg.is_error || msg.error || (msg.type === 'system' && msg.subtype === 'error')) {
+                errorDetail = (lines[i] as string).slice(0, 800);
+                break;
+              }
+            } catch { /* not JSON, skip */ }
+          }
+          if (!errorDetail) errorDetail = (lines[lines.length - 1] ?? '').slice(0, 800) || rawOutput.slice(-800);
+          reject(new Error(`Claude Code failed (exit ${code}): ${stderr.trim() || errorDetail}`));
         }
       });
 
@@ -420,8 +434,8 @@ function detectMcpConfig(): string | null {
         const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
         if (config.mcpServers) {
           for (const [name, server] of Object.entries(config.mcpServers as Record<string, any>)) {
-            // Skip SDK servers (desktop-app-only, not usable from CLI)
-            if (server.type !== 'sdk') {
+            // Only include stdio-based servers (skip sdk, http, sse — not usable via --mcp-config)
+            if (!server.type || server.type === 'stdio') {
               allServers[name] = server;
             }
           }
@@ -515,6 +529,11 @@ function cleanEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   delete env['CLAUDECODE'];
   delete env['CLAUDE_CODE_ENTRY_POINT'];
+  delete env['CLAUDE_CODE_ENTRYPOINT'];
+  delete env['CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST'];
+  delete env['CLAUDE_AGENT_SDK_VERSION'];
+  delete env['CLAUDE_CODE_EMIT_TOOL_USE_SUMMARIES'];
+  delete env['CLAUDE_CODE_ENABLE_ASK_USER_QUESTION_TOOL'];
   return env;
 }
 

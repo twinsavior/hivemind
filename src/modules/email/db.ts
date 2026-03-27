@@ -301,6 +301,25 @@ export function isEmailProcessed(gmailMessageId: string): boolean {
   return !!row;
 }
 
+/**
+ * Secondary dedup check: find a processed email with the same from_email + subject
+ * within 1 minute of the given date. This catches duplicates when IMAP Message-ID
+ * headers are missing or unreliable.
+ */
+export function isEmailProcessedByContent(fromEmail: string, subject: string, dateStr: string): boolean {
+  if (!fromEmail || !subject || !dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  const minDate = new Date(d.getTime() - 60_000).toISOString();
+  const maxDate = new Date(d.getTime() + 60_000).toISOString();
+  const row = getDb().prepare(
+    `SELECT 1 FROM processed_emails
+     WHERE from_email = ? AND subject = ? AND received_date >= ? AND received_date <= ?
+     LIMIT 1`
+  ).get(fromEmail.toLowerCase(), subject, minDate, maxDate);
+  return !!row;
+}
+
 export function deleteProcessedEmail(gmailMessageId: string): void {
   getDb().prepare('DELETE FROM processed_emails WHERE gmail_message_id = ?').run(gmailMessageId);
 }
@@ -413,6 +432,18 @@ export function getLastPipelineRun() {
   } | undefined;
 }
 
+export function getRecentPipelineRuns(limit: number = 10) {
+  return getDb().prepare(
+    'SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT ?'
+  ).all(limit) as Array<{
+    id: number; trigger_type: string; status: string;
+    emails_scanned: number; emails_flagged: number; emails_extracted: number;
+    emails_pushed: number; emails_skipped: number; emails_errored: number;
+    error_message: string | null; started_at: string; completed_at: string | null;
+    duration_ms: number | null;
+  }>;
+}
+
 export function getProcessedEmailStats() {
   const today = new Date().toISOString().split('T')[0];
   const totalRow = getDb().prepare('SELECT COUNT(*) as count FROM processed_emails').get() as { count: number };
@@ -481,7 +512,15 @@ export function getBlockedSenders(): Array<{
   }>;
 }
 
-export function isBlockedSender(email: string): boolean {
+export function isBlockedSender(email: string, accountId?: number): boolean {
+  if (accountId !== undefined) {
+    // Check for global blocks (account_id IS NULL) or account-specific blocks
+    const row = getDb().prepare(
+      'SELECT 1 FROM blocked_senders WHERE email = ? AND (account_id IS NULL OR account_id = ?)'
+    ).get(email.toLowerCase(), accountId);
+    return !!row;
+  }
+  // Backwards compatible: check all blocks for this email
   const row = getDb().prepare(
     'SELECT 1 FROM blocked_senders WHERE email = ?'
   ).get(email.toLowerCase());
@@ -489,11 +528,11 @@ export function isBlockedSender(email: string): boolean {
 }
 
 export function blockSender(data: {
-  email: string; reason?: string; source_email_id?: number;
+  email: string; reason?: string; source_email_id?: number; account_id?: number;
 }): number {
   const result = getDb().prepare(
-    'INSERT OR IGNORE INTO blocked_senders (email, reason, source_email_id) VALUES (?, ?, ?)'
-  ).run(data.email.toLowerCase(), data.reason ?? null, data.source_email_id ?? null);
+    'INSERT OR IGNORE INTO blocked_senders (email, reason, source_email_id, account_id) VALUES (?, ?, ?, ?)'
+  ).run(data.email.toLowerCase(), data.reason ?? null, data.source_email_id ?? null, data.account_id ?? null);
   return result.lastInsertRowid as number;
 }
 
@@ -952,6 +991,17 @@ export function updateEmailAccount(id: number, data: Partial<{
 
 export function deleteEmailAccount(id: number): void {
   getDb().prepare('DELETE FROM email_accounts WHERE id = ?').run(id);
+}
+
+export function getAccountLastUid(accountId: number): number | null {
+  const row = getDb().prepare('SELECT last_uid FROM email_accounts WHERE id = ?').get(accountId) as { last_uid: number | null } | undefined;
+  return row?.last_uid ?? null;
+}
+
+export function setAccountLastUid(accountId: number, uid: number): void {
+  getDb().prepare(
+    "UPDATE email_accounts SET last_uid = ?, updated_at = datetime('now') WHERE id = ?"
+  ).run(uid, accountId);
 }
 
 // ── Purchases (aggregation layer on orders) ─────────────────────────────────

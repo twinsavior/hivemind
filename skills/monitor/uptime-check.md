@@ -9,6 +9,7 @@ requiredSecrets: []
 timeout: 60
 tags: ["monitoring", "uptime", "health", "observability", "alerting"]
 author: hivemind-core
+optional: true
 ---
 
 # Uptime Check Skill

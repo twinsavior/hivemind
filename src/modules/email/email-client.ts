@@ -18,7 +18,7 @@ import { createGmailClientForAccount } from './gmail-client.js';
 import type { EmailData, AttachmentData } from './types.js';
 
 export type EmailClient = {
-  searchRecentMessages: (sinceMinutes?: number, maxResults?: number) => Promise<EmailData[]>;
+  searchRecentMessages: (sinceMinutes?: number, maxResults?: number, sinceUid?: number) => Promise<EmailData[]>;
   getMessageMetadata: (messageId: string) => Promise<EmailData>;
   getMessageBody: (messageId: string) => Promise<string>;
   getMessageHtml: (messageId: string) => Promise<string | null>;

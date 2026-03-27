@@ -1,11 +1,46 @@
 import { getSetting, setSetting } from './db.js';
 import { runPipeline, processRetryQueue } from './pipeline.js';
+import { getEnabledAccounts, getClientForAccount } from './email-client.js';
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
 let lastRunAt: Date | null = null;
 let nextRunAt: Date | null = null;
 let lastError: string | null = null;
+
+/**
+ * One-time health check: try to connect/disconnect each enabled account.
+ * Non-blocking — runs in the background, never prevents scheduler from starting.
+ */
+async function runStartupHealthCheck(): Promise<void> {
+  try {
+    const accounts = getEnabledAccounts();
+    if (accounts.length === 0) {
+      console.log('[Email] No email accounts configured. Pipeline will run but fetch 0 emails.');
+      return;
+    }
+
+    let allFailed = true;
+    for (const account of accounts) {
+      try {
+        const client = getClientForAccount(account);
+        // Attempt a minimal search to verify the connection works
+        await client.searchRecentMessages(1, 1);
+        console.log(`[Email] Account ${account.email}: connected`);
+        allFailed = false;
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e);
+        console.log(`[Email] Account ${account.email}: FAILED - ${reason}`);
+      }
+    }
+
+    if (allFailed) {
+      console.log('[Email] WARNING: No email accounts are reachable. Pipeline will run but fetch 0 emails.');
+    }
+  } catch (e) {
+    console.error('[Email] Health check error:', e);
+  }
+}
 
 export function startScheduler() {
   const enabled = getSetting('pipeline_enabled') === 'true';
@@ -16,6 +51,9 @@ export function startScheduler() {
 
   const intervalMinutes = parseInt(getSetting('scan_interval_minutes') || '15', 10);
   console.log(`[Scheduler] Starting with ${intervalMinutes}-minute interval`);
+
+  // Run non-blocking startup health check
+  runStartupHealthCheck().catch(e => console.error('[Email] Health check failed:', e));
 
   // Run once immediately
   tick();

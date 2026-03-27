@@ -721,6 +721,92 @@ async function loadMemoryContext(taskDescription: string): Promise<string> {
   }
 }
 
+/**
+ * Load seller business context (marketplace briefing) for injection into agent prompts.
+ * Gives agents real-time knowledge of the seller's orders, inventory, health, and alerts.
+ */
+async function loadSellerContext(): Promise<string> {
+  const lines: string[] = [];
+
+  // ── Marketplace data ────────────────────────────────────────────────
+  try {
+    const svc = getMarketplaceService();
+    const connected = svc.getConnectedMarketplaces();
+    if (connected.length > 0) {
+      const briefing = await svc.getDailyBriefing();
+      lines.push('## Seller Business Context (live data)');
+      lines.push(`Date: ${briefing.date}`);
+      lines.push(`Connected marketplaces: ${connected.join(', ')}`);
+      lines.push(`Orders (24h): ${briefing.totalOrders} | Revenue: $${briefing.totalRevenue.toFixed(2)}`);
+      lines.push(`Active FBA shipments: ${briefing.activeShipments}`);
+
+      if (briefing.summaries.length > 0) {
+        lines.push('\nPer-marketplace breakdown:');
+        for (const s of briefing.summaries) {
+          lines.push(`- ${s.marketplace}: ${s.pendingOrders} orders, $${(s.recentRevenue || 0).toFixed(2)} revenue, ${s.alerts.length} alerts`);
+        }
+      }
+
+      if (briefing.alerts.length > 0) {
+        lines.push('\nAccount health alerts:');
+        for (const a of briefing.alerts.slice(0, 10)) {
+          lines.push(`- [${a.severity.toUpperCase()}] ${a.marketplace}: ${a.title}${a.actionRequired ? ' (ACTION REQUIRED)' : ''}`);
+        }
+      }
+
+      if (briefing.suggestedActions.length > 0) {
+        lines.push('\nSuggested actions:');
+        for (const action of briefing.suggestedActions) {
+          lines.push(`- ${action}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Seller] Failed to load marketplace context:', err instanceof Error ? err.message : err);
+  }
+
+  // ── Financial data (SimpleFIN) ──────────────────────────────────────
+  try {
+    const finRes: any = await fetch(`http://localhost:${(globalThis as any).__hivemindPort || 4000}/api/finance/summary`).then(r => r.json()).catch(() => null);
+    if (finRes && finRes.connected) {
+      lines.push('\n## Financial Summary (from connected bank/credit card accounts)');
+      lines.push(`Available credit across all cards: $${(finRes.totalAvailableCredit || 0).toLocaleString()}`);
+      lines.push(`Total credit limit: $${(finRes.totalCreditLimit || 0).toLocaleString()}`);
+      lines.push(`Spent this week: $${(finRes.spentThisWeek || 0).toLocaleString()}`);
+      lines.push(`Spent today: $${(finRes.spentToday || 0).toLocaleString()}`);
+      if (finRes.accounts && finRes.accounts.length > 0) {
+        lines.push('\nAccounts:');
+        for (const a of finRes.accounts) {
+          const avail = a.availableCredit != null ? ` | Available: $${a.availableCredit.toLocaleString()}` : '';
+          lines.push(`- ${a.name}${a.institution ? ' (' + a.institution + ')' : ''}: Balance $${a.balance.toLocaleString()}${avail}`);
+        }
+      }
+    }
+  } catch {
+    // Finance module may not be loaded yet — non-critical
+  }
+
+  // ── Pipeline data (source-to-sale) ───────────────────────────────
+  try {
+    const pipeRes: any = await fetch(`http://localhost:${(globalThis as any).__hivemindPort || 4000}/api/finance/pipeline/summary`).then(r => r.json()).catch(() => null);
+    if (pipeRes && pipeRes.totalBatches > 0) {
+      lines.push('\n## Inventory Pipeline (source-to-sale)');
+      lines.push(`Total batches in pipeline: ${pipeRes.totalBatches} (${pipeRes.totalUnits} units, $${pipeRes.totalCostInPipeline.toFixed(2)} invested)`);
+      if (pipeRes.byStatus) {
+        for (const [status, data] of Object.entries(pipeRes.byStatus)) {
+          const d = data as { count: number; units: number; cost: number };
+          lines.push(`- ${status.replace(/_/g, ' ')}: ${d.count} batches, ${d.units} units, $${d.cost.toFixed(2)}`);
+        }
+      }
+    }
+  } catch {
+    // Pipeline module may not be loaded yet — non-critical
+  }
+
+  if (lines.length === 0) return '';
+  return '\n\n' + lines.join('\n');
+}
+
 // ─── Express App ─────────────────────────────────────────────────────────────
 
 const app: ReturnType<typeof express> = express();
@@ -1220,6 +1306,7 @@ app.get('/api/skills', (_req, res) => {
       timeout: s.metadata.timeout ?? 300,
       author: s.metadata.author ?? 'unknown',
       sourcePath: s.sourcePath,
+      optional: s.metadata.optional ?? false,
       enabled: true,
     }));
     res.json(skills);
@@ -1252,6 +1339,7 @@ app.get('/api/skills', (_req, res) => {
                 const agentMatch = fm.match(/agent:\s*["']?(.+?)["']?\s*$/m);
                 const trigMatch = fm.match(/triggers:\s*\[(.+?)\]/);
                 const tagMatch = fm.match(/tags:\s*\[(.+?)\]/);
+                const optionalMatch = fm.match(/optional:\s*(true|false)/);
                 skills.push({
                   name: nameMatch[1],
                   version: verMatch?.[1] ?? '1.0.0',
@@ -1260,6 +1348,7 @@ app.get('/api/skills', (_req, res) => {
                   triggers: trigMatch ? trigMatch[1].split(',').map((t: string) => t.trim().replace(/["']/g, '')) : [],
                   tags: tagMatch ? tagMatch[1].split(',').map((t: string) => t.trim().replace(/["']/g, '')) : [],
                   sourcePath: fullPath,
+                  optional: optionalMatch?.[1] === 'true',
                   enabled: true,
                 });
               }
@@ -1396,6 +1485,292 @@ app.use('/api/marketplace', createMarketplaceRouter({
   authSecret: process.env['MARKETPLACE_AUTH_SECRET'],
 }));
 
+// ─── Seller Marketplace API (Amazon SP-API, Walmart, eBay) ───────────────────
+// These routes connect to sellers' actual marketplace accounts for live data.
+
+import { getMarketplaceService } from '../core/marketplace/index.js';
+
+// Connection status for all marketplaces
+app.get('/api/seller/status', (_req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    res.json(svc.getConnectionStatus());
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
+// Connect Amazon SP-API
+app.post('/api/seller/connect/amazon', async (req, res) => {
+  try {
+    const { clientId, clientSecret, refreshToken, region } = req.body;
+    if (!clientId || !clientSecret || !refreshToken) {
+      return res.status(400).json({ error: 'Missing required fields: clientId, clientSecret, refreshToken' });
+    }
+    const svc = getMarketplaceService();
+    const result = await svc.connectAmazon(clientId, clientSecret, refreshToken, region || 'na');
+    res.json(result);
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Connection failed' });
+  }
+});
+
+// Connect Walmart API
+app.post('/api/seller/connect/walmart', async (req, res) => {
+  try {
+    const { clientId, clientSecret } = req.body;
+    if (!clientId || !clientSecret) {
+      return res.status(400).json({ error: 'Missing required fields: clientId, clientSecret' });
+    }
+    const svc = getMarketplaceService();
+    const result = await svc.connectWalmart(clientId, clientSecret);
+    res.json(result);
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Connection failed' });
+  }
+});
+
+// Configure eBay app (step 1: save app credentials)
+app.post('/api/seller/connect/ebay/configure', (req, res) => {
+  try {
+    const { clientId, clientSecret, redirectUri, environment } = req.body;
+    if (!clientId || !clientSecret || !redirectUri) {
+      return res.status(400).json({ error: 'Missing required fields: clientId, clientSecret, redirectUri' });
+    }
+    const svc = getMarketplaceService();
+    svc.configureEbayApp(clientId, clientSecret, redirectUri, environment || 'production');
+    res.json({ success: true });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Configuration failed' });
+  }
+});
+
+// Get eBay authorization URL (step 2: redirect user to eBay)
+app.get('/api/seller/connect/ebay/auth-url', (_req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    const state = require('crypto').randomUUID();
+    const url = svc.getEbayAuthUrl(state);
+    res.json({ url, state });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to generate auth URL' });
+  }
+});
+
+// Complete eBay OAuth (step 3: exchange auth code for tokens)
+app.post('/api/seller/connect/ebay/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: 'Missing authorization code' });
+    }
+    const svc = getMarketplaceService();
+    const result = await svc.connectEbayWithCode(code);
+    res.json(result);
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'OAuth callback failed' });
+  }
+});
+
+// Disconnect a marketplace
+app.post('/api/seller/disconnect/:marketplace', (req, res) => {
+  try {
+    const marketplace = req.params['marketplace'] as 'amazon' | 'walmart' | 'ebay';
+    if (!['amazon', 'walmart', 'ebay'].includes(marketplace)) {
+      return res.status(400).json({ error: 'Invalid marketplace. Must be: amazon, walmart, or ebay' });
+    }
+    const svc = getMarketplaceService();
+    svc.disconnect(marketplace);
+    res.json({ success: true });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Disconnect failed' });
+  }
+});
+
+// Unified orders across all connected marketplaces
+app.get('/api/seller/orders', async (req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    const since = req.query['since'] as string | undefined;
+    const orders = await svc.getAllOrders(since);
+    res.json({ orders, count: orders.length });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to fetch orders' });
+  }
+});
+
+// Unified inventory across all connected marketplaces
+app.get('/api/seller/inventory', async (_req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    const inventory = await svc.getAllInventory();
+    res.json({ inventory, count: inventory.length });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to fetch inventory' });
+  }
+});
+
+// FBA shipments (Amazon only)
+app.get('/api/seller/fba/shipments', async (_req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    const shipments = await svc.getFBAShipments();
+    res.json({ shipments, count: shipments.length });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to fetch shipments' });
+  }
+});
+
+// Account health alerts across all connected marketplaces
+app.get('/api/seller/health', async (_req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    const alerts = await svc.getAccountHealthAlerts();
+    res.json({ alerts, count: alerts.length });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to fetch health data' });
+  }
+});
+
+// Account health diagnostic — summarize all health issues and suggest actions
+app.get('/api/seller/health/diagnostic', async (_req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    const alerts = await svc.getAccountHealthAlerts();
+    const critical = alerts.filter(a => a.severity === 'critical');
+    const warnings = alerts.filter(a => a.severity === 'warning');
+
+    // Build diagnostic summary
+    const issues: Array<{ marketplace: string; severity: string; title: string; action: string }> = [];
+    for (const a of alerts) {
+      let action = 'Review in Seller Central';
+      if (a.type?.includes('policy') || a.type?.includes('violation')) action = 'Write a Plan of Action (POA) and submit appeal';
+      else if (a.type?.includes('ip') || a.type?.includes('complaint')) action = 'Respond with proof of authenticity / authorization';
+      else if (a.type?.includes('listing') || a.type?.includes('asin')) action = 'Review listing compliance and update if needed';
+      else if (a.type?.includes('performance') || a.type?.includes('metric')) action = 'Check Order Defect Rate, Late Shipment Rate, and Cancellation Rate';
+      else if (a.actionRequired) action = a.description || 'Immediate action required';
+      issues.push({ marketplace: a.marketplace, severity: a.severity, title: a.title, action });
+    }
+
+    res.json({
+      status: critical.length > 0 ? 'critical' : warnings.length > 0 ? 'warning' : 'healthy',
+      criticalCount: critical.length,
+      warningCount: warnings.length,
+      infoCount: alerts.length - critical.length - warnings.length,
+      issues,
+    });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to run diagnostic' });
+  }
+});
+
+// Appeal drafting — generate an appeal letter for a specific issue type
+app.post('/api/seller/appeal/draft', async (req, res) => {
+  const { marketplace, issueType, issueDescription, asin } = req.body;
+  if (!marketplace || !issueType) {
+    return res.status(400).json({ error: 'Missing marketplace or issueType' });
+  }
+
+  // Load the relevant seller expert skill for context
+  const skillName = marketplace === 'amazon' ? 'amazon-seller-expert' : marketplace === 'walmart' ? 'walmart-seller-expert' : null;
+  let skillContext = '';
+  if (skillName) {
+    try {
+      const fs = await import('fs');
+      const skillPath = path.join(process.cwd(), 'skills', 'marketplace', skillName, 'SKILL.md');
+      if (fs.existsSync(skillPath)) {
+        skillContext = fs.readFileSync(skillPath, 'utf-8').slice(0, 4000);
+      }
+    } catch {}
+  }
+
+  // Generate the appeal using the agent
+  const swarm = getInjectedSwarmState();
+  const nova = swarm?.agents?.get('nova-1');
+  if (!nova) {
+    // Fallback: return a template
+    const template = generateAppealTemplate(marketplace, issueType, issueDescription, asin);
+    return res.json({ draft: template, source: 'template' });
+  }
+
+  // Use Nova to draft the appeal
+  try {
+    const prompt = `You are an expert ${marketplace} seller consultant. Draft a professional Plan of Action (POA) appeal letter for the following issue.
+
+Issue type: ${issueType}
+Description: ${issueDescription || 'Not provided'}
+${asin ? `ASIN: ${asin}` : ''}
+Marketplace: ${marketplace}
+
+${skillContext ? `\nRelevant policy knowledge:\n${skillContext}\n` : ''}
+
+Write a complete appeal letter with these sections:
+1. **Root Cause** — What caused the issue
+2. **Corrective Actions** — What was done to fix the immediate problem
+3. **Preventive Measures** — What steps are being taken to prevent recurrence
+
+Keep it professional, specific, and concise. Use first person. Do NOT include placeholder brackets — write it as if ready to submit.`;
+
+    const llm = (nova as any).llm;
+    if (llm?.complete) {
+      const response = await llm.complete({
+        messages: [{ role: 'user', content: prompt }],
+        maxTokens: 1500,
+      });
+      return res.json({ draft: response.content || response.text || '', source: 'ai' });
+    }
+  } catch (err) {
+    console.warn('[Appeal] AI drafting failed, falling back to template:', err);
+  }
+
+  const template = generateAppealTemplate(marketplace, issueType, issueDescription, asin);
+  res.json({ draft: template, source: 'template' });
+});
+
+function generateAppealTemplate(marketplace: string, issueType: string, description?: string, asin?: string): string {
+  return `Dear ${marketplace.charAt(0).toUpperCase() + marketplace.slice(1)} Seller Performance Team,
+
+I am writing regarding the ${issueType} issue${asin ? ` affecting ASIN ${asin}` : ''} on my account.
+${description ? `\nIssue details: ${description}\n` : ''}
+## Root Cause
+
+After conducting a thorough investigation, I identified the following root cause:
+[Describe the specific cause of the issue]
+
+## Corrective Actions Taken
+
+I have immediately taken the following steps to resolve this issue:
+1. [First corrective action]
+2. [Second corrective action]
+3. [Third corrective action]
+
+## Preventive Measures
+
+To prevent this issue from recurring, I have implemented the following measures:
+1. [First preventive measure]
+2. [Second preventive measure]
+3. [Third preventive measure]
+
+I take my selling privileges seriously and am committed to maintaining the highest standards. I respectfully request that you review my account and reinstate [the listing / my selling privileges].
+
+Thank you for your time and consideration.
+
+Sincerely,
+[Your Name]
+[Your Seller ID]`;
+}
+
+// Daily briefing — aggregated snapshot across all marketplaces
+app.get('/api/seller/briefing', async (_req, res) => {
+  try {
+    const svc = getMarketplaceService();
+    const briefing = await svc.getDailyBriefing();
+    res.json(briefing);
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to generate briefing' });
+  }
+});
+
 // ─── Email Module Routes ──────────────────────────────────────────────────────
 // Lazy-loaded: the first request to /api/email/* triggers the import, then the
 // router handles all subsequent requests. This avoids async issues with Express
@@ -1422,6 +1797,36 @@ app.use('/api/email', (req, res, next) => {
   _emailRouterLoading.then(() => {
     if (_emailRouter) _emailRouter(req, res, next);
     else res.status(503).json({ error: 'Email module not available' });
+  });
+});
+
+// ─── Finance Module Routes ────────────────────────────────────────────────────
+// Lazy-loaded like the email module. Provides SimpleFIN integration for
+// spending capacity tracking.
+let _financeRouter: Router | null = null;
+let _financeRouterLoading: Promise<void> | null = null;
+
+app.use('/api/finance', (req, res, next) => {
+  if (_financeRouter) return _financeRouter(req, res, next);
+  if (!_financeRouterLoading) {
+    const financeRoutesPath = ['..', 'modules', 'finance', 'routes.js'].join('/');
+    _financeRouterLoading = (import(financeRoutesPath) as Promise<any>)
+      .then((mod: any) => {
+        const swarm = getInjectedSwarmState();
+        const dataDir = (swarm as any)?.workDir
+          ? path.join((swarm as any).workDir, 'data')
+          : path.join(process.cwd(), 'data');
+        _financeRouter = mod.createFinanceRouter(dataDir);
+        console.log('[dashboard] Finance module routes loaded');
+      })
+      .catch(e => {
+        console.warn('[dashboard] Finance module routes failed:', (e as Error).message);
+        _financeRouterLoading = null;
+      });
+  }
+  _financeRouterLoading!.then(() => {
+    if (_financeRouter) _financeRouter(req, res, next);
+    else res.status(503).json({ error: 'Finance module not available' });
   });
 });
 
@@ -1946,11 +2351,14 @@ async function coordinateRequest(ws: WebSocket, description: string, taskId?: st
   // Session key: isolate Nova's session per conversation
   const novaSessionKey = conversationId ? `nova-1:${conversationId}` : 'nova-1';
 
-  // Inject project knowledge + metrics + memories into Nova's prompt
+  // Inject project knowledge + metrics + memories + seller data into Nova's prompt
   const metricsTracker = (swarm as any).metricsTracker;
   const metricsContext = metricsTracker?.formatForPrompt?.() || '';
-  const memoryContext = await loadMemoryContext(description);
-  const projectKnowledge = await loadProjectKnowledge(description);
+  const [memoryContext, projectKnowledge, sellerContext] = await Promise.all([
+    loadMemoryContext(description),
+    loadProjectKnowledge(description),
+    loadSellerContext(),
+  ]);
 
   // Nova also gets KNOWLEDGE_SYSTEM.md so she knows how to maintain docs
   let knowledgeRules = '';
@@ -1974,6 +2382,7 @@ async function coordinateRequest(ws: WebSocket, description: string, taskId?: st
     + (knowledgeRules || '')
     + (metricsContext ? `\n\n${metricsContext}` : '')
     + (memoryContext ? `\n\n## Prior Context from Memory\n${memoryContext}` : '')
+    + (sellerContext || '')
     + actionPlanContext;
 
   ws.send(JSON.stringify({ type: 'task:start', taskId: id, agentId: 'nova-1' }));
@@ -2560,12 +2969,16 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
     const llm = (agent as any).llm;
     const baseSystemPrompt = (agent as any).systemPrompt;
 
-    // Inject project knowledge + relevant memories into agent's system prompt
-    const projectKnowledge = await loadProjectKnowledge(description);
-    const memContext = await loadMemoryContext(description);
+    // Inject project knowledge + relevant memories + seller data into agent's system prompt
+    const [projectKnowledge, memContext, agentSellerCtx] = await Promise.all([
+      loadProjectKnowledge(description),
+      loadMemoryContext(description),
+      loadSellerContext(),
+    ]);
     const systemPrompt = baseSystemPrompt
       + (projectKnowledge || '')
-      + (memContext ? `\n\n## Prior Context from Memory\n${memContext}` : '');
+      + (memContext ? `\n\n## Prior Context from Memory\n${memContext}` : '')
+      + (agentSellerCtx || '');
 
     // Find the best provider: prefer claude-code or codex (streaming + tools), then default
     const availableProviders = llm?.listProviders?.() ?? [];

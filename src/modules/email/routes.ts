@@ -28,6 +28,8 @@ import { getSchedulerStatus, triggerManualRun, startScheduler, toggleScheduler, 
 import { getTemplate, RETAILER_TEMPLATES } from './retailer-templates.js';
 import { getAuthUrl, exchangeCode } from './gmail-oauth.js';
 import { testImapConnection } from './imap-client.js';
+import { flagEmail, type RuleData } from './flag-engine.js';
+import { processEmailWithInstructions, hasLLMExtractor } from './llm-extractor.js';
 
 
 const SENSITIVE_CONFIG_KEYS = ['password', 'access_token', 'refresh_token', 'client_secret', 'api_key', 'webhook_url', 'url', 'auth_header_value'];
@@ -212,6 +214,15 @@ export function createEmailRouter(): Router {
     try {
       const result = await triggerManualRun();
       res.json(result);
+    } catch (e) { res.status(500).json({ error: (e as Error).message }); }
+  });
+
+  router.get('/pipeline/history', (req: Request, res: Response) => {
+    try {
+      const limit = Math.min(Number(req.query['limit'] || 10), 50);
+      const { getRecentPipelineRuns } = require('./db.js');
+      const runs = getRecentPipelineRuns(limit);
+      res.json(runs);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
@@ -557,6 +568,153 @@ export function createEmailRouter(): Router {
       });
       res.json(templates);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
+  });
+
+  // ── Test Extract (manual email test mode) ────────────────────────────────
+  router.post('/test-extract', async (req: Request, res: Response) => {
+    try {
+      const { subject, from_email, body, rule_id } = req.body;
+      if (!subject && !body) {
+        return res.status(400).json({ error: 'subject or body is required' });
+      }
+
+      // Build email data for flag engine
+      const emailInput = {
+        subject: subject || '',
+        from_email: from_email || '',
+        body: body || '',
+        snippet: (body || '').slice(0, 200),
+      };
+
+      // Load rules — either a specific rule or all enabled rules
+      let rules: RuleData[];
+      if (rule_id) {
+        const rule = getRule(Number(rule_id));
+        if (!rule) return res.status(404).json({ error: `Rule ${rule_id} not found` });
+        const tmpl = rule.template_id ? getTemplate(rule.template_id) : null;
+        rules = [{
+          name: rule.name,
+          keywords: safeParseJSON(rule.keywords, []),
+          required_keywords: safeParseJSON(rule.required_keywords, []),
+          sender_patterns: tmpl
+            ? [...new Set([...safeParseJSON(rule.sender_patterns, []), ...tmpl.sender_patterns])]
+            : safeParseJSON(rule.sender_patterns, []),
+          exclude_phrases: tmpl
+            ? [...new Set([...safeParseJSON(rule.exclude_phrases, []), ...tmpl.exclude_phrases])]
+            : safeParseJSON(rule.exclude_phrases, []),
+          check_subject: Boolean(rule.check_subject),
+          check_body: Boolean(rule.check_body),
+          check_snippet: Boolean(rule.check_snippet),
+          require_attachment: Boolean(rule.require_attachment),
+          priority: rule.priority,
+          enabled: true,
+          instructions: tmpl ? tmpl.instructions : (rule.instructions || ''),
+          scan_all: Boolean(rule.scan_all),
+          destination_ids: safeParseJSON(rule.destination_ids, []),
+          field_mappings: safeParseJSON(rule.field_mappings, {}),
+          expected_fields: tmpl
+            ? tmpl.expected_fields
+            : safeParseJSON(rule.expected_fields, []),
+        }];
+      } else {
+        rules = getAllRules().filter(r => r.enabled).map((r: any) => {
+          const tmpl = r.template_id ? getTemplate(r.template_id) : null;
+          return {
+            name: r.name,
+            keywords: tmpl
+              ? [...new Set([...safeParseJSON(r.keywords, []), ...tmpl.keywords])]
+              : safeParseJSON(r.keywords, []),
+            required_keywords: safeParseJSON(r.required_keywords, []),
+            sender_patterns: tmpl
+              ? [...new Set([...safeParseJSON(r.sender_patterns, []), ...tmpl.sender_patterns])]
+              : safeParseJSON(r.sender_patterns, []),
+            exclude_phrases: tmpl
+              ? [...new Set([...safeParseJSON(r.exclude_phrases, []), ...tmpl.exclude_phrases])]
+              : safeParseJSON(r.exclude_phrases, []),
+            check_subject: Boolean(r.check_subject),
+            check_body: Boolean(r.check_body),
+            check_snippet: Boolean(r.check_snippet),
+            require_attachment: Boolean(r.require_attachment),
+            priority: r.priority,
+            enabled: true,
+            instructions: tmpl ? tmpl.instructions : (r.instructions || ''),
+            scan_all: Boolean(r.scan_all),
+            destination_ids: safeParseJSON(r.destination_ids, []),
+            field_mappings: safeParseJSON(r.field_mappings, {}),
+            expected_fields: tmpl
+              ? tmpl.expected_fields
+              : safeParseJSON(r.expected_fields, []),
+          };
+        });
+      }
+
+      // Run flag engine
+      const matches = flagEmail(emailInput, rules);
+
+      // If matches found and LLM extractor available, run extraction
+      let extracted_data: Record<string, unknown> | null = null;
+      let would_insert_order = false;
+
+      if (matches.length > 0 && hasLLMExtractor()) {
+        const config = getExtractionConfig();
+        if (config?.enabled) {
+          // Group by instructions and extract
+          const instructionGroups = new Map<string, { ruleNames: string[]; expectedFields: string[] }>();
+          for (const match of matches) {
+            const key = (match.instructions || '').trim();
+            if (!instructionGroups.has(key)) {
+              instructionGroups.set(key, { ruleNames: [], expectedFields: [] });
+            }
+            const group = instructionGroups.get(key)!;
+            group.ruleNames.push(match.rule_name);
+            for (const f of (match.expected_fields || [])) {
+              if (!group.expectedFields.includes(f)) group.expectedFields.push(f);
+            }
+          }
+
+          const mergedData: Record<string, unknown> = {};
+          for (const [instructions, { expectedFields }] of instructionGroups) {
+            if (!instructions) continue;
+            try {
+              const result = await processEmailWithInstructions(
+                { subject, from_email, body, date: new Date().toISOString() },
+                instructions,
+                undefined,
+                expectedFields.length > 0 ? expectedFields : undefined,
+              );
+              const { _relevant, ...dataFields } = result.data;
+              if (_relevant !== false) {
+                Object.assign(mergedData, dataFields);
+              }
+            } catch (e) {
+              console.error('Test extract LLM error:', e);
+            }
+          }
+
+          if (Object.keys(mergedData).length > 0) {
+            extracted_data = mergedData;
+            // Check if any matched rule has a template_id (would insert order)
+            const matchedRuleNames = new Set(matches.map(m => m.rule_name));
+            const allDbRules = getAllRules();
+            would_insert_order = allDbRules.some(r =>
+              matchedRuleNames.has(r.name) && r.template_id && getTemplate(r.template_id)?.is_order_template
+            );
+          }
+        }
+      }
+
+      res.json({
+        matched_rules: matches.map(m => ({
+          rule_name: m.rule_name,
+          priority: m.priority,
+          has_instructions: !!m.instructions,
+        })),
+        extracted_data,
+        would_insert_order,
+      });
+    } catch (e) {
+      res.status(500).json({ error: (e as Error).message });
+    }
   });
 
   return router;

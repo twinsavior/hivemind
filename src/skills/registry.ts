@@ -125,11 +125,12 @@ export class SkillRegistry {
     return results;
   }
 
-  /** Find skills whose triggers match a user prompt. */
+  /** Find skills whose triggers match a user prompt. Skips optional skills. */
   matchTriggers(prompt: string): SkillDefinition[] {
     const lower = prompt.toLowerCase();
 
     return this.list().filter((skill) =>
+      !skill.metadata.optional &&
       skill.metadata.triggers.some((trigger) => lower.includes(trigger.toLowerCase())),
     );
   }

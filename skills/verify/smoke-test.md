@@ -9,6 +9,7 @@ requiredSecrets: []
 timeout: 300
 tags: ["testing", "verification", "quality", "smoke-test"]
 author: nova
+optional: true
 ---
 
 # Smoke Test — Product Verification

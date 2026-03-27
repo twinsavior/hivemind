@@ -9,6 +9,7 @@ requiredSecrets: []
 timeout: 600
 tags: ["codebase", "architecture", "analysis", "onboarding", "structure", "dependencies", "tech-debt"]
 author: nova
+optional: true
 ---
 
 # Codebase Map

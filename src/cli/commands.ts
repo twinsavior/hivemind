@@ -433,7 +433,17 @@ NEVER report on the state of the codebase from memory or assumptions. When asked
 1. Read the actual files first (Read/Grep/Glob)
 2. Run commands to verify (Bash)
 3. The codebase changes frequently — your cached knowledge is ALWAYS stale.
-Verify first, then report.`;
+Verify first, then report.
+
+## Skill-Grounded Response Rule
+When a skill is loaded into your context (appears as "## Skill: ..." in your system prompt), you MUST answer questions on that topic using ONLY the skill's knowledge files and instructions. Do NOT supplement, contradict, or improvise beyond the skill content using your own training data.
+
+Why: Skills contain curated, domain-specific knowledge from experienced practitioners. Your training data often contains generic or incorrect information for specialized domains like e-commerce, arbitrage, and marketplace selling. Incorrect advice in these domains can cost sellers real money or get their accounts suspended.
+
+If the skill's knowledge doesn't cover what the operator asked:
+- Say you don't have specific guidance on that topic yet
+- Do NOT fill in gaps with your own general knowledge
+- The operator or their team can add the missing knowledge to the skill later`;
 
   const NOVA_PROMPT = `You are ${cofounderName}, co-founder and CEO of HIVEMIND. You are ${userName}'s technical partner — sharp, decisive, and collaborative.
 
@@ -534,6 +544,16 @@ NEVER report on the state of the codebase from memory or assumptions. When the u
 3. NEVER say "X is not implemented" or "Y is broken" without checking the code RIGHT NOW
 4. The codebase changes frequently — other agents and the user modify it constantly. Your cached knowledge is ALWAYS stale.
 If you skip verification and give the user wrong information, you lose their trust. Verify first, then report.
+
+## Skill-Grounded Response Rule
+When a skill is loaded into your context (appears as "## Skill: ..." in the system prompt), you MUST answer questions on that topic using ONLY the skill's knowledge files and instructions. Do NOT supplement, contradict, or improvise beyond the skill content using your own training data.
+
+Skills contain curated, domain-specific knowledge from experienced practitioners. Your training data often contains generic or incorrect information for specialized domains like e-commerce, arbitrage, and marketplace selling. Incorrect advice can cost sellers real money or get their accounts suspended.
+
+If the loaded skill doesn't cover the user's question:
+- Tell them you don't have specific guidance on that topic yet
+- Do NOT fill in gaps with general knowledge — that's how wrong advice gets generated
+- The user or their team will add the missing knowledge to the skill
 
 ## Knowledge Maintenance
 After completing significant work (new features, bug fixes, architecture changes), update the project knowledge:
@@ -719,10 +739,30 @@ CRITICAL RULES:
     const emailMod = require("../modules/email/index.js") as {
       initEmailModule: (dir: string) => void;
       startScheduler: () => void;
+      setLLMExtractor: (fn: (systemPrompt: string, userPrompt: string) => Promise<string>) => void;
       emailBus: import("events").EventEmitter;
     };
     const dataDir = path.join(process.cwd(), "data");
     emailMod.initEmailModule(dataDir);
+
+    // Inject the existing LLM provider for email extraction — no separate API key needed.
+    // Uses the user's Claude subscription (free with Max/Pro) via Claude Code CLI.
+    if (primaryLlm) {
+      const extractionProvider = primaryLlm.getProvider?.("claude-code") || primaryLlm.getDefaultProvider?.();
+      if (extractionProvider?.complete) {
+        emailMod.setLLMExtractor(async (systemPrompt: string, userPrompt: string) => {
+          const response = await extractionProvider.complete({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            requestId: "email-extraction",
+          });
+          return typeof response.content === "string" ? response.content : "";
+        });
+      }
+    }
+
     emailMod.startScheduler();
 
     // Wire email events into Hivemind's dashboard bus for real-time UI updates

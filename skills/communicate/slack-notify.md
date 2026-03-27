@@ -9,6 +9,7 @@ requiredSecrets: ["SLACK_BOT_TOKEN"]
 timeout: 30
 tags: ["slack", "notification", "messaging", "alerting"]
 author: hivemind-core
+optional: true
 ---
 
 # Slack Notification

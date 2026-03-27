@@ -9,6 +9,7 @@ requiredSecrets: []
 timeout: 600
 tags: ["debugging", "runbook", "investigation", "server", "troubleshooting"]
 author: nova
+optional: true
 ---
 
 # Debug Server — Runbook

@@ -1,6 +1,43 @@
 import type { FlagMatch } from './types.js';
 import { getAllRules } from './db.js';
 
+/**
+ * Domain-boundary-aware sender pattern matching.
+ * Pattern "@amazon" matches "user@amazon.com" and "user@mail.amazon.com"
+ * but NOT "user@notamazon.com".
+ *
+ * Patterns starting with "@" are treated as domain patterns:
+ *   "@amazon" → matches if email domain ends with "amazon" before the TLD,
+ *               or contains ".amazon." in the domain
+ * Other patterns use substring matching (e.g., "noreply" matches "noreply@example.com").
+ */
+function matchesSenderPattern(fromEmail: string, pattern: string): boolean {
+  const p = pattern.toLowerCase().trim();
+  const email = fromEmail.toLowerCase();
+
+  if (p.startsWith('@')) {
+    // Domain pattern: extract the domain part of the email
+    const atIdx = email.indexOf('@');
+    if (atIdx === -1) return false;
+    const domain = email.slice(atIdx); // includes the @
+
+    // Exact domain match: "@amazon.com" matches "@amazon.com"
+    if (domain === p) return true;
+
+    // Subdomain match: "@amazon" matches "@amazon.com", "@mail.amazon.com"
+    // But NOT "@notamazon.com"
+    // Check if pattern appears at a domain boundary (after @ or after .)
+    if (domain.startsWith(p + '.') || domain.includes('.' + p.slice(1) + '.') || domain.endsWith('.' + p.slice(1))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // Non-@ patterns: substring match (e.g., "noreply" matches "noreply@example.com")
+  return email.includes(p);
+}
+
 export interface EmailInput {
   subject?: string;
   snippet?: string;
@@ -106,7 +143,7 @@ export function flagEmail(emailData: EmailInput, rules?: RuleData[]): FlagMatch[
 
     // Sender-only mode: sender_patterns present, no keywords
     if (hasSenders && !hasKeywords) {
-      if (rule.sender_patterns.some(pattern => fromEmail.includes(pattern.toLowerCase()))) {
+      if (rule.sender_patterns.some(pattern => matchesSenderPattern(fromEmail, pattern))) {
         matches.push({
           rule_name: rule.name,
           priority: rule.priority,
@@ -122,7 +159,7 @@ export function flagEmail(emailData: EmailInput, rules?: RuleData[]): FlagMatch[
     // Keyword mode (existing behavior)
     // Check sender pattern
     if (hasSenders) {
-      if (!rule.sender_patterns.some(pattern => fromEmail.includes(pattern.toLowerCase()))) {
+      if (!rule.sender_patterns.some(pattern => matchesSenderPattern(fromEmail, pattern))) {
         continue;
       }
     }

@@ -28,7 +28,7 @@ describe("updateEnvFile", () => {
     updateEnvFile(envPath, "DISCORD_BOT_TOKEN", "test-token-123");
 
     const content = fs.readFileSync(envPath, "utf-8");
-    expect(content).toContain("DISCORD_BOT_TOKEN=test-token-123");
+    expect(content).toContain('DISCORD_BOT_TOKEN="test-token-123"');
   });
 
   it("appends a new key to existing .env", () => {
@@ -39,7 +39,7 @@ describe("updateEnvFile", () => {
 
     const content = fs.readFileSync(envPath, "utf-8");
     expect(content).toContain("EXISTING_KEY=value");
-    expect(content).toContain("DISCORD_BOT_TOKEN=new-token");
+    expect(content).toContain('DISCORD_BOT_TOKEN="new-token"');
   });
 
   it("updates an existing key in .env", () => {
@@ -49,7 +49,7 @@ describe("updateEnvFile", () => {
     updateEnvFile(envPath, "DISCORD_BOT_TOKEN", "new-token");
 
     const content = fs.readFileSync(envPath, "utf-8");
-    expect(content).toContain("DISCORD_BOT_TOKEN=new-token");
+    expect(content).toContain('DISCORD_BOT_TOKEN="new-token"');
     expect(content).not.toContain("old-token");
     expect(content).toContain("OTHER=val");
   });
@@ -63,7 +63,7 @@ describe("updateEnvFile", () => {
     const content = fs.readFileSync(envPath, "utf-8");
     expect(content).toContain("# This is a comment");
     expect(content).toContain("KEY=val");
-    expect(content).toContain("NEW_KEY=new-val");
+    expect(content).toContain('NEW_KEY="new-val"');
   });
 });
 

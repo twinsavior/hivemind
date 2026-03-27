@@ -285,6 +285,14 @@ export class CourierAgent extends BaseAgent {
     return true;
   }
 
+  private static readonly MAX_OUTBOX_SIZE = 500;
+
+  /** Evict completed (sent/failed) messages when outbox exceeds limit. */
+  private pruneOutbox(): void {
+    if (this.outbox.length <= CourierAgent.MAX_OUTBOX_SIZE) return;
+    this.outbox = this.outbox.filter((m) => m.status === "queued" || m.status === "rate_limited");
+  }
+
   private async flushOutbox(): Promise<void> {
     for (const msg of this.outbox) {
       if (msg.status !== "queued") continue;
@@ -320,5 +328,7 @@ export class CourierAgent extends BaseAgent {
         this.emit("message:failed", { id: msg.id, channel: msg.channel, error: result.error });
       }
     }
+
+    this.pruneOutbox();
   }
 }

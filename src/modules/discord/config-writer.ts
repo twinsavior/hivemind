@@ -33,7 +33,7 @@ export function updateEnvFile(filePath: string, key: string, value: string): voi
 
     const lineKey = trimmed.slice(0, eqIdx).trim();
     if (lineKey === key) {
-      lines[i] = `${key}=${value}`;
+      lines[i] = `${key}="${value}"`;
       found = true;
       break;
     }
@@ -44,7 +44,7 @@ export function updateEnvFile(filePath: string, key: string, value: string): voi
     if (lines.length > 0 && lines[lines.length - 1]!.trim() !== "") {
       lines.push("");
     }
-    lines.push(`${key}=${value}`);
+    lines.push(`${key}="${value}"`);
   }
 
   fs.writeFileSync(filePath, lines.join("\n"), "utf-8");

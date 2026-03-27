@@ -1467,6 +1467,15 @@ app.post('/api/config', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// ─── Discord Setup API ──────────────────────────────────────────────────────
+
+try {
+  const { createDiscordRouter } = await import('../modules/discord/routes.js');
+  app.use('/api/connectors/discord', createDiscordRouter());
+} catch (err) {
+  console.warn(`[Discord] Routes failed to load: ${(err as Error).message}`);
+}
+
 // ─── Marketplace API ────────────────────────────────────────────────────────
 
 const marketplaceSkillsDir = path.resolve('.hivemind', 'marketplace-data');

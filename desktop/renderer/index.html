@@ -4240,7 +4240,7 @@
       { key: 'llm', label: 'LLM Providers', fields: [
         { key: 'primary_provider', label: 'Primary Provider', type: 'select', value: 'claude-code', options: ['claude-code', 'anthropic', 'openai', 'ollama', 'codex'], description: 'Main LLM provider for research agents' },
         { key: 'code_provider', label: 'Code Provider', type: 'select', value: 'codex', options: ['codex', 'claude-code', 'anthropic', 'openai', 'ollama'], description: 'Provider for code-focused agents' },
-        { key: 'max_tokens', label: 'Max Tokens', type: 'number', value: 4096, description: 'Maximum token output per request' },
+        { key: 'max_tokens', label: 'Max Tokens', type: 'number', value: 16000, description: 'Maximum token output per request' },
         { key: 'temperature', label: 'Temperature', type: 'number', value: 0.7, description: 'Sampling temperature (0-2)' },
       ]},
       { key: 'agents', label: 'Agent Config', fields: [
@@ -4254,11 +4254,7 @@
         { key: 'embedding_model', label: 'Embedding Model', type: 'select', value: 'Xenova/all-MiniLM-L6-v2', options: ['Xenova/all-MiniLM-L6-v2', 'Xenova/all-mpnet-base-v2', 'none'], description: 'Local embedding model for vector search' },
         { key: 'auto_prune', label: 'Auto-Prune Expired', type: 'toggle', value: true, description: 'Automatically remove expired memory entries' },
       ]},
-      { key: 'connectors', label: 'Connectors', fields: [
-        { key: 'slack_enabled', label: 'Slack', type: 'toggle', value: false, description: 'Enable Slack integration' },
-        { key: 'discord_enabled', label: 'Discord', type: 'toggle', value: false, description: 'Enable Discord integration' },
-        { key: 'webhook_url', label: 'Webhook URL', type: 'text', value: '', description: 'POST task events to this URL' },
-      ]},
+      { key: 'connectors', label: 'Connectors', fields: [], customRender: true },
       { key: 'dashboard', label: 'Dashboard', fields: [
         { key: 'port', label: 'Port', type: 'number', value: 4000, description: 'Dashboard server port' },
         { key: 'auth_enabled', label: 'Require Password', type: 'toggle', value: false, description: 'Protect dashboard with a password' },
@@ -4654,6 +4650,474 @@
       });
     }
 
+    // ── Discord Setup Wizard State ─────────────────────────────────────────
+    const dcState = {
+      step: 0,           // 0=setup, 1=add-to-server, 2=owner-id, 3=done
+      token: '',
+      botId: '',
+      botName: '',
+      botAvatar: null,
+      clientId: '',
+      guilds: [],
+      selectedGuilds: [],
+      channels: [],
+      selectedChannels: [],
+      ownerId: '',
+      triggerMode: 'mention',
+      verifying: false,
+      saving: false,
+      error: '',
+    };
+
+    async function renderConnectorsSettings(panel) {
+      // First check if Discord is already configured
+      let discordStatus = { configured: false, connected: false };
+      try {
+        const resp = await fetch(_baseHttp + '/api/connectors/discord/status');
+        discordStatus = await resp.json();
+      } catch {}
+
+      // If connected and we're on step 0, jump to done
+      if (discordStatus.connected && dcState.step === 0) {
+        dcState.step = 3;
+        dcState.botName = discordStatus.botName || 'Hivemind Bot';
+      }
+
+      panel.innerHTML = `
+        <h3 style="margin:0 0 4px;">Connectors</h3>
+        <p style="color:var(--text-muted,#999);font-size:13px;margin:0 0 20px;">Connect Hivemind to external platforms so you can chat with your swarm from anywhere.</p>
+
+        <!-- Discord Card -->
+        <div class="mp-card ${dcState.step === 3 ? 'connected' : ''}" id="dc-card" style="background:rgba(255,255,255,0.03);border:1px solid ${dcState.step === 3 ? '#22c55e44' : 'var(--border,#333)'};border-radius:12px;padding:20px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+            <div style="font-size:28px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(88,101,242,0.12);border-radius:10px;">
+              <svg width="28" height="22" viewBox="0 0 71 55" fill="none"><path d="M60.1 4.9A58.5 58.5 0 0045.4.2a.2.2 0 00-.2.1 40.8 40.8 0 00-1.8 3.7 54 54 0 00-16.2 0A37.4 37.4 0 0025.4.3a.2.2 0 00-.2-.1 58.4 58.4 0 00-14.7 4.6.2.2 0 00-.1.1C1.5 18.7-.9 32.2.3 45.5v.1a58.8 58.8 0 0017.9 9.1.2.2 0 00.3-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.8 38.8 0 01-5.5-2.7.2.2 0 01 0-.4c.4-.3.7-.6 1.1-.9a.2.2 0 01.2 0c11.5 5.3 24 5.3 35.4 0a.2.2 0 01.2 0l1.1.9a.2.2 0 010 .4c-1.8 1-3.6 1.9-5.5 2.6a.2.2 0 00-.1.3 47.2 47.2 0 003.6 5.9.2.2 0 00.3.1A58.6 58.6 0 0070.7 45.6v-.1c1.4-15.1-2.4-28.2-10-39.8a.2.2 0 00-.1-.1h0zM23.7 37.3c-3.4 0-6.3-3.2-6.3-7s2.8-7 6.3-7 6.4 3.1 6.3 7-2.8 7-6.3 7zm23.3 0c-3.4 0-6.3-3.2-6.3-7s2.8-7 6.3-7 6.4 3.1 6.3 7-2.8 7-6.3 7z" fill="#5865F2"/></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:15px;color:var(--text-primary,#eee);">Discord</div>
+              <div style="font-size:12px;color:var(--text-muted,#999);">${dcState.step === 3 ? 'Connected as ' + escapeHtml(dcState.botName) : 'Chat with Hivemind from your Discord server'}</div>
+            </div>
+            ${dcState.step === 3 ? '<div style="color:#22c55e;font-weight:600;font-size:13px;">Connected</div>' : ''}
+          </div>
+
+          ${dcState.step === 3 ? dcRenderConnected() : ''}
+          ${dcState.step === 0 ? dcRenderStep1() : ''}
+          ${dcState.step === 1 ? dcRenderStep2() : ''}
+          ${dcState.step === 2 ? dcRenderStep3() : ''}
+        </div>
+
+        <!-- Slack (coming soon) -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:12px;padding:20px;margin-bottom:16px;opacity:0.5;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="font-size:28px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(74,21,75,0.12);border-radius:10px;">💬</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:15px;color:var(--text-primary,#eee);">Slack</div>
+              <div style="font-size:12px;color:var(--text-muted,#999);">Coming soon</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telegram (coming soon) -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:12px;padding:20px;opacity:0.5;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="font-size:28px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(0,136,204,0.12);border-radius:10px;">✈️</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:15px;color:var(--text-primary,#eee);">Telegram</div>
+              <div style="font-size:12px;color:var(--text-muted,#999);">Coming soon</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Bind events
+      dcBindEvents(panel);
+    }
+
+    // ── Step 1: Create Your Bot ─────────────────────────────────────────────
+    function dcRenderStep1() {
+      return `
+        <div style="border-top:1px solid var(--border,#333);padding-top:16px;">
+          <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:14px;">Step 1 of 3 — Create Your Discord Bot</div>
+
+          <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Open the Discord Developer Portal</div>
+                <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;">Log in with your Discord account and create a new application.</div>
+                <a href="https://discord.com/developers/applications" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;padding:5px 12px;font-size:11px;border-radius:5px;background:rgba(88,101,242,0.15);color:#5865F2;border:1px solid rgba(88,101,242,0.3);cursor:pointer;text-decoration:none;font-weight:500;">Open Developer Portal →</a>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">2</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Create a New Application</div>
+                <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;">Click <strong>"New Application"</strong>, name it <strong>"Hivemind"</strong>, and click <strong>Create</strong>.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">3</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Get Your Bot Token</div>
+                <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;">Go to the <strong>Bot</strong> tab on the left → click <strong>"Reset Token"</strong> → <strong>copy</strong> the token it shows you.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">4</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Turn On Message Content Intent</div>
+                <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;">Still on the <strong>Bot</strong> tab, scroll down to <strong>"Privileged Gateway Intents"</strong> and turn ON <strong>"Message Content Intent"</strong>. Click <strong>Save Changes</strong>.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted,#aaa);">Paste your bot token here</label>
+            <div style="display:flex;gap:8px;">
+              <input type="password" id="dc-token-input" placeholder="Paste your bot token..." value="${escapeHtml(dcState.token)}" style="flex:1;padding:10px 12px;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#444);border-radius:8px;color:var(--text-primary,#eee);font-size:13px;font-family:monospace;">
+              <button id="dc-token-toggle" style="padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid var(--border,#444);border-radius:8px;cursor:pointer;color:var(--text-muted);font-size:12px;" title="Show/hide token">👁️</button>
+            </div>
+            <button id="dc-verify-btn" style="padding:10px;background:#5865F2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;${dcState.verifying ? 'opacity:0.6;pointer-events:none;' : ''}">${dcState.verifying ? 'Verifying...' : 'Verify Token'}</button>
+          </div>
+
+          ${dcState.botName ? `
+            <div style="margin-top:12px;padding:12px;background:rgba(34,197,94,0.06);border:1px solid #22c55e44;border-radius:8px;display:flex;align-items:center;gap:10px;">
+              ${dcState.botAvatar ? '<img src="' + escapeHtml(dcState.botAvatar) + '" style="width:32px;height:32px;border-radius:50%;">' : '<div style="width:32px;height:32px;border-radius:50%;background:#5865F2;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;">' + escapeHtml(dcState.botName[0]) + '</div>'}
+              <div>
+                <div style="font-weight:600;font-size:13px;color:#22c55e;">Token verified!</div>
+                <div style="font-size:12px;color:var(--text-muted);">Bot: ${escapeHtml(dcState.botName)}</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+              <button id="dc-next-step1" style="padding:8px 20px;background:#5865F2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">Next →</button>
+            </div>
+          ` : ''}
+
+          ${dcState.error ? '<div style="margin-top:8px;padding:8px 12px;background:rgba(237,66,69,0.08);border:1px solid #ed424544;border-radius:6px;color:#ed4245;font-size:12px;">' + escapeHtml(dcState.error) + '</div>' : ''}
+        </div>`;
+    }
+
+    // ── Step 2: Add Bot to Server ───────────────────────────────────────────
+    function dcRenderStep2() {
+      return `
+        <div style="border-top:1px solid var(--border,#333);padding-top:16px;">
+          <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:14px;">Step 2 of 3 — Add Bot to Your Server</div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Invite the bot to your server</div>
+              <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;margin-bottom:8px;">Click the button below, pick your server, and click <strong>Authorize</strong>.</div>
+              <a href="https://discord.com/oauth2/authorize?client_id=${escapeHtml(dcState.clientId)}&scope=bot&permissions=274877975552" target="_blank" rel="noopener" id="dc-invite-link" style="display:inline-block;padding:8px 16px;font-size:13px;border-radius:8px;background:#5865F2;color:#fff;border:none;cursor:pointer;text-decoration:none;font-weight:600;">Add Hivemind to Server →</a>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">2</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Select which server to listen on</div>
+              <div style="font-size:12px;color:var(--text-muted,#aaa);margin-bottom:8px;">After adding the bot, click Refresh to see your servers.</div>
+              <button id="dc-refresh-guilds" style="padding:6px 14px;font-size:12px;border-radius:6px;background:rgba(88,101,242,0.15);color:#5865F2;border:1px solid rgba(88,101,242,0.3);cursor:pointer;font-weight:500;">Refresh Server List</button>
+            </div>
+          </div>
+
+          ${dcState.guilds.length > 0 ? `
+            <div style="margin-bottom:16px;">
+              <label style="font-size:12px;font-weight:600;color:var(--text-muted,#aaa);display:block;margin-bottom:8px;">Your Servers</label>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                ${dcState.guilds.map(g => `
+                  <button class="dc-guild-btn" data-guild-id="${escapeHtml(g.id)}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${dcState.selectedGuilds.includes(g.id) ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.selectedGuilds.includes(g.id) ? '#5865F2' : 'var(--border,#333)'};border-radius:8px;cursor:pointer;color:var(--text-primary,#eee);font-size:13px;text-align:left;">
+                    ${g.icon ? '<img src="' + escapeHtml(g.icon) + '" style="width:24px;height:24px;border-radius:50%;">' : '<div style="width:24px;height:24px;border-radius:50%;background:#5865F2;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;">' + escapeHtml(g.name[0]) + '</div>'}
+                    <span>${escapeHtml(g.name)}</span>
+                    ${dcState.selectedGuilds.includes(g.id) ? '<span style="margin-left:auto;color:#5865F2;">✓</span>' : ''}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${dcState.channels.length > 0 ? `
+            <div style="margin-bottom:16px;">
+              <label style="font-size:12px;font-weight:600;color:var(--text-muted,#aaa);display:block;margin-bottom:4px;">Channels (pick which ones Hivemind listens to, or leave empty for all)</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;">
+                ${dcState.channels.map(c => `
+                  <button class="dc-channel-btn" data-channel-id="${escapeHtml(c.id)}" style="padding:6px 12px;background:${dcState.selectedChannels.includes(c.id) ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.selectedChannels.includes(c.id) ? '#5865F2' : 'var(--border,#333)'};border-radius:6px;cursor:pointer;color:var(--text-primary,#eee);font-size:12px;"># ${escapeHtml(c.name)}</button>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <div style="display:flex;justify-content:space-between;margin-top:12px;">
+            <button id="dc-back-step2" style="padding:8px 20px;background:rgba(255,255,255,0.05);color:var(--text-muted);border:1px solid var(--border,#444);border-radius:8px;cursor:pointer;font-size:13px;">← Back</button>
+            <button id="dc-next-step2" style="padding:8px 20px;background:#5865F2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;${dcState.selectedGuilds.length === 0 ? 'opacity:0.4;pointer-events:none;' : ''}">Next →</button>
+          </div>
+        </div>`;
+    }
+
+    // ── Step 3: Set Owner ID ────────────────────────────────────────────────
+    function dcRenderStep3() {
+      return `
+        <div style="border-top:1px solid var(--border,#333);padding-top:16px;">
+          <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:14px;">Step 3 of 3 — Set Your Owner ID</div>
+
+          <div style="background:rgba(88,101,242,0.06);border:1px solid rgba(88,101,242,0.2);border-radius:8px;padding:12px;margin-bottom:16px;">
+            <div style="font-size:13px;color:var(--text-primary,#eee);line-height:1.6;">
+              Messages from <strong>your</strong> Discord account get <strong>full control</strong> of Hivemind. Messages from anyone else are <strong>read-only</strong> (sandboxed).
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Get your Discord User ID</div>
+              <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;">
+                In Discord: <strong>Settings → Advanced → turn on Developer Mode</strong>.<br>
+                Then right-click your name anywhere and click <strong>"Copy User ID"</strong>.
+              </div>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted,#aaa);">Your Discord User ID</label>
+            <input type="text" id="dc-owner-id" placeholder="e.g. 123456789012345678" value="${escapeHtml(dcState.ownerId)}" style="padding:10px 12px;background:var(--bg-secondary,#1a1a2e);border:1px solid var(--border,#444);border-radius:8px;color:var(--text-primary,#eee);font-size:13px;font-family:monospace;">
+
+            <div style="margin-top:4px;">
+              <label style="font-size:12px;font-weight:600;color:var(--text-muted,#aaa);display:block;margin-bottom:6px;">How should the bot respond?</label>
+              <div style="display:flex;gap:8px;">
+                <button class="dc-trigger-btn" data-mode="mention" style="flex:1;padding:10px;background:${dcState.triggerMode === 'mention' ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.triggerMode === 'mention' ? '#5865F2' : 'var(--border,#333)'};border-radius:8px;cursor:pointer;color:var(--text-primary,#eee);font-size:12px;text-align:center;">
+                  <strong>@Mention Only</strong><br><span style="color:var(--text-muted);font-size:11px;">Only responds when @mentioned</span>
+                </button>
+                <button class="dc-trigger-btn" data-mode="all" style="flex:1;padding:10px;background:${dcState.triggerMode === 'all' ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.triggerMode === 'all' ? '#5865F2' : 'var(--border,#333)'};border-radius:8px;cursor:pointer;color:var(--text-primary,#eee);font-size:12px;text-align:center;">
+                  <strong>All Messages</strong><br><span style="color:var(--text-muted);font-size:11px;">Reads every message in channel</span>
+                </button>
+              </div>
+            </div>
+
+            <button id="dc-save-btn" style="margin-top:8px;padding:12px;background:#22c55e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;${dcState.saving ? 'opacity:0.6;pointer-events:none;' : ''}">${dcState.saving ? 'Connecting...' : 'Connect Discord'}</button>
+          </div>
+
+          ${dcState.error ? '<div style="margin-top:8px;padding:8px 12px;background:rgba(237,66,69,0.08);border:1px solid #ed424544;border-radius:6px;color:#ed4245;font-size:12px;">' + escapeHtml(dcState.error) + '</div>' : ''}
+
+          <div style="display:flex;justify-content:flex-start;margin-top:12px;">
+            <button id="dc-back-step3" style="padding:8px 20px;background:rgba(255,255,255,0.05);color:var(--text-muted);border:1px solid var(--border,#444);border-radius:8px;cursor:pointer;font-size:13px;">← Back</button>
+          </div>
+        </div>`;
+    }
+
+    // ── Connected State ─────────────────────────────────────────────────────
+    function dcRenderConnected() {
+      return `
+        <div style="border-top:1px solid #22c55e44;padding-top:16px;text-align:center;">
+          <div style="font-size:36px;margin-bottom:8px;">✅</div>
+          <div style="font-size:15px;font-weight:600;color:#22c55e;margin-bottom:4px;">Discord is connected!</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">@mention your bot in Discord to send tasks to Hivemind.</div>
+          <button id="dc-reconfigure" style="padding:6px 14px;font-size:12px;border-radius:6px;background:rgba(255,255,255,0.05);color:var(--text-muted);border:1px solid var(--border,#444);cursor:pointer;">Reconfigure</button>
+        </div>`;
+    }
+
+    // ── Event Binding ───────────────────────────────────────────────────────
+    function dcBindEvents(panel) {
+      // Token show/hide toggle
+      const tokenToggle = panel.querySelector('#dc-token-toggle');
+      const tokenInput = panel.querySelector('#dc-token-input');
+      if (tokenToggle && tokenInput) {
+        tokenToggle.addEventListener('click', () => {
+          tokenInput.type = tokenInput.type === 'password' ? 'text' : 'password';
+        });
+      }
+
+      // Verify token
+      const verifyBtn = panel.querySelector('#dc-verify-btn');
+      if (verifyBtn) {
+        verifyBtn.addEventListener('click', async () => {
+          const token = panel.querySelector('#dc-token-input')?.value?.trim();
+          if (!token) { dcState.error = 'Please paste your bot token.'; renderConnectorsSettings(panel); return; }
+
+          dcState.token = token;
+          dcState.verifying = true;
+          dcState.error = '';
+          dcState.botName = '';
+          renderConnectorsSettings(panel);
+
+          try {
+            const resp = await fetch(_baseHttp + '/api/connectors/discord/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token }),
+            });
+            const data = await resp.json();
+            dcState.verifying = false;
+            if (data.valid) {
+              dcState.botId = data.botId;
+              dcState.botName = data.botName;
+              dcState.botAvatar = data.botAvatar;
+              dcState.clientId = data.clientId;
+              dcState.error = '';
+            } else {
+              dcState.error = data.error || 'Invalid token. Double-check you copied the full token from the Bot tab.';
+            }
+          } catch (err) {
+            dcState.verifying = false;
+            dcState.error = 'Could not verify token. Is Hivemind running?';
+          }
+          renderConnectorsSettings(panel);
+        });
+      }
+
+      // Step 1 Next
+      const nextStep1 = panel.querySelector('#dc-next-step1');
+      if (nextStep1) {
+        nextStep1.addEventListener('click', () => {
+          dcState.step = 1;
+          renderConnectorsSettings(panel);
+        });
+      }
+
+      // Step 2 Back
+      const backStep2 = panel.querySelector('#dc-back-step2');
+      if (backStep2) {
+        backStep2.addEventListener('click', () => { dcState.step = 0; renderConnectorsSettings(panel); });
+      }
+
+      // Refresh guilds
+      const refreshGuilds = panel.querySelector('#dc-refresh-guilds');
+      if (refreshGuilds) {
+        refreshGuilds.addEventListener('click', async () => {
+          try {
+            const resp = await fetch(_baseHttp + '/api/connectors/discord/guilds', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: dcState.token }),
+            });
+            const data = await resp.json();
+            dcState.guilds = data.guilds || [];
+            dcState.selectedGuilds = [];
+            dcState.channels = [];
+            dcState.selectedChannels = [];
+          } catch {}
+          renderConnectorsSettings(panel);
+        });
+      }
+
+      // Guild selection
+      panel.querySelectorAll('.dc-guild-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const guildId = btn.dataset.guildId;
+          if (dcState.selectedGuilds.includes(guildId)) {
+            dcState.selectedGuilds = dcState.selectedGuilds.filter(id => id !== guildId);
+            dcState.channels = [];
+            dcState.selectedChannels = [];
+          } else {
+            dcState.selectedGuilds = [guildId]; // Single-select for simplicity
+            // Load channels for this guild
+            try {
+              const resp = await fetch(_baseHttp + '/api/connectors/discord/channels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: dcState.token, guildId }),
+              });
+              const data = await resp.json();
+              dcState.channels = data.channels || [];
+              dcState.selectedChannels = [];
+            } catch {}
+          }
+          renderConnectorsSettings(panel);
+        });
+      });
+
+      // Channel selection
+      panel.querySelectorAll('.dc-channel-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const channelId = btn.dataset.channelId;
+          if (dcState.selectedChannels.includes(channelId)) {
+            dcState.selectedChannels = dcState.selectedChannels.filter(id => id !== channelId);
+          } else {
+            dcState.selectedChannels.push(channelId);
+          }
+          renderConnectorsSettings(panel);
+        });
+      });
+
+      // Step 2 Next
+      const nextStep2 = panel.querySelector('#dc-next-step2');
+      if (nextStep2) {
+        nextStep2.addEventListener('click', () => { dcState.step = 2; renderConnectorsSettings(panel); });
+      }
+
+      // Step 3 Back
+      const backStep3 = panel.querySelector('#dc-back-step3');
+      if (backStep3) {
+        backStep3.addEventListener('click', () => { dcState.step = 1; renderConnectorsSettings(panel); });
+      }
+
+      // Trigger mode buttons
+      panel.querySelectorAll('.dc-trigger-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          dcState.triggerMode = btn.dataset.mode;
+          renderConnectorsSettings(panel);
+        });
+      });
+
+      // Save and connect
+      const saveBtn = panel.querySelector('#dc-save-btn');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+          const ownerId = panel.querySelector('#dc-owner-id')?.value?.trim();
+          if (!ownerId || !/^\d{17,20}$/.test(ownerId)) {
+            dcState.error = 'Please enter a valid Discord User ID (17-20 digits).';
+            renderConnectorsSettings(panel);
+            return;
+          }
+
+          dcState.ownerId = ownerId;
+          dcState.saving = true;
+          dcState.error = '';
+          renderConnectorsSettings(panel);
+
+          try {
+            const resp = await fetch(_baseHttp + '/api/connectors/discord/save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                token: dcState.token,
+                guildIds: dcState.selectedGuilds,
+                channelIds: dcState.selectedChannels,
+                ownerIds: [dcState.ownerId],
+                triggerMode: dcState.triggerMode,
+              }),
+            });
+            const data = await resp.json();
+            dcState.saving = false;
+            if (data.status === 'ok') {
+              dcState.step = 3;
+              dcState.token = ''; // Clear sensitive token from memory
+            } else {
+              dcState.error = data.error || 'Failed to save configuration.';
+            }
+          } catch (err) {
+            dcState.saving = false;
+            dcState.error = 'Could not save. Is Hivemind running?';
+          }
+          renderConnectorsSettings(panel);
+        });
+      }
+
+      // Reconfigure button
+      const reconfig = panel.querySelector('#dc-reconfigure');
+      if (reconfig) {
+        reconfig.addEventListener('click', () => {
+          dcState.step = 0;
+          dcState.token = '';
+          dcState.botName = '';
+          dcState.guilds = [];
+          dcState.selectedGuilds = [];
+          dcState.channels = [];
+          dcState.selectedChannels = [];
+          renderConnectorsSettings(panel);
+        });
+      }
+    }
+
     function renderSettingsPanel() {
       const section = settingsSections.find(s => s.key === activeSettingsSection);
       if (!section) return;
@@ -4661,6 +5125,12 @@
 
       // Cleanup: move email content back if it was borrowed
       if (panel._emailCleanup) panel._emailCleanup();
+
+      // Custom connectors panel (Discord, Slack, etc.)
+      if (section.key === 'connectors') {
+        renderConnectorsSettings(panel);
+        return;
+      }
 
       // Custom marketplace panel
       if (section.key === 'marketplace') {

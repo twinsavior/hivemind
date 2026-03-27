@@ -39,12 +39,19 @@ interface RoutingRule {
   transform?: (body: string) => string;
 }
 
+/** Interface for the ConnectorManager bridge (avoids circular imports). */
+interface ConnectorManagerBridge {
+  send(connectorName: string, channelId: string, content: string): Promise<void>;
+  getConnectorNames(): string[];
+}
+
 /** Communication and integration agent. Routes messages across platforms and manages notifications. */
 export class CourierAgent extends BaseAgent {
   private channels: Map<Channel, ChannelConfig> = new Map();
   private outbox: OutboundMessage[] = [];
   private routingRules: RoutingRule[] = [];
   private rateLedger: Map<Channel, { minute: number[]; hour: number[] }> = new Map();
+  private connectorManagerBridge: ConnectorManagerBridge | null = null;
 
   constructor(id?: string) {
     const identity: AgentIdentity = {
@@ -104,6 +111,15 @@ export class CourierAgent extends BaseAgent {
   /** Add a routing rule for automatic message dispatch. */
   addRoutingRule(rule: RoutingRule): void {
     this.routingRules.push(rule);
+  }
+
+  /**
+   * Bridge the CourierAgent's outbox to real connectors.
+   * When set, `flushOutbox()` routes messages through the ConnectorManager
+   * instead of relying on the abstract `callTool` stub.
+   */
+  setConnectorManager(cm: ConnectorManagerBridge): void {
+    this.connectorManagerBridge = cm;
   }
 
   /** Queue a message for delivery, respecting rate limits and routing rules. */
@@ -269,10 +285,34 @@ export class CourierAgent extends BaseAgent {
     return true;
   }
 
+  private static readonly MAX_OUTBOX_SIZE = 500;
+
+  /** Evict completed (sent/failed) messages when outbox exceeds limit. */
+  private pruneOutbox(): void {
+    if (this.outbox.length <= CourierAgent.MAX_OUTBOX_SIZE) return;
+    this.outbox = this.outbox.filter((m) => m.status === "queued" || m.status === "rate_limited");
+  }
+
   private async flushOutbox(): Promise<void> {
     for (const msg of this.outbox) {
       if (msg.status !== "queued") continue;
 
+      // Use ConnectorManager bridge if available (routes to real connectors)
+      if (this.connectorManagerBridge) {
+        try {
+          await this.connectorManagerBridge.send(msg.channel, msg.recipient, msg.body);
+          msg.status = "sent";
+          msg.sentAt = Date.now();
+          this.emit("message:sent", { id: msg.id, channel: msg.channel });
+        } catch (err) {
+          msg.status = "failed";
+          msg.error = (err as Error).message;
+          this.emit("message:failed", { id: msg.id, channel: msg.channel, error: msg.error });
+        }
+        continue;
+      }
+
+      // Fallback: use abstract callTool (stub in base agent)
       const result = await this.callTool({
         tool: "send_message",
         args: { channel: msg.channel, recipient: msg.recipient, body: msg.body },
@@ -288,5 +328,7 @@ export class CourierAgent extends BaseAgent {
         this.emit("message:failed", { id: msg.id, channel: msg.channel, error: result.error });
       }
     }
+
+    this.pruneOutbox();
   }
 }

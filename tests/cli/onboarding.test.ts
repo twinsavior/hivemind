@@ -918,11 +918,10 @@ describe("edge cases", () => {
   });
 
   it("saveProfile to read-only dir does not silently succeed", () => {
-    // Use a path that's impossible on all platforms:
-    // - Linux/macOS: /proc/0/ is not writable
-    // - Windows: NUL device path can't be a directory
+    // Use a path with a reserved device name that can't be a directory on Windows,
+    // and /proc/0/ which is not writable on Linux/macOS
     const impossiblePath = process.platform === "win32"
-      ? "C:\\Windows\\System32\\config\\systemprofile\\impossible\\profile.json"
+      ? "\\\\.\\.\\NUL\\impossible\\profile.json"
       : "/proc/0/impossible/profile.json";
     expect(() => saveProfile(getDefaultProfile(), impossiblePath)).toThrow();
   });

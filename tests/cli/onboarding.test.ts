@@ -918,7 +918,11 @@ describe("edge cases", () => {
   });
 
   it("saveProfile to read-only dir does not silently succeed", () => {
-    const impossiblePath = "/proc/0/impossible/profile.json";
+    // Use a path with a reserved device name that can't be a directory on Windows,
+    // and /proc/0/ which is not writable on Linux/macOS
+    const impossiblePath = process.platform === "win32"
+      ? "\\\\.\\.\\NUL\\impossible\\profile.json"
+      : "/proc/0/impossible/profile.json";
     expect(() => saveProfile(getDefaultProfile(), impossiblePath)).toThrow();
   });
 

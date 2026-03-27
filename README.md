@@ -9,23 +9,55 @@
  ╚═╝  ╚═╝╚═╝  ╚═══╝  ╚══════╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═════╝
 ```
 
-### AI-Powered Operations Platform for E-Commerce Sellers
+### Your AI co-founder for Amazon, Walmart & eBay selling
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/latest)
+
+[![GitHub Release](https://img.shields.io/github/v/release/twinsavior/hivemind?include_prereleases&label=version)](https://github.com/twinsavior/hivemind/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/twinsavior/hivemind/ci.yml?branch=main&label=build)](https://github.com/twinsavior/hivemind/actions)
+[![Tests](https://img.shields.io/badge/tests-518_passing-brightgreen)](https://github.com/twinsavior/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-[Quick Start](#-quick-start) · [Features](#-features) · [Architecture](#-architecture) · [Configuration](#%EF%B8%8F-configuration)
+[![Stars](https://img.shields.io/github/stars/twinsavior/hivemind)](https://github.com/twinsavior/hivemind/stargazers)
+[![Downloads](https://img.shields.io/github/downloads/twinsavior/hivemind/total)](https://github.com/twinsavior/hivemind/releases)
 
 </div>
 
 ---
 
+## Get Started in 3 Steps
+
+### 1. Download HIVEMIND
+
+Grab the latest release for your platform:
+
+- **Mac**: Download the `.dmg` → open it → drag HIVEMIND to Applications
+  - First launch: right-click the app → Open (macOS requires this for unsigned apps)
+- **Windows**: Download the `.exe` installer → run it → done
+
+👉 **[Go to Downloads](https://github.com/twinsavior/hivemind/releases/latest)**
+
+### 2. Install Claude Code CLI
+
+HIVEMIND uses Claude as its brain. Install the CLI once:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+> Don't have Node.js? [Download it here](https://nodejs.org/) (LTS version), then run the command above.
+
+### 3. Open HIVEMIND
+
+Launch the app. The onboarding wizard walks you through everything — your name, your co-founder's personality, and connecting your tools. That's it.
+
+---
+
 ## What is HIVEMIND?
 
-HIVEMIND is an AI operations platform built for Amazon, Walmart, and eBay arbitrage sellers. It deploys a swarm of specialized AI agents — coordinated by **Nova** — to automate the daily grind of running a reselling business: parsing purchase and shipment emails, tracking profitability across marketplaces, monitoring account health, managing source-to-sale pipeline, and connecting to your bank accounts for real-time financial visibility.
+HIVEMIND is a desktop app that gives you an AI-powered team for your reselling business. It runs a swarm of 6 specialized agents — led by **Nova**, your AI co-founder — that handle the daily grind: parsing purchase emails, tracking profitability, monitoring account health, and managing your source-to-sale pipeline.
 
-The platform runs locally on your machine via a desktop Electron app or CLI, connects to 30+ LLM providers, and keeps all your data in local SQLite databases. No cloud infrastructure, no subscription data leaving your machine.
+Everything runs locally on your machine. Your data never leaves your computer. No cloud, no subscription fees for the platform itself.
 
 **Built for the Buy Box / FlipAlert seller community.**
 
@@ -37,24 +69,22 @@ The platform runs locally on your machine via a desktop Electron app or CLI, con
 - **Email automation** — Parses purchase confirmations, shipment tracking, and seller alerts from 15+ retailers (Amazon, Walmart, eBay, Target, Costco, etc.) via Gmail OAuth or IMAP
 - **Marketplace APIs** — Connects to Amazon SP-API, Walmart Seller Center, and eBay REST APIs for orders, inventory, FBA shipments, and account health
 - **Financial tracking** — SimpleFIN Bridge integration syncs bank/credit card transactions, auto-categorizes spend (sourcing, prep, shipping, fees)
-- **Profitability calculator** — Per-item ROI across Amazon, Walmart, and eBay using exact fee lookups (SP-API Product Fees, category-based referral fees)
+- **Profitability calculator** — Per-item ROI across Amazon, Walmart, and eBay using exact fee lookups
 - **Source-to-sale pipeline** — Tracks items through 8 stages: Purchased → Shipped to Prep → Prepping → Shipped to FBA → Received → Live → Sold → Settled
 - **Account health monitoring** — Alerts for suspensions, policy violations, IP complaints, and performance warnings
-- **Seller expert skills** — Built-in knowledge bases for Amazon, Walmart, eBay, and A2A arbitrage strategy
 
 ### AI Agent Swarm
 - **5 specialized agents** + Nova coordinator with autonomous task delegation
-- **Multi-provider LLM support** — Anthropic, OpenAI, Google, Ollama, Claude Code, and Codex with fallback chains
-- **Trust-based security** — Three-tier trust system (Owner, Trusted, Untrusted) with per-task permissions
-- **Hierarchical memory** — SQLite-backed L0/L1/L2 memory model with vector search
-- **Cognitive loop** — Each agent runs think/act/observe cycles with confidence scoring
-- **Skills system** — Folder-based skills with YAML frontmatter, progressive disclosure, and hot-reload
+- **Claude Code** — powered by Anthropic's Claude, the best coding & reasoning model
+- **Trust-based security** — Owner, Trusted, and Untrusted tiers with per-task permissions
+- **Hierarchical memory** — Persistent context across conversations (L0/L1/L2)
+- **Skills system** — Extensible skills with hot-reload
 
 ### Platform
-- **Desktop app** — Electron app with chat UI, operations dashboard, and seller views
-- **Real-time dashboard** — Express + WebSocket server with live agent status and business data
-- **CLI** — Full command-line interface for headless operation
+- **Desktop app** — Native Electron app with chat UI and operations dashboard
+- **Discord integration** — Connect HIVEMIND to your Discord server for bidirectional messaging
 - **Local-first** — All data stays on your machine in SQLite databases
+- **Open source** — MIT licensed, community-driven
 
 ---
 
@@ -76,23 +106,23 @@ The platform runs locally on your machine via a desktop Electron app or CLI, con
 ```
 HIVEMIND
 ├── src/
-│   ├── agents/          # BaseAgent + 5 specialized agents (Scout, Builder, Sentinel, Oracle, Courier)
+│   ├── agents/          # BaseAgent + 5 specialized agents
 │   ├── core/
-│   │   ├── llm.ts       # Universal LLM adapter (30+ providers)
+│   │   ├── llm.ts       # Universal LLM adapter
 │   │   ├── orchestrator  # Task queue, agent lifecycle, swarm coordination
 │   │   ├── trust.ts      # Owner/Trusted/Untrusted permission system
 │   │   └── marketplace/  # Amazon SP-API, Walmart, eBay unified service
 │   ├── modules/
-│   │   ├── email/        # Gmail/IMAP parsing, 15+ retailer templates, flag engine
-│   │   └── finance/      # SimpleFIN integration, pipeline tracking, profitability
+│   │   ├── email/        # Gmail/IMAP parsing, 15+ retailer templates
+│   │   ├── discord/      # Discord setup wizard + config writer
+│   │   └── finance/      # SimpleFIN integration, pipeline tracking
+│   ├── connectors/       # Discord, Slack, Telegram, Webhook connectors
 │   ├── memory/           # SQLite store, L0/L1/L2 hierarchy, context manager
 │   ├── dashboard/        # Express + WebSocket server, API routes
-│   ├── cli/              # CLI entry point, commands, onboarding
-│   └── skills/           # Skill loader, registry, pack manager
+│   └── cli/              # CLI entry point, commands, onboarding
 ├── desktop/              # Electron app, chat UI, operations views
 ├── skills/               # Built-in skills (marketplace experts, runbooks, tools)
-├── data/                 # SQLite databases (email.db, finance.db, hivemind.db)
-└── tests/                # Vitest test suites (489 tests)
+└── tests/                # Vitest test suites (518 tests)
 ```
 
 **Databases:**
@@ -100,24 +130,14 @@ HIVEMIND
 | Database | Purpose |
 |----------|---------|
 | `hivemind.db` | Agent memory, task history, conversation context |
-| `email.db` | Processed emails, extracted orders, seller alerts, account connections |
-| `finance.db` | Bank accounts, transactions, pipeline batches, prep center profiles |
-
-**API Surface (`/api/`):**
-
-| Endpoint Group | What It Serves |
-|---------------|----------------|
-| `/api/seller/*` | Marketplace connections, orders, inventory, FBA shipments, account health |
-| `/api/email/*` | Email accounts, processing rules, pipeline control, retailer templates |
-| `/api/finance/*` | Bank sync, transactions, pipeline CRUD, profitability calculations |
-| `/api/tasks/*` | Agent task management, swarm status |
-| `/api/ws` | WebSocket for real-time dashboard updates |
+| `email.db` | Processed emails, extracted orders, seller alerts |
+| `finance.db` | Bank accounts, transactions, pipeline batches |
 
 ---
 
-## ⚡ Quick Start
+## 🔧 Build from Source
 
-**Prerequisites:** Node.js >= 20, pnpm (or npm)
+For developers who want to contribute or run from source:
 
 ```bash
 # 1. Clone and install
@@ -125,27 +145,14 @@ git clone https://github.com/twinsavior/hivemind.git
 cd hivemind
 pnpm install
 
-# 2. Set your API keys
-cp .env.example .env
-# Edit .env with your Anthropic/OpenAI keys
+# 2. Build the server
+pnpm build
 
-# 3. Initialize
-pnpm start -- init
-
-# 4. Start HIVEMIND
-pnpm start -- up
-# Dashboard at http://localhost:4000
-```
-
-### Desktop App
-
-```bash
+# 3. Run the desktop app in dev mode
 cd desktop
 npm install
 npm start
 ```
-
-The Electron app auto-starts the HIVEMIND server and connects via WebSocket.
 
 ---
 
@@ -153,28 +160,17 @@ The Electron app auto-starts the HIVEMIND server and connects via WebSocket.
 
 HIVEMIND uses a layered config model: **CLI args > environment variables > hivemind.yaml > defaults**.
 
-```bash
-cp hivemind.example.yaml hivemind.yaml
-```
-
-### Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `ANTHROPIC_API_KEY` | Anthropic API access |
-| `OPENAI_API_KEY` | OpenAI API access |
-| `GOOGLE_API_KEY` | Google AI API access |
-| `SLACK_BOT_TOKEN` | Slack connector |
-| `DISCORD_BOT_TOKEN` | Discord connector |
-| `DASHBOARD_PASSWORD` | Dashboard basic auth |
-
 ### Marketplace Connections
 
-Marketplace API credentials (Amazon SP-API, Walmart, eBay) are configured through the onboarding flow and stored encrypted in `.hivemind/credentials`.
+Marketplace API credentials (Amazon SP-API, Walmart, eBay) are configured through the onboarding flow in the desktop app and stored encrypted locally.
 
 ### Email Setup
 
-Email accounts (Gmail OAuth or IMAP) are configured through the desktop app's onboarding wizard or via the API.
+Email accounts (Gmail OAuth or IMAP) are configured through the desktop app's Settings > Email section.
+
+### Discord
+
+Connect HIVEMIND to your Discord server through Settings > Connectors. The setup wizard walks you through creating a bot and linking it.
 
 ---
 
@@ -184,11 +180,8 @@ Email accounts (Gmail OAuth or IMAP) are configured through the desktop app's on
 pnpm install          # Install dependencies
 pnpm dev              # Start dev mode (hot-reload via tsx)
 pnpm build            # Build TypeScript
-pnpm test             # Run tests (489 tests, Vitest)
-pnpm typecheck        # Type-check main project
-
-# Email module has its own tsconfig
-npx tsc -p tsconfig.email.json --noEmit
+pnpm test             # Run tests (518 tests, Vitest)
+pnpm typecheck        # Type-check
 ```
 
 ---
@@ -198,14 +191,12 @@ npx tsc -p tsconfig.email.json --noEmit
 | Component | Technology |
 |-----------|-----------|
 | Language | TypeScript 5.7 (strict mode, ES2022) |
-| Runtime | Node.js >= 20 |
+| Runtime | Node.js 22 |
 | Database | SQLite via better-sqlite3 |
 | HTTP Server | Express 4 |
 | Real-time | WebSocket (ws) |
 | Desktop | Electron 33 |
-| Email | Gmail API (googleapis) + IMAP (imapflow) |
-| PDF Parsing | pdf-parse |
-| CLI | Commander |
+| Email | Gmail API + IMAP |
 | Testing | Vitest |
 
 ---
@@ -213,3 +204,11 @@ npx tsc -p tsconfig.email.json --noEmit
 ## 📄 License
 
 [MIT](LICENSE)
+
+---
+
+<div align="center">
+
+**If HIVEMIND helps your selling business, [⭐ star this repo](https://github.com/twinsavior/hivemind) — it helps other sellers find it.**
+
+</div>

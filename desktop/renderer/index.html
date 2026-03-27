@@ -4782,7 +4782,7 @@
 
           ${dcState.botName ? `
             <div style="margin-top:12px;padding:12px;background:rgba(34,197,94,0.06);border:1px solid #22c55e44;border-radius:8px;display:flex;align-items:center;gap:10px;">
-              ${dcState.botAvatar ? '<img src="' + dcState.botAvatar + '" style="width:32px;height:32px;border-radius:50%;">' : '<div style="width:32px;height:32px;border-radius:50%;background:#5865F2;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;">' + escapeHtml(dcState.botName[0]) + '</div>'}
+              ${dcState.botAvatar ? '<img src="' + escapeHtml(dcState.botAvatar) + '" style="width:32px;height:32px;border-radius:50%;">' : '<div style="width:32px;height:32px;border-radius:50%;background:#5865F2;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;">' + escapeHtml(dcState.botName[0]) + '</div>'}
               <div>
                 <div style="font-weight:600;font-size:13px;color:#22c55e;">Token verified!</div>
                 <div style="font-size:12px;color:var(--text-muted);">Bot: ${escapeHtml(dcState.botName)}</div>
@@ -4808,7 +4808,7 @@
             <div style="flex:1;">
               <div style="font-weight:600;font-size:13px;color:var(--text-primary,#eee);margin-bottom:4px;">Invite the bot to your server</div>
               <div style="font-size:12px;color:var(--text-muted,#aaa);line-height:1.5;margin-bottom:8px;">Click the button below, pick your server, and click <strong>Authorize</strong>.</div>
-              <a href="https://discord.com/oauth2/authorize?client_id=${dcState.clientId}&scope=bot&permissions=274877975552" target="_blank" rel="noopener" id="dc-invite-link" style="display:inline-block;padding:8px 16px;font-size:13px;border-radius:8px;background:#5865F2;color:#fff;border:none;cursor:pointer;text-decoration:none;font-weight:600;">Add Hivemind to Server →</a>
+              <a href="https://discord.com/oauth2/authorize?client_id=${escapeHtml(dcState.clientId)}&scope=bot&permissions=274877975552" target="_blank" rel="noopener" id="dc-invite-link" style="display:inline-block;padding:8px 16px;font-size:13px;border-radius:8px;background:#5865F2;color:#fff;border:none;cursor:pointer;text-decoration:none;font-weight:600;">Add Hivemind to Server →</a>
             </div>
           </div>
 
@@ -4826,8 +4826,8 @@
               <label style="font-size:12px;font-weight:600;color:var(--text-muted,#aaa);display:block;margin-bottom:8px;">Your Servers</label>
               <div style="display:flex;flex-direction:column;gap:6px;">
                 ${dcState.guilds.map(g => `
-                  <button class="dc-guild-btn" data-guild-id="${g.id}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${dcState.selectedGuilds.includes(g.id) ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.selectedGuilds.includes(g.id) ? '#5865F2' : 'var(--border,#333)'};border-radius:8px;cursor:pointer;color:var(--text-primary,#eee);font-size:13px;text-align:left;">
-                    ${g.icon ? '<img src="' + g.icon + '" style="width:24px;height:24px;border-radius:50%;">' : '<div style="width:24px;height:24px;border-radius:50%;background:#5865F2;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;">' + escapeHtml(g.name[0]) + '</div>'}
+                  <button class="dc-guild-btn" data-guild-id="${escapeHtml(g.id)}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${dcState.selectedGuilds.includes(g.id) ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.selectedGuilds.includes(g.id) ? '#5865F2' : 'var(--border,#333)'};border-radius:8px;cursor:pointer;color:var(--text-primary,#eee);font-size:13px;text-align:left;">
+                    ${g.icon ? '<img src="' + escapeHtml(g.icon) + '" style="width:24px;height:24px;border-radius:50%;">' : '<div style="width:24px;height:24px;border-radius:50%;background:#5865F2;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;">' + escapeHtml(g.name[0]) + '</div>'}
                     <span>${escapeHtml(g.name)}</span>
                     ${dcState.selectedGuilds.includes(g.id) ? '<span style="margin-left:auto;color:#5865F2;">✓</span>' : ''}
                   </button>
@@ -4841,7 +4841,7 @@
               <label style="font-size:12px;font-weight:600;color:var(--text-muted,#aaa);display:block;margin-bottom:4px;">Channels (pick which ones Hivemind listens to, or leave empty for all)</label>
               <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;">
                 ${dcState.channels.map(c => `
-                  <button class="dc-channel-btn" data-channel-id="${c.id}" style="padding:6px 12px;background:${dcState.selectedChannels.includes(c.id) ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.selectedChannels.includes(c.id) ? '#5865F2' : 'var(--border,#333)'};border-radius:6px;cursor:pointer;color:var(--text-primary,#eee);font-size:12px;"># ${escapeHtml(c.name)}</button>
+                  <button class="dc-channel-btn" data-channel-id="${escapeHtml(c.id)}" style="padding:6px 12px;background:${dcState.selectedChannels.includes(c.id) ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.03)'};border:1px solid ${dcState.selectedChannels.includes(c.id) ? '#5865F2' : 'var(--border,#333)'};border-radius:6px;cursor:pointer;color:var(--text-primary,#eee);font-size:12px;"># ${escapeHtml(c.name)}</button>
                 `).join('')}
               </div>
             </div>
@@ -5090,6 +5090,7 @@
             dcState.saving = false;
             if (data.status === 'ok') {
               dcState.step = 3;
+              dcState.token = ''; // Clear sensitive token from memory
             } else {
               dcState.error = data.error || 'Failed to save configuration.';
             }
@@ -5106,6 +5107,7 @@
       if (reconfig) {
         reconfig.addEventListener('click', () => {
           dcState.step = 0;
+          dcState.token = '';
           dcState.botName = '';
           dcState.guilds = [];
           dcState.selectedGuilds = [];

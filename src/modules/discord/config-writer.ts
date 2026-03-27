@@ -8,6 +8,14 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
  * Preserves comments and existing lines. Creates the file if it doesn't exist.
  */
 export function updateEnvFile(filePath: string, key: string, value: string): void {
+  // Reject control characters to prevent .env injection (e.g., newline injection)
+  if (/[\n\r\x00-\x1f\x7f]/.test(value)) {
+    throw new Error(`Value for ${key} contains illegal control characters`);
+  }
+  if (/[\n\r\x00-\x1f\x7f]/.test(key)) {
+    throw new Error(`Key contains illegal control characters`);
+  }
+
   let lines: string[] = [];
 
   if (fs.existsSync(filePath)) {

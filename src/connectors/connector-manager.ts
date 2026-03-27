@@ -241,8 +241,8 @@ export class ConnectorManager extends EventEmitter {
       const error = err instanceof Error ? err : new Error(String(err));
       console.error(`[Connector] Task failed for ${connectorName}: ${error.message}`);
 
-      // Send error back to user
-      await this.sendReply(connectorName, msg.channel, `Sorry, I encountered an error: ${error.message}`, {
+      // Send generic error to user (never expose internal details to Discord)
+      await this.sendReply(connectorName, msg.channel, "Sorry, I encountered an error processing your request. Please try again.", {
         replyTo: msg.metadata?.["discordMessageId"] as string | undefined,
       });
     }
@@ -387,6 +387,9 @@ export class ConnectorManager extends EventEmitter {
   }
 
   private async sendTypingIndicator(token: string, channelId: string): Promise<void> {
+    // Validate channelId is a numeric snowflake to prevent SSRF via path traversal
+    if (!/^\d+$/.test(channelId)) return;
+
     await fetch(`${DISCORD_API}/channels/${channelId}/typing`, {
       method: "POST",
       headers: { Authorization: `Bot ${token}` },

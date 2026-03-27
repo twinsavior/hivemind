@@ -53,7 +53,15 @@
       "oneClick": true,
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true
-    }
+    },
+    "publish": [{
+      "provider": "github",
+      "owner": "twinsavior",
+      "repo": "hivemind"
+    }]
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
   },
   "devDependencies": {
     "electron": "^33.0.0",

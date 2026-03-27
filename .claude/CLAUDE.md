@@ -47,9 +47,19 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 9. **Connectors are initialized from `hivemind.yaml`.** The `connectors` array in YAML is parsed at startup, env vars resolved (`$DISCORD_BOT_TOKEN`), and ConnectorManager handles lifecycle. Discord setup wizard in Settings > Connectors auto-writes to `.env` and `hivemind.yaml`.
 10. **Trust enforcement for connector tasks.** UNTRUSTED connector sources get restricted context (no seller data, no memory, no metrics) and a trust boundary in the system prompt. Owner IDs in `security.ownerIds` must be valid 17-20 digit Discord snowflakes.
 
+## Desktop App (`desktop/`)
+- **Electron 33** with electron-builder 25 for cross-platform builds
+- `main.js` detects `app.isPackaged` — packaged mode runs compiled JS from `process.resourcesPath/server/`, dev mode runs tsx on TypeScript source
+- Platform-aware: uses `/usr/bin/arch -arm64` on macOS, direct `node` on Windows
+- Build: `npx tsc` (server) → `cd desktop && npm run build:mac` (or `build:win`)
+- Output: `desktop/dist-electron/` (gitignored)
+- Release workflow: `.github/workflows/release.yml` — triggered on `v*` tags, builds mac + win, uploads to GitHub Releases
+
 ## Key Commands
 - `pnpm dev` — Start development mode
 - `pnpm build` / `npx tsc` — Build
 - `pnpm test` — Run tests (Vitest, 518 tests across 11 files)
 - `npx tsc --noEmit` — Type-check main project
 - `npx tsc -p tsconfig.email.json --noEmit` — Type-check email module
+- `cd desktop && npm run build:mac` — Build macOS .dmg
+- `cd desktop && npm run build:win` — Build Windows .exe

@@ -220,7 +220,26 @@ export async function upCommand(options: UpOptions): Promise<void> {
 
   // Load configuration
   s.update("Loading configuration...");
-  fs.readFileSync(configPath, "utf-8");
+  const configRaw = fs.readFileSync(configPath, "utf-8");
+
+  // Parse YAML config for connectors and security sections
+  let parsedConfig: Record<string, unknown> = {};
+  try {
+    const { parse: parseYaml } = await import("yaml");
+    parsedConfig = (parseYaml(configRaw) ?? {}) as Record<string, unknown>;
+  } catch {
+    // YAML parse failure is non-fatal — connectors just won't load
+  }
+
+  // Load owner IDs into trust gate so connector messages can be classified
+  try {
+    const { trustGate } = await import("../core/trust.js");
+    const security = parsedConfig["security"] as Record<string, unknown> | undefined;
+    const ownerIds = security?.["ownerIds"];
+    if (ownerIds && typeof ownerIds === "object" && !Array.isArray(ownerIds)) {
+      trustGate.loadOwnerIds(ownerIds as Record<string, string[]>);
+    }
+  } catch { /* non-critical */ }
 
   // ── Step 1: Detect all available LLM providers ────────────────────────────
   s.update("Detecting LLM providers...");
@@ -793,6 +812,39 @@ CRITICAL RULES:
     warn(`Email module failed to start: ${(err as Error).message}`);
   }
 
+  // ── Initialize Connectors (Discord, Slack, Telegram, Webhooks) ────────────
+  let connectorManagerInstance: { disconnectAll(): Promise<void>; getStatuses(): Array<{ name: string; state: string }> } | null = null;
+  try {
+    const connectorConfigs = parsedConfig["connectors"] as Array<Record<string, unknown>> | undefined;
+    if (connectorConfigs && Array.isArray(connectorConfigs) && connectorConfigs.length > 0) {
+      s.update("Connecting to external platforms...");
+      const { ConnectorManager } = await import("../connectors/connector-manager.js");
+      const { trustGate } = await import("../core/trust.js");
+      const { submitConnectorTask, setConnectorManager, bus: dashBus } = await import("../dashboard/server.js");
+
+      const cm = new ConnectorManager({
+        bus: dashBus,
+        trustGate,
+        submitTask: async (description: string, taskSource: import("../core/trust.js").TaskSource, _replyContext: import("../connectors/connector-manager.js").ReplyContext) => {
+          return await submitConnectorTask(description, taskSource);
+        },
+      });
+      connectorManagerInstance = cm;
+
+      // Make connector statuses available to dashboard REST API
+      setConnectorManager(cm);
+
+      await cm.initializeAll(connectorConfigs as any[]);
+      const statuses = cm.getStatuses();
+      const connectedCount = statuses.filter((st: { state: string }) => st.state === "connected").length;
+      if (connectedCount > 0) {
+        info(`Connectors: ${connectedCount}/${statuses.length} connected (${statuses.map((st: { name: string; state: string }) => `${st.name}:${st.state}`).join(", ")})`);
+      }
+    }
+  } catch (err) {
+    warn(`Connector initialization failed: ${(err as Error).message}`);
+  }
+
   s.succeed("HIVEMIND swarm is running");
   log("");
 
@@ -851,9 +903,15 @@ CRITICAL RULES:
       process.on("SIGINT", () => {
         log("");
         info("Shutting down gracefully...");
+        if (connectorManagerInstance) {
+          connectorManagerInstance.disconnectAll().catch(() => {});
+        }
         resolve();
       });
       process.on("SIGTERM", () => {
+        if (connectorManagerInstance) {
+          connectorManagerInstance.disconnectAll().catch(() => {});
+        }
         resolve();
       });
     });

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
 const http = require('http');
+const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 let hivemindProcess = null;
@@ -202,6 +203,66 @@ function createWindow() {
     return { action: 'deny' };
   });
 }
+
+// ── Auto-update ──────────────────────────────────────────────────────────────
+
+function sendUpdateStatus(data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', data);
+  }
+}
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.logger = console;
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[HIVEMIND] Checking for updates...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[HIVEMIND] Update available:', info.version);
+    sendUpdateStatus({ event: 'update-available', version: info.version });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[HIVEMIND] App is up to date');
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    sendUpdateStatus({
+      event: 'update-progress',
+      percent: progress.percent,
+      bytesPerSecond: progress.bytesPerSecond,
+      transferred: progress.transferred,
+      total: progress.total,
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[HIVEMIND] Update downloaded:', info.version);
+    sendUpdateStatus({ event: 'update-downloaded', version: info.version });
+  });
+
+  autoUpdater.on('error', (err) => {
+    // Swallow update errors — don't bother the user
+    console.log('[HIVEMIND] Update error:', err.message);
+  });
+}
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+ipcMain.handle('check-for-update', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { version: result?.updateInfo?.version || null };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
 
 // ── IPC Handlers ─────────────────────────────────────────────────────────────
 
@@ -427,6 +488,21 @@ app.whenReady().then(async () => {
   // Ensure page is loaded before sending the ready signal
   await pageReady;
   mainWindow.webContents.send('server-status', 'ready');
+
+  // Auto-update (only in packaged builds)
+  if (app.isPackaged) {
+    setupAutoUpdater();
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.log('[HIVEMIND] Update check failed:', err.message);
+    });
+
+    // Check every 4 hours
+    setInterval(() => {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.log('[HIVEMIND] Periodic update check failed:', err.message);
+      });
+    }, 4 * 60 * 60 * 1000);
+  }
 });
 
 app.on('window-all-closed', () => {

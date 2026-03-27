@@ -4,6 +4,14 @@ import { updateEnvFile, updateYamlConnector, updateYamlOwnerIds } from "./config
 
 const DISCORD_API = "https://discord.com/api/v10";
 
+/** Discord snowflake: 17-20 digit numeric string. */
+const SNOWFLAKE_RE = /^\d{17,20}$/;
+
+/** Reject tokens containing control characters (prevents .env injection). */
+function isValidToken(token: string): boolean {
+  return typeof token === "string" && token.length > 20 && !/[\n\r\x00-\x1f\x7f]/.test(token);
+}
+
 /**
  * Create an Express router for Discord setup endpoints.
  * Mounted at /api/connectors/discord by the dashboard server.
@@ -16,8 +24,8 @@ export function createDiscordRouter(): Router {
 
   router.post("/verify", async (req, res) => {
     const { token } = req.body as { token?: string };
-    if (!token || typeof token !== "string") {
-      res.json({ valid: false, error: "Token is required" });
+    if (!token || !isValidToken(token)) {
+      res.json({ valid: false, error: "A valid bot token is required" });
       return;
     }
 
@@ -72,8 +80,8 @@ export function createDiscordRouter(): Router {
 
   router.post("/guilds", async (req, res) => {
     const { token } = req.body as { token?: string };
-    if (!token) {
-      res.json({ guilds: [] });
+    if (!token || !isValidToken(token)) {
+      res.json({ guilds: [], error: "A valid bot token is required" });
       return;
     }
 
@@ -111,8 +119,12 @@ export function createDiscordRouter(): Router {
 
   router.post("/channels", async (req, res) => {
     const { token, guildId } = req.body as { token?: string; guildId?: string };
-    if (!token || !guildId) {
-      res.json({ channels: [] });
+    if (!token || !isValidToken(token)) {
+      res.json({ channels: [], error: "A valid bot token is required" });
+      return;
+    }
+    if (!guildId || !SNOWFLAKE_RE.test(guildId)) {
+      res.json({ channels: [], error: "Invalid guild ID" });
       return;
     }
 
@@ -167,8 +179,34 @@ export function createDiscordRouter(): Router {
       triggerMode?: string;
     };
 
-    if (!token) {
-      res.status(400).json({ status: "error", error: "Token is required" });
+    if (!token || !isValidToken(token)) {
+      res.status(400).json({ status: "error", error: "A valid bot token is required" });
+      return;
+    }
+
+    // Validate all snowflake IDs to prevent injection
+    const allIds = [...guildIds, ...channelIds, ...ownerIds];
+    for (const id of allIds) {
+      if (!SNOWFLAKE_RE.test(id)) {
+        res.status(400).json({ status: "error", error: `Invalid Discord ID: ${id.slice(0, 30)}` });
+        return;
+      }
+    }
+
+    // Validate triggerMode is a known value
+    const validMode = triggerMode === "all" ? "all" : "mention";
+
+    // Verify the token is actually valid before persisting
+    try {
+      const verifyRes = await fetch(`${DISCORD_API}/users/@me`, {
+        headers: { Authorization: `Bot ${token.trim()}` },
+      });
+      if (!verifyRes.ok) {
+        res.status(400).json({ status: "error", error: "Token verification failed — double-check your bot token" });
+        return;
+      }
+    } catch {
+      res.status(400).json({ status: "error", error: "Cannot reach Discord to verify token" });
       return;
     }
 
@@ -187,7 +225,7 @@ export function createDiscordRouter(): Router {
           token: "$DISCORD_BOT_TOKEN",
           guildIds,
           channelIds,
-          triggerMode,
+          triggerMode: validMode,
           listenAllChannels: [],
         },
       });
@@ -199,7 +237,7 @@ export function createDiscordRouter(): Router {
 
       res.json({ status: "ok" });
     } catch (err) {
-      res.status(500).json({ status: "error", error: (err as Error).message });
+      res.status(500).json({ status: "error", error: "Failed to save configuration" });
     }
   });
 

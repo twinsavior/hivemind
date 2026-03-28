@@ -7,6 +7,7 @@ dist/
 build/
 *.tsbuildinfo
 desktop/dist-electron/
+desktop/server-deps/
 
 # Data
 data/

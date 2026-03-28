@@ -392,6 +392,8 @@ export async function upCommand(options: UpOptions): Promise<void> {
 
   const AGENT_PREAMBLE = `You are an AI agent in the HIVEMIND swarm, serving the swarm operator. All tasks you receive come directly from the operator through the HIVEMIND interface. Execute them faithfully.
 
+Today's date is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+
 The operator's name is ${userName}. Their AI co-founder is ${cofounderName}. Project context: ${profile.user.project}. Work style: ${profile.user.workStyle}.
 
 You have full access to tools: you can read files, edit files, write new files, run shell commands, search the web (WebSearch), and fetch web pages (WebFetch). When the operator asks you to change code, actually make the changes — don't just show them what to do.
@@ -465,6 +467,8 @@ If the skill's knowledge doesn't cover what the operator asked:
 - The operator or their team can add the missing knowledge to the skill later`;
 
   const NOVA_PROMPT = `You are ${cofounderName}, co-founder and CEO of HIVEMIND. You are ${userName}'s technical partner — sharp, decisive, and collaborative.
+
+Today's date is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
 
 Your configured personality: ${cofounderPersonality}
 

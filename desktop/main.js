@@ -70,14 +70,28 @@ function startHivemindServer() {
       // Packaged app: run compiled JS from extraResources
       const serverDir = path.join(process.resourcesPath, 'server');
       const cliPath = path.join(serverDir, 'cli', 'index.js');
-      cwd = path.join(process.resourcesPath, '..');
+
+      // Use ~/.hivemind as the working directory (where hivemind.yaml lives)
+      const hivemindHome = path.join(require('os').homedir(), '.hivemind');
+      if (!fs.existsSync(hivemindHome)) {
+        fs.mkdirSync(hivemindHome, { recursive: true });
+      }
+      cwd = hivemindHome;
+
+      // Auto-create hivemind.yaml if it doesn't exist (first launch)
+      const configPath = path.join(hivemindHome, 'hivemind.yaml');
+      if (!fs.existsSync(configPath)) {
+        const defaultConfig = `name: "hivemind"\nversion: "1.0.0"\n\nllm:\n  primary:\n    provider: claude-code\n    model: claude-code\n    maxTokens: 16000\n\nagents:\n  coordinator:\n    id: nova-1\n    name: Nova\n    role: coordinator\n  scout:\n    id: scout-1\n    name: Scout Alpha\n    role: research\n  builder:\n    id: builder-1\n    name: Builder Prime\n    role: code\n  sentinel:\n    id: sentinel-1\n    name: Sentinel Watch\n    role: monitor\n  oracle:\n    id: oracle-1\n    name: Oracle Insight\n    role: analysis\n  courier:\n    id: courier-1\n    name: Courier Express\n    role: communications\n`;
+        fs.writeFileSync(configPath, defaultConfig);
+        console.log('[HIVEMIND] Created default config at', configPath);
+      }
 
       if (process.platform === 'darwin') {
         spawnCmd = '/usr/bin/arch';
-        spawnArgs = ['-arm64', nodeBin, cliPath, 'up'];
+        spawnArgs = ['-arm64', nodeBin, cliPath, 'up', '--config', configPath];
       } else {
         spawnCmd = nodeBin;
-        spawnArgs = [cliPath, 'up'];
+        spawnArgs = [cliPath, 'up', '--config', configPath];
       }
 
       console.log('[HIVEMIND] Starting packaged server:', spawnCmd, spawnArgs.join(' '));
@@ -98,10 +112,16 @@ function startHivemindServer() {
       console.log('[HIVEMIND] Starting dev server:', spawnCmd, spawnArgs.join(' '));
     }
 
+    const spawnEnv = { ...process.env, FORCE_COLOR: '0' };
+    if (app.isPackaged) {
+      // Tell Node where to find server dependencies bundled in extraResources
+      spawnEnv.NODE_PATH = path.join(process.resourcesPath, 'node_modules');
+    }
+
     hivemindProcess = spawn(spawnCmd, spawnArgs, {
       cwd: cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, FORCE_COLOR: '0' },
+      env: spawnEnv,
       detached: false,
     });
 

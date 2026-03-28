@@ -49,6 +49,14 @@ jobs:
         working-directory: desktop
         run: npm install
 
+      - name: Create server runtime dependencies
+        run: |
+          mkdir -p desktop/server-deps
+          cp package.json desktop/server-deps/
+          cd desktop/server-deps
+          npm install --omit=dev
+          npm rebuild better-sqlite3
+
       - name: Build desktop app
         working-directory: desktop
         run: ${{ matrix.build-cmd }}

@@ -1637,7 +1637,7 @@
     #desktop-onboarding-root {
       position: fixed; inset: 0; z-index: 99999;
       background: linear-gradient(165deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
-      display: flex; align-items: center; justify-content: center;
+      display: flex; align-items: flex-start; justify-content: center;
       font-family: 'Inter', -apple-system, sans-serif;
       overflow-y: auto;
       transition: opacity 0.5s ease, transform 0.4s ease;
@@ -1648,7 +1648,7 @@
     #desktop-onboarding-root:empty { display: none; }
 
     .ob-card {
-      width: 100%; max-width: 560px; padding: 48px 40px;
+      width: 100%; max-width: 560px; padding: 48px 40px; margin: auto 0;
       animation: obFadeIn 0.4s ease both;
     }
     @keyframes obFadeIn {
@@ -3314,7 +3314,7 @@
 
         <div class="ob-greeting-preview">${escapeHtml(greeting)}</div>
 
-        <div class="ob-actions">
+        <div class="ob-actions" style="justify-content:center;">
           <button class="ob-btn ob-btn-secondary" id="ob-back">Back</button>
           <button class="ob-btn ob-btn-primary" id="ob-finish" ${obState.saving ? 'disabled' : ''}>${obState.saving ? 'Setting up...' : 'Start Building'}</button>
         </div>`;

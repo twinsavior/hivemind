@@ -1,14 +1,17 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawn, execSync } = require('child_process');
 const http = require('http');
 const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 let hivemindProcess = null;
+let serverErrors = []; // Collect errors for user-facing dialog
 const HIVEMIND_PORT = 4000;
 const HIVEMIND_DIR = path.resolve(__dirname, '..');
+const HIVEMIND_HOME = path.join(os.homedir(), '.hivemind');
 
 // ── Check if HIVEMIND server is already running ──────────────────────────────
 
@@ -58,33 +61,141 @@ function findNode() {
   try {
     const shell = process.env.SHELL || '/bin/zsh';
     return execSync(`${shell} -lc 'which node'`, { timeout: 5000, encoding: 'utf-8' }).trim();
-  } catch { return 'node'; }
+  } catch { return null; }
+}
+
+function showErrorDialog(title, message) {
+  dialog.showMessageBoxSync({
+    type: 'error',
+    title: title,
+    message: message,
+    buttons: ['OK'],
+  });
+}
+
+function setupPackagedEnvironment() {
+  // Create ~/.hivemind/ directory structure
+  const dirs = [HIVEMIND_HOME, path.join(HIVEMIND_HOME, 'data'), path.join(HIVEMIND_HOME, 'skills')];
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+
+  // Auto-create hivemind.yaml if missing
+  const configPath = path.join(HIVEMIND_HOME, 'hivemind.yaml');
+  if (!fs.existsSync(configPath)) {
+    const defaultConfig = `name: "hivemind"
+version: "1.0.0"
+
+llm:
+  primary:
+    provider: claude-code
+    model: claude-code
+    maxTokens: 16000
+
+agents:
+  coordinator:
+    id: nova-1
+    name: Nova
+    role: coordinator
+  scout:
+    id: scout-1
+    name: Scout Alpha
+    role: research
+  builder:
+    id: builder-1
+    name: Builder Prime
+    role: code
+  sentinel:
+    id: sentinel-1
+    name: Sentinel Watch
+    role: monitor
+  oracle:
+    id: oracle-1
+    name: Oracle Insight
+    role: analysis
+  courier:
+    id: courier-1
+    name: Courier Express
+    role: communications
+`;
+    fs.writeFileSync(configPath, defaultConfig);
+    console.log('[HIVEMIND] Created default config at', configPath);
+  }
+
+  // Copy bundled skills to ~/.hivemind/skills/ if they don't exist there yet
+  const bundledSkillsDir = path.join(process.resourcesPath, 'skills');
+  const userSkillsDir = path.join(HIVEMIND_HOME, 'skills');
+  if (fs.existsSync(bundledSkillsDir)) {
+    try {
+      const bundledSkills = fs.readdirSync(bundledSkillsDir);
+      for (const skill of bundledSkills) {
+        const src = path.join(bundledSkillsDir, skill);
+        const dest = path.join(userSkillsDir, skill);
+        if (!fs.existsSync(dest) && fs.statSync(src).isDirectory()) {
+          copyDirSync(src, dest);
+        }
+      }
+    } catch (e) {
+      console.error('[HIVEMIND] Failed to copy bundled skills:', e.message);
+    }
+  }
+
+  return configPath;
+}
+
+function copyDirSync(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
 }
 
 function startHivemindServer() {
   return new Promise((resolve, reject) => {
+    serverErrors = [];
+
+    // ── Validate Node.js ──
     const nodeBin = findNode();
+    if (!nodeBin) {
+      const msg = 'Node.js is required but was not found.\n\nPlease install Node.js 22+ from https://nodejs.org/ and relaunch HIVEMIND.';
+      showErrorDialog('Node.js Not Found', msg);
+      reject(new Error(msg));
+      return;
+    }
+
     let spawnCmd, spawnArgs, cwd;
 
     if (app.isPackaged) {
-      // Packaged app: run compiled JS from extraResources
+      // ── Validate bundle ──
       const serverDir = path.join(process.resourcesPath, 'server');
       const cliPath = path.join(serverDir, 'cli', 'index.js');
+      const nodeModulesDir = path.join(process.resourcesPath, 'node_modules');
 
-      // Use ~/.hivemind as the working directory (where hivemind.yaml lives)
-      const hivemindHome = path.join(require('os').homedir(), '.hivemind');
-      if (!fs.existsSync(hivemindHome)) {
-        fs.mkdirSync(hivemindHome, { recursive: true });
+      if (!fs.existsSync(cliPath)) {
+        const msg = `Server files are missing from the app bundle.\n\nExpected: ${cliPath}\n\nPlease reinstall HIVEMIND.`;
+        showErrorDialog('Corrupted Installation', msg);
+        reject(new Error(msg));
+        return;
       }
-      cwd = hivemindHome;
 
-      // Auto-create hivemind.yaml if it doesn't exist (first launch)
-      const configPath = path.join(hivemindHome, 'hivemind.yaml');
-      if (!fs.existsSync(configPath)) {
-        const defaultConfig = `name: "hivemind"\nversion: "1.0.0"\n\nllm:\n  primary:\n    provider: claude-code\n    model: claude-code\n    maxTokens: 16000\n\nagents:\n  coordinator:\n    id: nova-1\n    name: Nova\n    role: coordinator\n  scout:\n    id: scout-1\n    name: Scout Alpha\n    role: research\n  builder:\n    id: builder-1\n    name: Builder Prime\n    role: code\n  sentinel:\n    id: sentinel-1\n    name: Sentinel Watch\n    role: monitor\n  oracle:\n    id: oracle-1\n    name: Oracle Insight\n    role: analysis\n  courier:\n    id: courier-1\n    name: Courier Express\n    role: communications\n`;
-        fs.writeFileSync(configPath, defaultConfig);
-        console.log('[HIVEMIND] Created default config at', configPath);
+      if (!fs.existsSync(nodeModulesDir)) {
+        const msg = `Server dependencies are missing from the app bundle.\n\nExpected: ${nodeModulesDir}\n\nPlease reinstall HIVEMIND.`;
+        showErrorDialog('Corrupted Installation', msg);
+        reject(new Error(msg));
+        return;
       }
+
+      // Setup ~/.hivemind/ environment
+      const configPath = setupPackagedEnvironment();
+      cwd = HIVEMIND_HOME;
 
       if (process.platform === 'darwin') {
         spawnCmd = '/usr/bin/arch';
@@ -114,7 +225,6 @@ function startHivemindServer() {
 
     const spawnEnv = { ...process.env, FORCE_COLOR: '0' };
     if (app.isPackaged) {
-      // Tell Node where to find server dependencies bundled in extraResources
       spawnEnv.NODE_PATH = path.join(process.resourcesPath, 'node_modules');
     }
 
@@ -141,10 +251,10 @@ function startHivemindServer() {
     hivemindProcess.stderr.on('data', (data) => {
       const text = data.toString();
       console.error('[HIVEMIND stderr]', text);
+      serverErrors.push(text);
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('server-log', text);
       }
-      // Also check stderr for the dashboard message (some loggers write to stderr)
       if (!started && text.includes('Dashboard running')) {
         started = true;
         resolve();
@@ -153,14 +263,21 @@ function startHivemindServer() {
 
     hivemindProcess.on('error', (err) => {
       console.error('[HIVEMIND process error]', err.message);
-      if (!started) reject(err);
+      serverErrors.push(err.message);
+      if (!started) {
+        showErrorDialog('Server Failed to Start', `HIVEMIND server could not start:\n\n${err.message}`);
+        reject(err);
+      }
     });
 
     hivemindProcess.on('exit', (code) => {
       console.error('[HIVEMIND process exit] code:', code);
       hivemindProcess = null;
       if (!started) {
-        reject(new Error(`Server exited with code ${code}`));
+        const errorSummary = serverErrors.slice(-5).join('\n').slice(0, 500);
+        const msg = `Server exited with code ${code}.\n\n${errorSummary || 'No error details available.'}\n\nMake sure Node.js 22+ and Claude Code CLI are installed.`;
+        showErrorDialog('Server Failed to Start', msg);
+        reject(new Error(msg));
       } else {
         // Auto-restart if the server crashes after it was already running
         console.log('[HIVEMIND] Server died unexpectedly, restarting in 2 seconds...');
@@ -185,13 +302,19 @@ function startHivemindServer() {
       }
     });
 
-    // Timeout: if server doesn't start in 30s, resolve anyway and let UI show error
+    // Timeout: if server doesn't start in 60s, show error
     setTimeout(() => {
       if (!started) {
         started = true;
+        const errorSummary = serverErrors.slice(-3).join('\n').slice(0, 300);
+        console.error('[HIVEMIND] Server startup timed out after 60s');
+        if (errorSummary) {
+          console.error('[HIVEMIND] Last errors:', errorSummary);
+        }
+        // Resolve anyway so the UI loads — it will show "server offline" state
         resolve();
       }
-    }, 30000);
+    }, 60000);
   });
 }
 
@@ -502,6 +625,7 @@ app.whenReady().then(async () => {
       console.log('[HIVEMIND] Server started successfully');
     } catch (err) {
       console.error('[HIVEMIND] Failed to start server:', err.message);
+      // Error dialog already shown by startHivemindServer
     }
   }
 

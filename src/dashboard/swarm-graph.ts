@@ -10,7 +10,7 @@ export interface SwarmNode {
   state: string;
   x?: number;
   y?: number;
-  metrics?: { successRate: number; avgResponseMs: number; tasksCompleted: number };
+  metrics?: { successRate: number; avgResponseMs: number; tasksCompleted: number; tasksFailed: number };
 }
 
 export interface SwarmEdge {
@@ -117,9 +117,10 @@ export class SwarmGraphTracker extends EventEmitter {
       x: existing?.x,
       y: existing?.y,
       metrics: {
-        successRate: agent.tasksCompleted > 0 ? 1 : 0,
-        avgResponseMs: 0,
-        tasksCompleted: agent.tasksCompleted || 0,
+        successRate: existing?.metrics?.successRate ?? 0,
+        avgResponseMs: existing?.metrics?.avgResponseMs ?? 0,
+        tasksCompleted: agent.tasksCompleted || existing?.metrics?.tasksCompleted || 0,
+        tasksFailed: existing?.metrics?.tasksFailed ?? 0,
       },
     };
 
@@ -232,6 +233,8 @@ export class SwarmGraphTracker extends EventEmitter {
         const agentNode = this.nodes.get(agentId);
         if (agentNode?.metrics) {
           agentNode.metrics.tasksCompleted++;
+          const total = agentNode.metrics.tasksCompleted + agentNode.metrics.tasksFailed;
+          agentNode.metrics.successRate = total > 0 ? agentNode.metrics.tasksCompleted / total : 0;
           agentNode.state = 'idle';
           this.emitNodeUpdate(agentNode);
         }
@@ -262,7 +265,9 @@ export class SwarmGraphTracker extends EventEmitter {
         if (agentNode2) {
           agentNode2.state = 'idle';
           if (agentNode2.metrics) {
-            agentNode2.metrics.successRate = Math.max(0, agentNode2.metrics.successRate - 0.1);
+            agentNode2.metrics.tasksFailed++;
+            const total2 = agentNode2.metrics.tasksCompleted + agentNode2.metrics.tasksFailed;
+            agentNode2.metrics.successRate = total2 > 0 ? agentNode2.metrics.tasksCompleted / total2 : 0;
           }
           this.emitNodeUpdate(agentNode2);
         }

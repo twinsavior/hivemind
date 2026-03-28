@@ -141,8 +141,14 @@ export async function getValidAccessToken(): Promise<string> {
     throw new Error('Gmail not connected. Please connect your Gmail account first.');
   }
 
-  const accessToken = decrypt(auth.access_token);
-  const refreshToken = decrypt(auth.refresh_token);
+  let accessToken: string;
+  let refreshToken: string;
+  try {
+    accessToken = decrypt(auth.access_token);
+    refreshToken = decrypt(auth.refresh_token);
+  } catch {
+    throw new Error('Gmail credentials are corrupted. Please reconnect your Gmail account in Settings.');
+  }
   const expiryDate = new Date(auth.token_expiry).getTime();
 
   // If token is still valid (with 5-minute buffer), return it
@@ -182,9 +188,13 @@ export function getAuthenticatedClient(): OAuth2Client {
   }
 
   const client = getOAuth2Client();
-  client.setCredentials({
-    access_token: decrypt(auth.access_token),
-    refresh_token: decrypt(auth.refresh_token),
-  });
+  try {
+    client.setCredentials({
+      access_token: decrypt(auth.access_token),
+      refresh_token: decrypt(auth.refresh_token),
+    });
+  } catch {
+    throw new Error('Gmail credentials are corrupted. Please reconnect your Gmail account in Settings.');
+  }
   return client;
 }

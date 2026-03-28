@@ -17,12 +17,12 @@ import { createMarketplaceRouter } from '../skills/marketplace-server.js';
 import { SwarmGraphTracker, type SwarmGraphState, type SwarmNode, type SwarmEdge } from './swarm-graph.js';
 import {
   buildFirstTaskSuggestion,
-  detectProviderStatuses,
   isFirstRun,
   loadProfileOrDefault,
   normalizeProfile,
   saveProfile,
-} from '../cli/onboarding.js';
+} from '../shared/profile.js';
+import { detectProviderStatuses } from '../cli/onboarding.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,6 +94,15 @@ let providerStatusRefresh: Promise<Awaited<ReturnType<typeof detectProviderStatu
 
 const bus = new EventEmitter();
 bus.setMaxListeners(200);
+
+// Message rate tracking for real messagesPerSecond metric
+let _busMessageCount = 0;
+let _busCountStart = Date.now();
+const _origEmit = bus.emit.bind(bus);
+bus.emit = function (event: string | symbol, ...args: unknown[]) {
+  _busMessageCount++;
+  return _origEmit(event, ...args);
+} as typeof bus.emit;
 
 // ─── Swarm Graph Tracker ─────────────────────────────────────────────────────
 
@@ -894,7 +903,10 @@ app.get('/chat', (_req, res) => {
 // ─── REST API ────────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: Date.now() });
+  const swarm = getInjectedSwarmState();
+  const agentCount = agents.size;
+  const status = swarm && agentCount > 0 ? 'ok' : 'degraded';
+  res.json({ status, timestamp: Date.now(), agents: agentCount, uptimeSeconds: Math.floor(process.uptime()) });
 });
 
 app.get('/api/profile', (_req, res) => {
@@ -2136,7 +2148,13 @@ function computeMetrics(): SwarmMetrics {
     failedTasks: taskEvents.filter((e) => e.status === 'failed').length,
     totalMemoryMB: all.reduce((sum, a) => sum + a.memoryUsageMB, 0),
     uptimeSeconds: Math.max(...all.map((a) => a.uptime), 0),
-    messagesPerSecond: 0, // computed by the metrics collector
+    messagesPerSecond: (() => {
+      const elapsed = (Date.now() - _busCountStart) / 1000;
+      const rate = elapsed > 0 ? _busMessageCount / elapsed : 0;
+      _busMessageCount = 0;
+      _busCountStart = Date.now();
+      return Math.round(rate * 100) / 100;
+    })()
   };
 }
 

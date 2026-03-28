@@ -684,11 +684,11 @@ CRITICAL RULES:
     // Register agents in dashboard
     const dashboardAgentDefs = [
       { id: "nova-1", name: agentNames.nova, type: "coordinator" as const, status: "idle" as const, skills: ["orchestrate", "delegate", "plan", "manage"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "builder-1", "sentinel-1", "oracle-1", "courier-1"], location: { lat: 40.7128, lng: -74.0060 } },
-      { id: "scout-1", name: agentNames.scout, type: "specialist" as const, status: "idle" as const, skills: ["web-search", "summarize", "research"], memoryUsageMB: 48, uptime: 0, tasksCompleted: 0, connections: ["oracle-1"], location: { lat: 37.7749, lng: -122.4194 } },
-      { id: "builder-1", name: agentNames.builder, type: "worker" as const, status: "idle" as const, skills: ["code-generate", "test", "deploy"], memoryUsageMB: 92, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "sentinel-1"], location: { lat: 51.5074, lng: -0.1278 } },
-      { id: "sentinel-1", name: agentNames.sentinel, type: "sentinel" as const, status: "idle" as const, skills: ["log-analyze", "anomaly-detect", "alert"], memoryUsageMB: 31, uptime: 0, tasksCompleted: 0, connections: ["builder-1"], location: { lat: 35.6762, lng: 139.6503 } },
-      { id: "oracle-1", name: agentNames.oracle, type: "specialist" as const, status: "idle" as const, skills: ["trend-analysis", "forecast", "sentiment"], memoryUsageMB: 67, uptime: 0, tasksCompleted: 0, connections: ["scout-1"], location: { lat: -33.8688, lng: 151.2093 } },
-      { id: "courier-1", name: agentNames.courier, type: "worker" as const, status: "idle" as const, skills: ["slack-notify", "email", "format"], memoryUsageMB: 22, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "builder-1", "sentinel-1", "oracle-1"], location: { lat: 48.8566, lng: 2.3522 } },
+      { id: "scout-1", name: agentNames.scout, type: "specialist" as const, status: "idle" as const, skills: ["web-search", "summarize", "research"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["oracle-1"], location: { lat: 37.7749, lng: -122.4194 } },
+      { id: "builder-1", name: agentNames.builder, type: "worker" as const, status: "idle" as const, skills: ["code-generate", "test", "deploy"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "sentinel-1"], location: { lat: 51.5074, lng: -0.1278 } },
+      { id: "sentinel-1", name: agentNames.sentinel, type: "sentinel" as const, status: "idle" as const, skills: ["log-analyze", "anomaly-detect", "alert"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["builder-1"], location: { lat: 35.6762, lng: 139.6503 } },
+      { id: "oracle-1", name: agentNames.oracle, type: "specialist" as const, status: "idle" as const, skills: ["trend-analysis", "forecast", "sentiment"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["scout-1"], location: { lat: -33.8688, lng: 151.2093 } },
+      { id: "courier-1", name: agentNames.courier, type: "worker" as const, status: "idle" as const, skills: ["slack-notify", "email", "format"], memoryUsageMB: 0, uptime: 0, tasksCompleted: 0, connections: ["scout-1", "builder-1", "sentinel-1", "oracle-1"], location: { lat: 48.8566, lng: 2.3522 } },
     ];
 
     for (const a of dashboardAgentDefs) {
@@ -737,7 +737,7 @@ CRITICAL RULES:
       agent.on("state:change", (evt) => {
         const dashAgent = agentMap.get(agentId);
         if (dashAgent) {
-          dashAgent.status = evt.to === "idle" ? "active" : evt.to === "thinking" ? "active" : "active";
+          dashAgent.status = evt.to === "error" ? "error" : (evt.to === "thinking" || evt.to === "acting") ? "active" : "idle";
           dashAgent.uptime = Math.floor(process.uptime());
           bus.emit("agent:update", dashAgent);
         }
@@ -757,7 +757,7 @@ CRITICAL RULES:
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const emailMod = require("../modules/email/index.js") as {
       initEmailModule: (dir: string) => void;
-      startScheduler: () => void;
+      startScheduler: () => Promise<void>;
       setLLMExtractor: (fn: (systemPrompt: string, userPrompt: string) => Promise<string>) => void;
       emailBus: import("events").EventEmitter;
     };
@@ -782,7 +782,7 @@ CRITICAL RULES:
       }
     }
 
-    emailMod.startScheduler();
+    await emailMod.startScheduler();
 
     // Wire email events into Hivemind's dashboard bus for real-time UI updates
     if (options.dashboard !== false) {
@@ -1010,21 +1010,32 @@ interface StatusOptions {
 }
 
 export async function statusCommand(options: StatusOptions): Promise<void> {
-  // In a real implementation this would query the running kernel
+  if (!swarmState) {
+    info("Swarm is not running. Start it with: hivemind up");
+    return;
+  }
+
+  const uptimeSeconds = Math.floor(process.uptime());
+  const hours = Math.floor(uptimeSeconds / 3600);
+  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+  const uptimeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+  const agents = Array.from(swarmState.dashboardAgents.values()).map((a: any) => ({
+    name: a.name || a.id,
+    role: a.type || "agent",
+    status: a.status || "idle",
+    tasks: a.tasksCompleted || 0,
+  }));
+
+  const totalCompleted = agents.reduce((sum, a) => sum + a.tasks, 0);
+  const activeCount = agents.filter(a => a.status === "active").length;
+
   const status = {
-    state: "running",
-    uptime: "2h 14m",
-    agents: [
-      { name: "coordinator", role: "coordinator", status: "active", tasks: 3 },
-      { name: "researcher-1", role: "researcher", status: "active", tasks: 1 },
-      { name: "researcher-2", role: "researcher", status: "idle", tasks: 0 },
-    ],
-    connectors: [
-      { name: "slack", status: "connected" },
-      { name: "webhook", status: "connected" },
-    ],
-    tasksCompleted: 47,
-    tasksPending: 3,
+    state: activeCount > 0 ? "running" : "idle",
+    uptime: uptimeStr,
+    agents,
+    tasksCompleted: totalCompleted,
+    tasksPending: activeCount,
   };
 
   if (options.json) {
@@ -1034,19 +1045,12 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
 
   info(`Swarm state: \x1b[32m${status.state}\x1b[0m`);
   info(`Uptime: ${status.uptime}`);
-  info(`Tasks: ${status.tasksCompleted} completed, ${status.tasksPending} pending`);
+  info(`Tasks: ${status.tasksCompleted} completed, ${status.tasksPending} active`);
   log("");
 
   table(
     ["Agent", "Role", "Status", "Tasks"],
     status.agents.map((a) => [a.name, a.role, a.status, String(a.tasks)]),
-  );
-
-  log("");
-
-  table(
-    ["Connector", "Status"],
-    status.connectors.map((c) => [c.name, c.status]),
   );
 }
 
@@ -1184,22 +1188,23 @@ interface AgentListOptions {
 }
 
 export async function agentListCommand(options: AgentListOptions): Promise<void> {
-  // In a real implementation this would query the running kernel
-  const agents = [
-    { name: "coordinator", role: "coordinator", status: "active", pid: 12345 },
-    { name: "researcher-1", role: "researcher", status: "active", pid: 12346 },
-    { name: "researcher-2", role: "researcher", status: "idle", pid: 12347 },
-  ];
-
-  if (options.all) {
-    agents.push({ name: "coder-1", role: "coder", status: "stopped", pid: 0 });
+  if (!swarmState) {
+    info("Swarm is not running. Start it with: hivemind up");
+    return;
   }
+
+  const agents = Array.from(swarmState.dashboardAgents.values()).map((a: any) => ({
+    name: a.name || a.id,
+    role: a.type || "agent",
+    status: a.status || "idle",
+    pid: process.pid,
+  }));
 
   table(
     ["Name", "Role", "Status", "PID"],
     agents
       .filter((a) => options.all || a.status !== "stopped")
-      .map((a) => [a.name, a.role, a.status, a.pid ? String(a.pid) : "-"]),
+      .map((a) => [a.name, a.role, a.status, String(a.pid)]),
   );
 }
 

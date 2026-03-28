@@ -23,12 +23,17 @@ function getDb(): Database.Database {
   if (!_db) {
     const resolvedPath = _dbPath ?? path.join(process.cwd(), 'data', 'email.db');
     const dir = path.dirname(resolvedPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      _db = new Database(resolvedPath);
+      initializeDatabase(_db);
+    } catch (e) {
+      _db = null;
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new Error(`[Email] Failed to open database at ${resolvedPath}: ${msg}`);
     }
-
-    _db = new Database(resolvedPath);
-    initializeDatabase(_db);
   }
   return _db;
 }

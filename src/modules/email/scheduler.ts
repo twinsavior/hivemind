@@ -42,7 +42,7 @@ async function runStartupHealthCheck(): Promise<void> {
   }
 }
 
-export function startScheduler() {
+export async function startScheduler() {
   const enabled = getSetting('pipeline_enabled') === 'true';
   if (!enabled) {
     console.log('[Scheduler] Pipeline is disabled. Not starting scheduler.');
@@ -52,8 +52,12 @@ export function startScheduler() {
   const intervalMinutes = parseInt(getSetting('scan_interval_minutes') || '15', 10);
   console.log(`[Scheduler] Starting with ${intervalMinutes}-minute interval`);
 
-  // Run non-blocking startup health check
-  runStartupHealthCheck().catch(e => console.error('[Email] Health check failed:', e));
+  // Run health check before first tick so we know which accounts are reachable
+  try {
+    await runStartupHealthCheck();
+  } catch (e) {
+    console.error('[Email] Health check failed:', e);
+  }
 
   // Run once immediately
   tick();

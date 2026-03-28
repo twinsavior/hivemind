@@ -24,8 +24,6 @@ async function resolveEmailBus(): Promise<void> {
     _emailBus = null;
   }
 }
-resolveEmailBus();
-
 function emitEmailEvent(event: string, data: unknown): void {
   _emailBus?.emit(event, data);
 }
@@ -332,6 +330,7 @@ export interface PipelineResult {
 }
 
 export async function runPipeline(trigger: 'scheduled' | 'manual'): Promise<PipelineResult> {
+  await resolveEmailBus();
   const startTime = Date.now();
   const runId = createPipelineRun(trigger);
 

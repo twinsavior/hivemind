@@ -314,6 +314,8 @@ async function streamAssistantTurn(params: {
     request,
     (data: { text: string; type: string }) => {
       if (data.type !== 'text') {
+        // Don't send delegation markers as tool_code blocks to the UI
+        if (/\[DELEGATE:|FIRE:|HIRE:|APPROVED\]|REVISE\]/.test(data.text)) return;
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'task:token', taskId, text: data.text, tokenType: data.type, agentId }));
           if (parentTaskId) {
@@ -327,10 +329,19 @@ async function streamAssistantTurn(params: {
       const consumed = consumeAskUserStreamBuffer(streamRemainder);
       streamRemainder = consumed.remainder;
       if (consumed.displayText && ws.readyState === WebSocket.OPEN) {
-        visibleContent += consumed.displayText;
-        ws.send(JSON.stringify({ type: 'task:token', taskId, text: consumed.displayText, tokenType: 'text', agentId }));
-        if (parentTaskId) {
-          ws.send(JSON.stringify({ type: 'task:token', taskId: parentTaskId, text: consumed.displayText, tokenType: 'text', agentId }));
+        // Strip delegation/management markers from the stream so they don't flash in the UI
+        const displayText = consumed.displayText
+          .replace(/\[DELEGATE:[^\]]+\]\s*.*/g, '')
+          .replace(/\[FIRE:[^\]]+\]\s*.*/g, '')
+          .replace(/\[HIRE:[^\]]+\]\s*.*/g, '')
+          .replace(/\[APPROVED\].*/g, '')
+          .replace(/\[REVISE\].*/g, '');
+        if (displayText) {
+          visibleContent += displayText;
+          ws.send(JSON.stringify({ type: 'task:token', taskId, text: displayText, tokenType: 'text', agentId }));
+          if (parentTaskId) {
+            ws.send(JSON.stringify({ type: 'task:token', taskId: parentTaskId, text: displayText, tokenType: 'text', agentId }));
+          }
         }
       }
     }

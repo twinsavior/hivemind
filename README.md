@@ -16,7 +16,7 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/twinsavior/hivemind?include_prereleases&label=version)](https://github.com/twinsavior/hivemind/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/twinsavior/hivemind/ci.yml?branch=main&label=build)](https://github.com/twinsavior/hivemind/actions)
-[![Tests](https://img.shields.io/badge/tests-518_passing-brightgreen)](https://github.com/twinsavior/hivemind)
+[![Tests](https://img.shields.io/badge/tests-550_passing-brightgreen)](https://github.com/twinsavior/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/twinsavior/hivemind)](https://github.com/twinsavior/hivemind/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/twinsavior/hivemind/total)](https://github.com/twinsavior/hivemind/releases)
@@ -122,7 +122,7 @@ HIVEMIND
 │   └── cli/              # CLI entry point, commands, onboarding
 ├── desktop/              # Electron app, chat UI, operations views
 ├── skills/               # Built-in skills (marketplace experts, runbooks, tools)
-└── tests/                # Vitest test suites (518 tests)
+└── tests/                # Vitest test suites (550 tests)
 ```
 
 **Databases:**
@@ -183,7 +183,7 @@ Connect HIVEMIND to your Discord server through Settings > Connectors. The setup
 pnpm install          # Install dependencies
 pnpm dev              # Start dev mode (hot-reload via tsx)
 pnpm build            # Build TypeScript
-pnpm test             # Run tests (518 tests, Vitest)
+pnpm test             # Run tests (550 tests, Vitest)
 pnpm typecheck        # Type-check
 ```
 

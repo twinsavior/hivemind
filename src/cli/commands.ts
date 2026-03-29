@@ -682,7 +682,7 @@ CRITICAL RULES:
 
   if (options.dashboard !== false) {
     s.update("Starting dashboard...");
-    const { startDashboard, bus, agents: agentMap, broadcast, setSwarmState } = await import("../dashboard/server.js");
+    const { startDashboard, bus, agents: agentMap, broadcast, setSwarmState, setConfigPath } = await import("../dashboard/server.js");
 
     // Initialize performance metrics tracker
     const { MetricsTracker } = await import("../core/agent-metrics.js");
@@ -743,6 +743,7 @@ CRITICAL RULES:
     swarmState = { llm: primaryLlm, agents: llmAgents, bus, dashboardAgents: agentMap, memoryStore, metricsTracker, skillRegistry };
     // Inject directly into dashboard server so /api/tasks can find agents
     setSwarmState(swarmState);
+    setConfigPath(configPath);
 
     // Wire agent events to dashboard
     for (const [agentId, agent] of llmAgents) {

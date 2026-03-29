@@ -1503,7 +1503,7 @@ app.delete('/api/memory/:id', async (req, res) => {
 
 app.get('/api/config', (_req, res) => {
   try {
-    const configPath = path.join(activeWorkDir, 'hivemind.yaml');
+    const configPath = _resolvedConfigPath || path.join(activeWorkDir, 'hivemind.yaml');
     if (!fs.existsSync(configPath)) {
       return res.json({});
     }
@@ -1518,7 +1518,7 @@ app.get('/api/config', (_req, res) => {
 
 app.post('/api/config', (req, res) => {
   try {
-    const configPath = path.join(activeWorkDir, 'hivemind.yaml');
+    const configPath = _resolvedConfigPath || path.join(activeWorkDir, 'hivemind.yaml');
 
     // Read existing config (preserve fields the UI doesn't manage)
     let existing: Record<string, unknown> = {};
@@ -3520,10 +3520,16 @@ async function runReviewLoop(
 }
 
 let _injectedSwarmState: any = null;
+let _resolvedConfigPath: string | null = null;
 
 /** Called by upCommand to inject the live swarm state directly. */
 export function setSwarmState(state: any) {
   _injectedSwarmState = state;
+}
+
+/** Called by upCommand to set the resolved config file path (from --config). */
+export function setConfigPath(configPath: string) {
+  _resolvedConfigPath = configPath;
 }
 
 /** Used by the /api/tasks handler. */

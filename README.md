@@ -11,8 +11,8 @@
 
 ### Your AI co-founder for Amazon, Walmart & eBay selling
 
-[![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/latest/download/HIVEMIND-1.0.0-beta.6-arm64.dmg)
-[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/latest/download/HIVEMIND-Setup-1.0.0-beta.6.exe)
+[![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-1.0.0-beta.6-arm64.dmg)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-Setup-1.0.0-beta.6.exe)
 
 [![GitHub Release](https://img.shields.io/github/v/release/twinsavior/hivemind?include_prereleases&label=version)](https://github.com/twinsavior/hivemind/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/twinsavior/hivemind/ci.yml?branch=main&label=build)](https://github.com/twinsavior/hivemind/actions)
@@ -29,9 +29,9 @@
 
 ### 1. Download HIVEMIND
 
-- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/latest/download/HIVEMIND-1.0.0-beta.6-arm64.dmg) → open it → drag HIVEMIND to Applications
+- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-1.0.0-beta.6-arm64.dmg) → open it → drag HIVEMIND to Applications
   - First launch: right-click the app → Open (macOS requires this for unsigned apps)
-- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/latest/download/HIVEMIND-Setup-1.0.0-beta.6.exe) → run it → done
+- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-Setup-1.0.0-beta.6.exe) → run it → done
 
 ### 2. Install Claude Code CLI
 

@@ -1,21 +1,40 @@
 ---
 name: desktop-reference
-description: Desktop Electron app and chat UI -- renderer structure, WebSocket handling, streaming display. Auto-loads when working on desktop/ code.
+description: Desktop Electron app and chat UI -- renderer structure, WebSocket handling, streaming display, async startup. Auto-loads when working on desktop/ code.
 user-invocable: false
 ---
 
 # Desktop App (`desktop/`)
 
-Electron app with a vanilla HTML/JS chat UI. No React, no framework.
+Electron 35 app with a vanilla HTML/JS chat UI. No React, no framework.
 
-## Key File
-`desktop/renderer/index.html` — ~3700 lines, single file containing HTML + CSS + JS.
+## Key Files
+- `desktop/main.js` — Electron main process (~690 lines). Fully async startup.
+- `desktop/renderer/index.html` — ~5000 lines, single file containing HTML + CSS + JS.
+- `desktop/package.json` — Electron 35, electron-builder 26, electron-updater.
+
+## Startup Flow (main.js)
+1. `app.whenReady()` → `createWindow()` → `startHivemindServer()`
+2. `findNode()` — async, checks nvm/fnm/homebrew/system paths via `fs.promises`
+3. `setupPackagedEnvironment()` — async, creates `~/.hivemind/` dirs and default config
+4. Spawns the server process, waits for health check
+5. `loadFile('renderer/index.html', { query: { port } })` — passes port via query param
+6. Auto-updater checks GitHub Releases on launch + every 4h
+
+## Port Handling
+- `HIVEMIND_PORT = Number(process.env.HIVEMIND_DASHBOARD_PORT) || 4000`
+- Passed to renderer via `loadFile` query param `?port=...`
+- Renderer reads with `new URLSearchParams(window.location.search).get('port')`
 
 ## Chat UI Architecture
 - Messages stored in `conversations` Map, keyed by `conversationId`
 - Each message: `{ role: 'user'|'ai', text, agentId?, timestamp }`
 - Running tasks tracked in `runningTasks` Map with `{ buffer, el, lastAgentId }`
 - Streaming text rendered via `renderMarkdown()` into a dedicated streaming element
+
+## Settings Persistence
+- Settings page fetches `GET /api/config` on load to hydrate field values
+- Save button sends `POST /api/config` with `{ sections: [...] }` payload
 
 ## Agent Transitions
 When `task:token` arrives with a different `agentId` than `lastAgentId`:
@@ -39,3 +58,5 @@ When `task:token` arrives with a different `agentId` than `lastAgentId`:
 2. **No build step.** Changes to `index.html` are live on refresh (Electron dev mode).
 3. **`scrollToBottom()` must be called** after DOM changes or the chat won't auto-scroll.
 4. **Agent name map is duplicated** — exists in both the renderer and server. Keep them in sync.
+5. **All main.js I/O is async.** `findNode()`, `setupPackagedEnvironment()`, `showErrorDialog()` all use `fs.promises`. Never add sync FS calls back.
+6. **Port must come from query param in file:// mode.** The renderer can't detect the server port from `window.location` when loaded via `file://`.

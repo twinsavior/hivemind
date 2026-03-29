@@ -1,12 +1,12 @@
 ---
 name: server-reference
-description: Dashboard server architecture -- task orchestration, WebSocket protocol, delegation flow, streaming. Auto-loads when working on src/dashboard/ code.
+description: Dashboard server architecture -- task orchestration, WebSocket protocol, delegation flow, streaming, security, config API. Auto-loads when working on src/dashboard/ code.
 user-invocable: false
 ---
 
 # Dashboard Server (`src/dashboard/server.ts`)
 
-The hub for all agent orchestration. Express + WebSocket server on port 4000.
+The hub for all agent orchestration. Express + WebSocket server on configurable port (default 4000 via `HIVEMIND_DASHBOARD_PORT`).
 
 ## Two Execution Paths
 
@@ -23,36 +23,67 @@ The hub for all agent orchestration. Express + WebSocket server on port 4000.
 - Resolves provider (Claude Code or Codex) based on `agentId`
 - Streams tokens back to WebSocket with `task:token` messages
 - Supports `parentTaskId` to forward tokens to a parent task's stream
+- Dashboard tasks always pass `trustLevel: TrustLevel.OWNER` to the provider
 
-## WebSocket Message Types
+## WebSocket Protocol
 
 ### Client → Server
 - `task:submit` — New task (description, agentId?, conversationId, history?)
 - `task:followup` — Mid-task message (taskId, text, attachments?)
 - `task:cancel` — Cancel running task
+- `task:answer` — Answer to an interactive question (taskId, answer)
 
 ### Server → Client
 - `task:token` — Streaming token (`{ taskId, text, tokenType: 'text'|'action'|'done'|'status', agentId? }`)
 - `task:complete` — Task finished (`{ taskId, result }`)
 - `task:error` — Task failed
+- `task:question` — Interactive question for the user (`{ taskId, header, question, options }`)
+- `swarm:metrics` — Periodic metrics broadcast
+- `swarm:graph` — Swarm graph state for visualization
+- `context:usage` — Context window usage percentage per agent
+
+## Security
+
+### Authentication
+- `DASHBOARD_PASSWORD` env var enables password auth (Bearer token or `?token=` query param)
+- When unset: HTTP and WS both restricted to localhost only via `isLocalhostRequest()`
+- `verifyWsClient()` validates Origin header against localhost variants (blocks cross-origin browser attacks)
+- `classifyWsConnection(req)` checks actual request locality, not just "assume authenticated"
+
+### Trust Classification
+- `classifyHttpRequest(req)` → `TaskSource` with `authenticated` flag based on password or localhost
+- `classifyWsConnection(req)` → Same logic for WebSocket connections
+- `submitConnectorTask()` → Passes explicit restricted permissions and trust level to provider
+- UNTRUSTED sources get `trustLevel` propagated to `buildArgs()` which omits `--dangerously-skip-permissions`
+
+### OAuth
+- **Gmail:** Cryptographic state nonce via `verifyOAuthState()`, redirect URI from config only
+- **eBay:** Server-side `ebayOAuthStates` map with 10-min TTL, verified before code exchange
+
+## Config API
+- `GET /api/config` — Reads `hivemind.yaml` from the resolved `--config` path (set via `setConfigPath()`)
+- `POST /api/config` — Merges UI sections into existing YAML and writes back
+- Uses top-level ESM `import { parse, stringify } from 'yaml'` (not `require()`)
+- Falls back to `activeWorkDir/hivemind.yaml` if `setConfigPath()` was not called
+
+## Route Ordering
+- `/health` — No auth, before middleware (for Docker healthchecks / load balancers)
+- `/api/*` — Behind `requireAuth` middleware
+- SPA catch-all `app.get('*')` — Skips `/api/` and `/ws` paths via `next()`, so later API routes work
 
 ## Memory Integration
 - `loadMemoryContext(query)` — Loads L0 summaries + semantic search results before each task
 - `saveTaskMemory(description, agentId, content, conversationId)` — Saves L0 summary + L1 overview after task completes
 - Both are non-blocking (fire-and-forget on save, awaited on load)
 
-## CLAUDE.md Injection
-- Reads from `CLAUDE.md` and `.claude/CLAUDE.md` in the work directory
-- Injected into Nova's system prompt, capped at 3000 chars
-- Happens once per `coordinateRequest()` call
-
 ## Follow-up Handling
 - Follow-ups stored in `taskFollowups` Map (keyed by taskId)
 - After each streaming turn completes, pending follow-ups are sent as a new user turn in the same session
-- Nova acknowledges follow-ups immediately in the chat stream (cosmetic)
-- Attachments sent as `[Attached image: /path]` references with Read tool instructions
+- If a question is pending (`taskQuestionResolvers`), followup text resolves it
+- Otherwise, the active Nova stream is aborted and restarted with the followup
 
 ## Gotchas
 1. **Nova does NOT use BaseAgent.execute().** It runs via subprocess (`completeStreaming`). The cognitive loop (think→act→observe→report) is only for LLMAgent-based tasks.
-2. **Sub-task IDs are invisible to the frontend.** Always pass `parentTaskId` so tokens show up in the main chat stream.
-3. **Provider fallback chain:** `claude-code` → `codex` → `anthropic` → `openai` → `ollama`. If Claude Code isn't found, Codex becomes primary.
+2. **SPA catch-all must skip /api/ paths.** If it doesn't, later-registered API routes (like `/api/connectors`) get served `index.html` instead.
+3. **Config API uses `_resolvedConfigPath`, not `activeWorkDir`.** The CLI sets this via `setConfigPath(configPath)` at startup so `/api/config` writes to the correct file regardless of cwd.
+4. **`PORT` constant is used for self-referencing fetches.** Internal fetch calls (finance summary, pipeline summary) use `PORT`, not a hardcoded 4000 or `__hivemindPort`.

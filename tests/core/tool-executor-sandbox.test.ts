@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 
-// Import the private helper via dynamic re-export trick:
-// We test the sandboxing logic by replicating the resolveAndValidatePath behavior
-// since it's a module-private function. If it were exported, we'd import directly.
+// Replicate the module-private resolveAndValidatePath for testing.
 
 function resolveAndValidatePath(workDir: string, userPath: string): string {
   const resolved = path.resolve(workDir, userPath);
@@ -19,29 +17,31 @@ function resolveAndValidatePath(workDir: string, userPath: string): string {
 
 describe("resolveAndValidatePath (filesystem sandboxing)", () => {
   const workDir = "/tmp/hivemind-project";
+  // On Windows, path.resolve("/tmp/hivemind-project") produces "D:\tmp\hivemind-project".
+  // Use the resolved form in all assertions so tests pass cross-platform.
+  const resolvedWorkDir = path.resolve(workDir);
 
   // ── Valid paths (should not throw) ──
 
   it("allows a simple relative path", () => {
     expect(resolveAndValidatePath(workDir, "src/index.ts")).toBe(
-      path.join(workDir, "src/index.ts")
+      path.resolve(workDir, "src/index.ts")
     );
   });
 
   it("allows the workDir itself", () => {
-    expect(resolveAndValidatePath(workDir, ".")).toBe(workDir);
+    expect(resolveAndValidatePath(workDir, ".")).toBe(resolvedWorkDir);
   });
 
   it("allows a nested relative path", () => {
     expect(resolveAndValidatePath(workDir, "a/b/c/d.txt")).toBe(
-      path.join(workDir, "a/b/c/d.txt")
+      path.resolve(workDir, "a/b/c/d.txt")
     );
   });
 
   it("allows a path with harmless internal ..", () => {
-    // src/../lib resolves to /tmp/hivemind-project/lib — still inside workDir
     expect(resolveAndValidatePath(workDir, "src/../lib/utils.ts")).toBe(
-      path.join(workDir, "lib/utils.ts")
+      path.resolve(workDir, "lib/utils.ts")
     );
   });
 
@@ -78,7 +78,6 @@ describe("resolveAndValidatePath (filesystem sandboxing)", () => {
   });
 
   it("rejects path that looks similar but escapes (prefix attack)", () => {
-    // /tmp/hivemind-project-evil is NOT inside /tmp/hivemind-project
     expect(() =>
       resolveAndValidatePath(workDir, "../hivemind-project-evil/secrets.txt")
     ).toThrow("Path traversal blocked");

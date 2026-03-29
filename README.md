@@ -11,12 +11,12 @@
 
 ### Your AI co-founder for Amazon, Walmart & eBay selling
 
-[![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-1.0.0-beta.6-arm64.dmg)
-[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-Setup-1.0.0-beta.6.exe)
+[![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-1.0.0-beta.7-arm64.dmg)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-Setup-1.0.0-beta.7.exe)
 
 [![GitHub Release](https://img.shields.io/github/v/release/twinsavior/hivemind?include_prereleases&label=version)](https://github.com/twinsavior/hivemind/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/twinsavior/hivemind/ci.yml?branch=main&label=build)](https://github.com/twinsavior/hivemind/actions)
-[![Tests](https://img.shields.io/badge/tests-575_passing-brightgreen)](https://github.com/twinsavior/hivemind)
+[![Tests](https://img.shields.io/badge/tests-613_passing-brightgreen)](https://github.com/twinsavior/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/twinsavior/hivemind)](https://github.com/twinsavior/hivemind/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/twinsavior/hivemind/total)](https://github.com/twinsavior/hivemind/releases)
@@ -29,9 +29,9 @@
 
 ### 1. Download HIVEMIND
 
-- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-1.0.0-beta.6-arm64.dmg) → open it → drag HIVEMIND to Applications
+- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-1.0.0-beta.7-arm64.dmg) → open it → drag HIVEMIND to Applications
   - First launch: right-click the app → Open (macOS requires this for unsigned apps)
-- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.6/HIVEMIND-Setup-1.0.0-beta.6.exe) → run it → done
+- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-Setup-1.0.0-beta.7.exe) → run it → done
 
 ### 2. Install Claude Code CLI
 
@@ -118,7 +118,7 @@ HIVEMIND
 │   └── cli/              # CLI entry point, commands, onboarding
 ├── desktop/              # Electron app, chat UI, operations views
 ├── skills/               # Built-in skills (marketplace experts, runbooks, tools)
-└── tests/                # Vitest test suites (575 tests)
+└── tests/                # Vitest test suites (613 tests)
 ```
 
 **Databases:**
@@ -179,7 +179,7 @@ Connect HIVEMIND to your Discord server through Settings > Connectors. The setup
 pnpm install          # Install dependencies
 pnpm dev              # Start dev mode (hot-reload via tsx)
 pnpm build            # Build TypeScript
-pnpm test             # Run tests (575 tests, Vitest)
+pnpm test             # Run tests (613 tests, Vitest)
 pnpm typecheck        # Type-check
 ```
 

@@ -71,7 +71,7 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 ## Key Commands
 - `pnpm dev` — Start development mode
 - `pnpm build` — Build (main + email module)
-- `pnpm test` — Run tests (Vitest, 575 tests across 15 files)
+- `pnpm test` — Run tests (Vitest, 613 tests across 17 files)
 - `pnpm typecheck` — Type-check main project
 - `npx tsc -p tsconfig.email.json --noEmit` — Type-check email module
 - `cd desktop && npm run build:mac` — Build macOS .dmg

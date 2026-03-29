@@ -2726,11 +2726,14 @@
 
   <script>
     // ── Dynamic base URL (supports any port) ──────────────────────────────
+    // When loaded via file:// (Electron), read port from query param injected by main.js
+    const _urlParams = new URLSearchParams(window.location.search);
+    const _port = _urlParams.get('port') || '4000';
     const _baseHttp = window.location.protocol === 'file:'
-      ? 'http://localhost:4000'
+      ? `http://localhost:${_port}`
       : `${window.location.protocol}//${window.location.host}`;
     const _baseWs   = window.location.protocol === 'file:'
-      ? 'ws://localhost:4000'
+      ? `ws://localhost:${_port}`
       : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
 
     // ── Onboarding Wizard ────────────────────────────────────────────────
@@ -4317,7 +4320,25 @@
     let activeSettingsSection = 'llm';
     let settingsDirty = false;
 
-    function loadSettingsPage() {
+    async function loadSettingsPage() {
+      // Hydrate field values from persisted config
+      try {
+        const resp = await fetch(`${_baseHttp}/api/config`);
+        if (resp.ok) {
+          const saved = await resp.json();
+          for (const section of settingsSections) {
+            const sectionData = saved[section.key];
+            if (sectionData && typeof sectionData === 'object') {
+              for (const field of section.fields) {
+                if (field.key in sectionData) {
+                  field.value = sectionData[field.key];
+                }
+              }
+            }
+          }
+        }
+      } catch { /* offline or first run — use defaults */ }
+      settingsDirty = false;
       renderSettingsNav();
       renderSettingsPanel();
     }

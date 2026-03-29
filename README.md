@@ -139,13 +139,16 @@ HIVEMIND
 
 For developers who want to contribute or run from source:
 
+**Prerequisites:** Node.js 22+, pnpm 10+, and a C/C++ toolchain for native modules (`better-sqlite3`).
+On macOS run `xcode-select --install`; on Ubuntu/Debian `apt install build-essential python3`.
+
 ```bash
 # 1. Clone and install
 git clone https://github.com/twinsavior/hivemind.git
 cd hivemind
 pnpm install
 
-# 2. Build the server
+# 2. Build the server (includes email module)
 pnpm build
 
 # 3. Run the desktop app in dev mode

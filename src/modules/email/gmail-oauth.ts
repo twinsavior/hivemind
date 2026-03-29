@@ -1,5 +1,6 @@
 import { OAuth2Client } from 'google-auth-library';
-import { getGmailAuth, setGmailAuth, getSetting, getApiKey } from './db.js';
+import { randomBytes } from 'node:crypto';
+import { getGmailAuth, setGmailAuth, getSetting, setSetting, getApiKey } from './db.js';
 import { encrypt, decrypt } from './crypto.js';
 
 const SCOPES = [
@@ -21,35 +22,71 @@ function getGoogleCredentials(): { clientId: string; clientSecret: string } {
   return { clientId, clientSecret };
 }
 
-function getRedirectUri(requestUrl?: string): string {
-  if (requestUrl) {
-    try {
-      const url = new URL(requestUrl);
-      return `${url.protocol}//${url.host}/api/email/auth/gmail/callback`;
-    } catch {}
-  }
+/**
+ * Build the OAuth redirect URI from trusted configuration only.
+ * SECURITY: Never derive from request Host headers — they can be spoofed.
+ */
+function getRedirectUri(): string {
   const storedUrl = getSetting('app_url');
   const baseUrl = storedUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4000';
   return `${baseUrl}/api/email/auth/gmail/callback`;
 }
 
-function getOAuth2Client(requestUrl?: string): OAuth2Client {
+function getOAuth2Client(): OAuth2Client {
   const { clientId, clientSecret } = getGoogleCredentials();
-  return new OAuth2Client(clientId, clientSecret, getRedirectUri(requestUrl));
+  return new OAuth2Client(clientId, clientSecret, getRedirectUri());
 }
 
-export function getAuthUrl(requestUrl?: string, accountId?: string): string {
-  const client = getOAuth2Client(requestUrl);
+/**
+ * Generate a cryptographic state nonce, persist it, and return the auth URL.
+ * The nonce MUST be verified in the callback via verifyOAuthState().
+ */
+export function getAuthUrl(accountId?: string): string {
+  const nonce = randomBytes(24).toString('hex');
+  const statePayload: Record<string, string> = { nonce };
+  if (accountId) statePayload['account_id'] = accountId;
+
+  // Persist nonce for verification on callback
+  setSetting('gmail_oauth_state_nonce', nonce);
+
+  const client = getOAuth2Client();
   return client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
     prompt: 'consent',
-    state: accountId ? JSON.stringify({ account_id: accountId }) : undefined,
+    state: JSON.stringify(statePayload),
   });
 }
 
-export function getRedirectUriForDisplay(requestUrl?: string): string {
-  return getRedirectUri(requestUrl);
+/**
+ * Verify the state parameter from an OAuth callback.
+ * Returns the parsed state payload if valid, throws if invalid/missing.
+ */
+export function verifyOAuthState(stateParam: string | undefined): Record<string, string> {
+  if (!stateParam) {
+    throw new Error('OAuth callback missing state parameter — possible CSRF attack');
+  }
+
+  let parsed: Record<string, string>;
+  try {
+    parsed = JSON.parse(stateParam);
+  } catch {
+    throw new Error('OAuth callback has malformed state parameter');
+  }
+
+  const expectedNonce = getSetting('gmail_oauth_state_nonce');
+  if (!expectedNonce || !parsed['nonce'] || parsed['nonce'] !== expectedNonce) {
+    throw new Error('OAuth state nonce mismatch — possible CSRF attack');
+  }
+
+  // Clear the nonce after successful verification (one-time use)
+  setSetting('gmail_oauth_state_nonce', '');
+
+  return parsed;
+}
+
+export function getRedirectUriForDisplay(): string {
+  return getRedirectUri();
 }
 
 export function hasGoogleCredentials(): boolean {
@@ -59,13 +96,13 @@ export function hasGoogleCredentials(): boolean {
   return !!(clientId && clientSecret);
 }
 
-export async function exchangeCode(code: string, requestUrl?: string): Promise<{
+export async function exchangeCode(code: string): Promise<{
   email: string;
   access_token: string;
   refresh_token: string;
   expiry_date: number;
 }> {
-  const client = getOAuth2Client(requestUrl);
+  const client = getOAuth2Client();
   const { tokens } = await client.getToken(code);
 
   if (!tokens.access_token || !tokens.refresh_token) {

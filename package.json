@@ -10,12 +10,13 @@
   },
   "scripts": {
     "dev": "tsx watch src/cli/index.ts",
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig.email.json",
     "start": "node dist/cli/index.js up",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
+    "sync-desktop-deps": "node -e \"const p=require('./package.json');const d={...p,version:p.version};require('fs').writeFileSync('desktop/server-deps/package.json',JSON.stringify(d,null,2)+'\\n')\" && cd desktop/server-deps && npm install --package-lock-only",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
@@ -41,6 +42,9 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3"]
   },
   "packageManager": "pnpm@10.32.1",
   "engines": {

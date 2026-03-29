@@ -56,13 +56,13 @@ RUN mkdir -p /app/data /app/logs /app/skills && \
 USER hivemind
 
 # Expose default ports
-# 3000 = Dashboard
+# 4000 = Dashboard (matches HIVEMIND_DASHBOARD_PORT default)
 # 9090 = Webhook connector
-EXPOSE 3000 9090
+EXPOSE 4000 9090
 
-# Health check
+# Health check — uses /health (no auth required) on the configured port
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://localhost:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+  CMD node -e "fetch('http://localhost:' + (process.env.HIVEMIND_DASHBOARD_PORT || 4000) + '/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
 # Use tini as init system for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]

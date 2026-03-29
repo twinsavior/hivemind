@@ -2,14 +2,16 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { spawn, execSync } = require('child_process');
+const { spawn, exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
 const http = require('http');
 const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 let hivemindProcess = null;
 let serverErrors = []; // Collect errors for user-facing dialog
-const HIVEMIND_PORT = 4000;
+const HIVEMIND_PORT = Number(process.env.HIVEMIND_DASHBOARD_PORT) || 4000;
 const HIVEMIND_DIR = path.resolve(__dirname, '..');
 const HIVEMIND_HOME = path.join(os.homedir(), '.hivemind');
 
@@ -27,45 +29,45 @@ function checkServer() {
 
 // ── Start HIVEMIND server in background ──────────────────────────────────────
 
-function findNode() {
+async function findNode() {
   // Try common node locations on macOS
-  const candidates = [
-    // nvm
-    ...(() => {
-      try {
-        const nvmDir = path.join(process.env.HOME || '', '.nvm', 'versions', 'node');
-        const versions = fs.readdirSync(nvmDir).sort().reverse();
-        return versions.map(v => path.join(nvmDir, v, 'bin', 'node'));
-      } catch { return []; }
-    })(),
-    // fnm
-    ...(() => {
-      try {
-        const fnmDir = path.join(process.env.HOME || '', 'Library', 'Application Support', 'fnm', 'node-versions');
-        const versions = fs.readdirSync(fnmDir).sort().reverse();
-        return versions.map(v => path.join(fnmDir, v, 'installation', 'bin', 'node'));
-      } catch { return []; }
-    })(),
-    '/opt/homebrew/bin/node',
-    '/usr/local/bin/node',
-    '/usr/bin/node',
-  ];
+  const candidates = [];
+
+  // nvm
+  try {
+    const nvmDir = path.join(process.env.HOME || '', '.nvm', 'versions', 'node');
+    const versions = await fs.promises.readdir(nvmDir).catch(() => []);
+    versions.sort().reverse();
+    for (const v of versions) candidates.push(path.join(nvmDir, v, 'bin', 'node'));
+  } catch { /* skip */ }
+
+  // fnm
+  try {
+    const fnmDir = path.join(process.env.HOME || '', 'Library', 'Application Support', 'fnm', 'node-versions');
+    const versions = await fs.promises.readdir(fnmDir).catch(() => []);
+    versions.sort().reverse();
+    for (const v of versions) candidates.push(path.join(fnmDir, v, 'installation', 'bin', 'node'));
+  } catch { /* skip */ }
+
+  candidates.push('/opt/homebrew/bin/node', '/usr/local/bin/node', '/usr/bin/node');
 
   for (const candidate of candidates) {
     try {
-      if (fs.existsSync(candidate)) return candidate;
+      await fs.promises.access(candidate);
+      return candidate;
     } catch { /* skip */ }
   }
 
   // Last resort: try to find it via shell
   try {
-    const shell = process.env.SHELL || '/bin/zsh';
-    return execSync(`${shell} -lc 'which node'`, { timeout: 5000, encoding: 'utf-8' }).trim();
+    const shellBin = process.env.SHELL || '/bin/zsh';
+    const { stdout } = await execAsync(`${shellBin} -lc 'which node'`, { timeout: 5000 });
+    return stdout.trim() || null;
   } catch { return null; }
 }
 
-function showErrorDialog(title, message) {
-  dialog.showMessageBoxSync({
+async function showErrorDialog(title, message) {
+  await dialog.showMessageBox({
     type: 'error',
     title: title,
     message: message,
@@ -73,18 +75,18 @@ function showErrorDialog(title, message) {
   });
 }
 
-function setupPackagedEnvironment() {
+async function setupPackagedEnvironment() {
   // Create ~/.hivemind/ directory structure
   const dirs = [HIVEMIND_HOME, path.join(HIVEMIND_HOME, 'data'), path.join(HIVEMIND_HOME, 'skills')];
   for (const dir of dirs) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    await fs.promises.mkdir(dir, { recursive: true }).catch(() => {});
   }
 
   // Auto-create hivemind.yaml if missing
   const configPath = path.join(HIVEMIND_HOME, 'hivemind.yaml');
-  if (!fs.existsSync(configPath)) {
+  try {
+    await fs.promises.access(configPath);
+  } catch {
     const defaultConfig = `name: "hivemind"
 version: "1.0.0"
 
@@ -120,53 +122,58 @@ agents:
     name: Courier Express
     role: communications
 `;
-    fs.writeFileSync(configPath, defaultConfig);
+    await fs.promises.writeFile(configPath, defaultConfig);
     console.log('[HIVEMIND] Created default config at', configPath);
   }
 
   // Copy bundled skills to ~/.hivemind/skills/ if they don't exist there yet
   const bundledSkillsDir = path.join(process.resourcesPath, 'skills');
   const userSkillsDir = path.join(HIVEMIND_HOME, 'skills');
-  if (fs.existsSync(bundledSkillsDir)) {
-    try {
-      const bundledSkills = fs.readdirSync(bundledSkillsDir);
-      for (const skill of bundledSkills) {
-        const src = path.join(bundledSkillsDir, skill);
-        const dest = path.join(userSkillsDir, skill);
-        if (!fs.existsSync(dest) && fs.statSync(src).isDirectory()) {
-          copyDirSync(src, dest);
+  try {
+    await fs.promises.access(bundledSkillsDir);
+    const bundledSkills = await fs.promises.readdir(bundledSkillsDir);
+    for (const skill of bundledSkills) {
+      const src = path.join(bundledSkillsDir, skill);
+      const dest = path.join(userSkillsDir, skill);
+      try {
+        await fs.promises.access(dest);
+      } catch {
+        const stat = await fs.promises.stat(src);
+        if (stat.isDirectory()) {
+          await copyDirAsync(src, dest);
         }
       }
-    } catch (e) {
-      console.error('[HIVEMIND] Failed to copy bundled skills:', e.message);
     }
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('[HIVEMIND] Failed to copy bundled skills:', e.message);
   }
 
   return configPath;
 }
 
-function copyDirSync(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+async function copyDirAsync(src, dest) {
+  await fs.promises.mkdir(dest, { recursive: true });
+  const entries = await fs.promises.readdir(src, { withFileTypes: true });
+  for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     if (entry.isDirectory()) {
-      copyDirSync(srcPath, destPath);
+      await copyDirAsync(srcPath, destPath);
     } else {
-      fs.copyFileSync(srcPath, destPath);
+      await fs.promises.copyFile(srcPath, destPath);
     }
   }
 }
 
-function startHivemindServer() {
-  return new Promise((resolve, reject) => {
+async function startHivemindServer() {
+  return new Promise(async (resolve, reject) => {
     serverErrors = [];
 
     // ── Validate Node.js ──
-    const nodeBin = findNode();
+    const nodeBin = await findNode();
     if (!nodeBin) {
       const msg = 'Node.js is required but was not found.\n\nPlease install Node.js 22+ from https://nodejs.org/ and relaunch HIVEMIND.';
-      showErrorDialog('Node.js Not Found', msg);
+      await showErrorDialog('Node.js Not Found', msg);
       reject(new Error(msg));
       return;
     }
@@ -179,22 +186,22 @@ function startHivemindServer() {
       const cliPath = path.join(serverDir, 'cli', 'index.js');
       const nodeModulesDir = path.join(process.resourcesPath, 'node_modules');
 
-      if (!fs.existsSync(cliPath)) {
+      try { await fs.promises.access(cliPath); } catch {
         const msg = `Server files are missing from the app bundle.\n\nExpected: ${cliPath}\n\nPlease reinstall HIVEMIND.`;
-        showErrorDialog('Corrupted Installation', msg);
+        await showErrorDialog('Corrupted Installation', msg);
         reject(new Error(msg));
         return;
       }
 
-      if (!fs.existsSync(nodeModulesDir)) {
+      try { await fs.promises.access(nodeModulesDir); } catch {
         const msg = `Server dependencies are missing from the app bundle.\n\nExpected: ${nodeModulesDir}\n\nPlease reinstall HIVEMIND.`;
-        showErrorDialog('Corrupted Installation', msg);
+        await showErrorDialog('Corrupted Installation', msg);
         reject(new Error(msg));
         return;
       }
 
       // Setup ~/.hivemind/ environment
-      const configPath = setupPackagedEnvironment();
+      const configPath = await setupPackagedEnvironment();
       cwd = HIVEMIND_HOME;
 
       if (process.platform === 'darwin') {
@@ -338,7 +345,9 @@ function createWindow() {
     icon: path.join(__dirname, 'icon.png'),
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'), {
+    query: { port: String(HIVEMIND_PORT) },
+  });
 
   // Open external links in browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

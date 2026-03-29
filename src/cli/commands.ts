@@ -1,6 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 import { info, success, warn, error, spinner, table, log } from "./index.js";
 import {
   getProfilePath,
@@ -675,7 +678,7 @@ CRITICAL RULES:
   } catch { /* non-critical */ }
 
   // ── Step 3: Start the dashboard ────────────────────────────────────────────
-  const dashboardPort = 4000;
+  const dashboardPort = Number(process.env["HIVEMIND_DASHBOARD_PORT"]) || 4000;
 
   if (options.dashboard !== false) {
     s.update("Starting dashboard...");
@@ -937,7 +940,8 @@ interface TaskOptions {
 
 export async function taskCommand(taskDescription: string, options: TaskOptions): Promise<void> {
   // Submit task to running swarm via REST API
-  const baseUrl = "http://localhost:4000";
+  const port = Number(process.env["HIVEMIND_DASHBOARD_PORT"]) || 4000;
+  const baseUrl = `http://localhost:${port}`;
 
   try {
     const response = await fetch(`${baseUrl}/api/tasks`, {

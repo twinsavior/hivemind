@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer, IncomingMessage } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
+import fs from 'node:fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
@@ -304,6 +305,7 @@ async function streamAssistantTurn(params: {
     agentId: string;
     signal?: AbortSignal;
     permissions?: any;
+    trustLevel?: TrustLevel;
   };
 }): Promise<{ cleanContent: string; questions: AskUserQuestion[]; rawContent: string }> {
   const { ws, taskId, agentId, parentTaskId, provider, request } = params;
@@ -365,6 +367,7 @@ async function resolveInteractiveQuestions(params: {
   waitingText?: string;
   resumedText?: string;
   permissions?: any;
+  trustLevel?: TrustLevel;
 }): Promise<string> {
   const {
     ws,
@@ -379,6 +382,7 @@ async function resolveInteractiveQuestions(params: {
     waitingText = '\n\n---\n*Waiting for your answer...*\n\n',
     resumedText = '\n\n---\n*Reading your answer and continuing...*\n\n',
     permissions,
+    trustLevel,
   } = params;
 
   let fullContent = initialContent;
@@ -437,6 +441,7 @@ async function resolveInteractiveQuestions(params: {
         messages: [{ role: 'system', content: systemPrompt }, ...transcript],
         agentId: sessionKey,
         permissions,
+        trustLevel,
       },
     });
 
@@ -787,7 +792,7 @@ async function loadSellerContext(): Promise<string> {
 
   // ── Financial data (SimpleFIN) ──────────────────────────────────────
   try {
-    const finRes: any = await fetch(`http://localhost:${(globalThis as any).__hivemindPort || 4000}/api/finance/summary`).then(r => r.json()).catch(() => null);
+    const finRes: any = await fetch(`http://localhost:${PORT}/api/finance/summary`).then(r => r.json()).catch(() => null);
     if (finRes && finRes.connected) {
       lines.push('\n## Financial Summary (from connected bank/credit card accounts)');
       lines.push(`Available credit across all cards: $${(finRes.totalAvailableCredit || 0).toLocaleString()}`);
@@ -808,7 +813,7 @@ async function loadSellerContext(): Promise<string> {
 
   // ── Pipeline data (source-to-sale) ───────────────────────────────
   try {
-    const pipeRes: any = await fetch(`http://localhost:${(globalThis as any).__hivemindPort || 4000}/api/finance/pipeline/summary`).then(r => r.json()).catch(() => null);
+    const pipeRes: any = await fetch(`http://localhost:${PORT}/api/finance/pipeline/summary`).then(r => r.json()).catch(() => null);
     if (pipeRes && pipeRes.totalBatches > 0) {
       lines.push('\n## Inventory Pipeline (source-to-sale)');
       lines.push(`Total batches in pipeline: ${pipeRes.totalBatches} (${pipeRes.totalUnits} units, $${pipeRes.totalCostInPipeline.toFixed(2)} invested)`);
@@ -891,6 +896,14 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
     timingSafeEqual(Buffer.from(token), Buffer.from(DASH_PASSWORD))) return next();
   res.status(401).json({ error: 'Unauthorized. Set Authorization: Bearer <password> or ?token=<password>' });
 }
+
+// Health check alias at /health (no auth required — used by Docker HEALTHCHECK, load balancers, etc.)
+app.get('/health', (_req, res) => {
+  const swarm = getInjectedSwarmState();
+  const agentCount = agents.size;
+  const status = swarm && agentCount > 0 ? 'ok' : 'degraded';
+  res.json({ status, timestamp: Date.now(), agents: agentCount, uptimeSeconds: Math.floor(process.uptime()) });
+});
 
 // Apply auth to all API routes
 app.use('/api', requireAuth);
@@ -1101,8 +1114,7 @@ function classifyHttpRequest(req: express.Request): TaskSource {
   const isAuthenticated = DASH_PASSWORD ? safeCompare(token, DASH_PASSWORD) : true; // no password = open access
 
   // Check if request is from localhost
-  const remoteAddr = req.ip || req.socket.remoteAddress || '';
-  const isLocalhost = /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1|localhost)$/.test(remoteAddr);
+  const isLocalhost = isLocalhostRequest(req);
 
   const authenticated = isAuthenticated && (DASH_PASSWORD ? true : isLocalhost);
 
@@ -1114,16 +1126,18 @@ function classifyHttpRequest(req: express.Request): TaskSource {
 
 /**
  * Build a TaskSource for an incoming WebSocket message.
- * WebSocket connections are already behind the auth middleware for /ws,
- * but we classify based on whether a password is configured.
+ * WS connections are verified by verifyWsClient before reaching here.
+ * Classify based on whether a password is configured and whether client is localhost.
  */
-function classifyWsConnection(): TaskSource {
-  // WS connections are now verified by verifyWsClient before reaching here.
-  // If DASHBOARD_PASSWORD is set, only authenticated clients pass the upgrade.
-  // If no password is set, localhost is trusted (open access).
+function classifyWsConnection(req?: IncomingMessage): TaskSource {
+  // If a password is configured, WS clients that passed verifyWsClient are authenticated.
+  // If no password is configured, only localhost connections pass — treat as authenticated.
+  const isLocal = req ? isLocalhostRequest(req) : true;
+  const authenticated = DASH_PASSWORD ? true : isLocal;
+
   return {
     type: 'dashboard',
-    authenticated: true,
+    authenticated,
   };
 }
 
@@ -1487,14 +1501,58 @@ app.delete('/api/memory/:id', async (req, res) => {
 // ─── Config API ─────────────────────────────────────────────────────────────
 
 app.get('/api/config', (_req, res) => {
-  // Return current config (in demo mode, returns empty to use client defaults)
-  res.json({});
+  try {
+    const configPath = path.join(activeWorkDir, 'hivemind.yaml');
+    if (!fs.existsSync(configPath)) {
+      return res.json({});
+    }
+    const { parse: parseYaml } = require('yaml');
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const parsed = parseYaml(raw) ?? {};
+    res.json(parsed);
+  } catch (err) {
+    console.warn('[Config] Failed to read hivemind.yaml:', (err as Error).message);
+    res.json({});
+  }
 });
 
 app.post('/api/config', (req, res) => {
-  // In a full implementation, persist to hivemind.yaml
-  // For now, accept and acknowledge
-  res.json({ status: 'ok' });
+  try {
+    const configPath = path.join(activeWorkDir, 'hivemind.yaml');
+    const { parse: parseYaml, stringify: stringifyYaml } = require('yaml');
+
+    // Read existing config (preserve fields the UI doesn't manage)
+    let existing: Record<string, unknown> = {};
+    try {
+      const raw = fs.readFileSync(configPath, 'utf-8');
+      existing = (parseYaml(raw) ?? {}) as Record<string, unknown>;
+    } catch { /* fresh config */ }
+
+    // The UI sends { sections: [{ key, fields: [{ key, value }] }, ...] }
+    const sections = req.body?.sections;
+    if (Array.isArray(sections)) {
+      for (const section of sections) {
+        if (!section.key || !Array.isArray(section.fields)) continue;
+        // Map flat field list into a nested object under the section key
+        const sectionObj: Record<string, unknown> = {};
+        for (const field of section.fields) {
+          if (field.key && field.value !== undefined) {
+            sectionObj[field.key] = field.value;
+          }
+        }
+        if (Object.keys(sectionObj).length > 0) {
+          existing[section.key] = { ...(existing[section.key] as Record<string, unknown> ?? {}), ...sectionObj };
+        }
+      }
+    }
+
+    fs.writeFileSync(configPath, stringifyYaml(existing, { indent: 2 }), 'utf-8');
+    console.log('[Config] Saved hivemind.yaml');
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error('[Config] Failed to save:', (err as Error).message);
+    res.status(500).json({ error: 'Failed to save configuration' });
+  }
 });
 
 // ─── Discord Setup API ──────────────────────────────────────────────────────
@@ -1584,11 +1642,26 @@ app.post('/api/seller/connect/ebay/configure', (req, res) => {
   }
 });
 
+// eBay OAuth state nonces — persisted in-memory for verification.
+// Short TTL (10 min) to prevent replay attacks.
+const ebayOAuthStates = new Map<string, number>();
+
 // Get eBay authorization URL (step 2: redirect user to eBay)
 app.get('/api/seller/connect/ebay/auth-url', (_req, res) => {
   try {
     const svc = getMarketplaceService();
-    const state = require('crypto').randomUUID();
+    const crypto = require('crypto');
+    const state = crypto.randomUUID();
+
+    // Persist state nonce for verification on callback
+    ebayOAuthStates.set(state, Date.now());
+
+    // Clean up expired nonces (older than 10 minutes)
+    const cutoff = Date.now() - 10 * 60 * 1000;
+    for (const [key, ts] of ebayOAuthStates) {
+      if (ts < cutoff) ebayOAuthStates.delete(key);
+    }
+
     const url = svc.getEbayAuthUrl(state);
     res.json({ url, state });
   } catch (err: unknown) {
@@ -1599,10 +1672,23 @@ app.get('/api/seller/connect/ebay/auth-url', (_req, res) => {
 // Complete eBay OAuth (step 3: exchange auth code for tokens)
 app.post('/api/seller/connect/ebay/callback', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, state } = req.body;
     if (!code) {
       return res.status(400).json({ error: 'Missing authorization code' });
     }
+
+    // SECURITY: Verify the state nonce to prevent CSRF attacks
+    if (!state || !ebayOAuthStates.has(state)) {
+      return res.status(403).json({ error: 'Invalid or missing OAuth state — possible CSRF attack' });
+    }
+    const stateTimestamp = ebayOAuthStates.get(state)!;
+    ebayOAuthStates.delete(state); // One-time use
+
+    // Reject expired nonces (older than 10 minutes)
+    if (Date.now() - stateTimestamp > 10 * 60 * 1000) {
+      return res.status(403).json({ error: 'OAuth state expired — please retry authorization' });
+    }
+
     const svc = getMarketplaceService();
     const result = await svc.connectEbayWithCode(code);
     res.json(result);
@@ -1869,8 +1955,11 @@ app.use('/api/finance', (req, res, next) => {
   });
 });
 
-// SPA fallback
-app.get('*', (_req, res) => {
+// SPA fallback — only for non-API, non-asset routes (so later /api/* routes still work)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/ws')) {
+    return next();
+  }
   res.sendFile(path.join(__dirname, '../../public/index.html'));
 });
 
@@ -1879,17 +1968,51 @@ app.get('*', (_req, res) => {
 const server = createServer(app);
 
 /**
- * Verify WebSocket upgrade requests using the same auth logic as requireAuth.
- * When DASHBOARD_PASSWORD is set, the client must provide the password via
- * Authorization: Bearer <password> header or ?token=<password> query parameter.
+ * Check if an HTTP request originates from localhost based on the
+ * socket's remote address. Used by both HTTP and WebSocket auth paths.
+ */
+function isLocalhostRequest(req: IncomingMessage): boolean {
+  const remoteAddr = req.socket?.remoteAddress || '';
+  return /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(remoteAddr);
+}
+
+/**
+ * Verify WebSocket upgrade requests.
+ * - When DASHBOARD_PASSWORD is set: require the password via
+ *   Authorization: Bearer <password> or ?token=<password>.
+ * - When DASHBOARD_PASSWORD is not set: restrict to localhost only
+ *   to prevent remote unauthenticated access.
+ * - Always validate Origin header against localhost variants to prevent
+ *   cross-origin browser-based attacks.
  */
 function verifyWsClient(
   info: { origin: string; secure: boolean; req: IncomingMessage },
   callback: (res: boolean, code?: number, message?: string) => void,
 ): void {
+  // Origin check: if an Origin header is present (browser connections),
+  // ensure it matches a localhost URL. Non-browser clients (Electron, CLI)
+  // typically don't send Origin, so missing Origin is allowed.
+  if (info.origin) {
+    try {
+      const originUrl = new URL(info.origin);
+      const allowedHosts = ['localhost', '127.0.0.1', '[::1]'];
+      if (!allowedHosts.includes(originUrl.hostname)) {
+        callback(false, 403, 'Forbidden: cross-origin WebSocket connection rejected');
+        return;
+      }
+    } catch {
+      callback(false, 403, 'Forbidden: invalid Origin header');
+      return;
+    }
+  }
+
   if (!DASH_PASSWORD) {
-    // No password configured — allow all connections (same as HTTP requireAuth)
-    callback(true);
+    // No password configured — only allow localhost connections
+    if (isLocalhostRequest(info.req)) {
+      callback(true);
+    } else {
+      callback(false, 401, 'Unauthorized: set DASHBOARD_PASSWORD for remote access');
+    }
     return;
   }
   const authHeader = info.req.headers['authorization'];
@@ -1916,8 +2039,12 @@ const wss = new WebSocketServer({ server, path: '/ws', verifyClient: verifyWsCli
 
 const clients = new Set<WebSocket>();
 
-wss.on('connection', (ws) => {
+// Track the original upgrade request per WS so classifyWsConnection can check locality
+const wsUpgradeRequests = new WeakMap<WebSocket, IncomingMessage>();
+
+wss.on('connection', (ws, req) => {
   clients.add(ws);
+  wsUpgradeRequests.set(ws, req);
 
   // Send initial state
   ws.send(JSON.stringify({ type: 'swarm:metrics', payload: computeMetrics() }));
@@ -1937,7 +2064,7 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'task:submit') {
       // Classify trust level for WebSocket task submissions
-      const wsSource = classifyWsConnection();
+      const wsSource = classifyWsConnection(wsUpgradeRequests.get(ws));
       const wsTrustLevel = trustGate.classifySource(wsSource);
       const sanitizedDescription = trustGate.sanitizeInput(msg.description || '', wsTrustLevel);
       const conversationId = msg.conversationId || undefined;
@@ -3066,6 +3193,7 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
       }
 
       // Streaming path — Claude Code provider with incremental tokens
+      // Dashboard tasks are behind auth middleware — always OWNER trust level
       const firstAgentTurn = await streamAssistantTurn({
         ws,
         taskId: id,
@@ -3076,6 +3204,7 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
           messages: taskMessages,
           agentId: sessionKey,
           permissions,
+          trustLevel: TrustLevel.OWNER,
         },
       });
       finalContent = await resolveInteractiveQuestions({
@@ -3089,6 +3218,7 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
         initialContent: firstAgentTurn.cleanContent,
         initialQuestions: firstAgentTurn.questions,
         permissions,
+        trustLevel: TrustLevel.OWNER,
       });
 
       // Send context usage update after streaming completes
@@ -3482,6 +3612,12 @@ export async function submitConnectorTask(
     throw new Error('No streaming LLM provider available');
   }
 
+  // SECURITY: Connector tasks always get restricted permissions.
+  // UNTRUSTED connectors are read-only; even OWNER connectors get limited tools.
+  const connectorPermissions = isOwner
+    ? { allowedTools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'], blockedCommands: [] as RegExp[], allowedPaths: [] as string[], maxTokenBudget: 100_000, canDelegate: false, canSpawnAgents: false }
+    : { allowedTools: ['Read', 'Glob', 'Grep'], blockedCommands: [] as RegExp[], allowedPaths: [] as string[], maxTokenBudget: 50_000, canDelegate: false, canSpawnAgents: false };
+
   // Collect the full response (no WebSocket streaming)
   let fullContent = '';
   await provider.completeStreaming(
@@ -3491,6 +3627,8 @@ export async function submitConnectorTask(
         { role: 'user', content: description },
       ],
       agentId: novaSessionKey,
+      permissions: connectorPermissions,
+      trustLevel,
     },
     (data: { text: string; type: string }) => {
       if (data.type === 'text') {

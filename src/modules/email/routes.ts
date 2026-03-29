@@ -26,7 +26,7 @@ import {
 import { encrypt, decrypt } from './crypto.js';
 import { getSchedulerStatus, triggerManualRun, startScheduler, toggleScheduler, updateInterval } from './scheduler.js';
 import { getTemplate, RETAILER_TEMPLATES } from './retailer-templates.js';
-import { getAuthUrl, exchangeCode } from './gmail-oauth.js';
+import { getAuthUrl, exchangeCode, verifyOAuthState } from './gmail-oauth.js';
 import { testImapConnection } from './imap-client.js';
 import { flagEmail, type RuleData } from './flag-engine.js';
 import { processEmailWithInstructions, hasLLMExtractor } from './llm-extractor.js';
@@ -118,8 +118,7 @@ export function createEmailRouter(): Router {
   router.get('/auth/gmail', (req: Request, res: Response) => {
     try {
       const accountId = req.query['account_id'];
-      const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      const authUrl = getAuthUrl(fullUrl, accountId as string | undefined);
+      const authUrl = getAuthUrl(accountId as string | undefined);
       res.redirect(authUrl);
     } catch (e) {
       res.redirect('/accounts?error=' + encodeURIComponent((e as Error).message));
@@ -132,13 +131,11 @@ export function createEmailRouter(): Router {
       if (oauthError) return res.redirect('/accounts?error=' + encodeURIComponent(String(oauthError)));
       if (!code) return res.status(400).json({ error: 'Missing authorization code' });
 
-      const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      const tokens = await exchangeCode(String(code), fullUrl);
+      // SECURITY: Verify the state nonce to prevent CSRF attacks
+      const statePayload = verifyOAuthState(state as string | undefined);
+      const tokens = await exchangeCode(String(code));
 
-      let accountId: string | null = null;
-      if (state) {
-        try { accountId = JSON.parse(String(state)).account_id; } catch {}
-      }
+      const accountId: string | null = statePayload['account_id'] || null;
 
       if (accountId) {
         const configObj: Record<string, string> = {

@@ -6,6 +6,25 @@ import type { ToolCall, ToolResult } from "../agents/base-agent.js";
 import type { LLMAdapter } from "./llm.js";
 import type { AgentPermissions } from "./trust.js";
 
+// ── Path Sandboxing ──────────────────────────────────────────────────────────
+
+/**
+ * Resolve a user-provided path relative to workDir and verify it stays inside.
+ * Rejects traversal attacks (e.g. ../../etc/passwd) and absolute paths outside workDir.
+ * @throws Error if the resolved path escapes the sandbox.
+ */
+function resolveAndValidatePath(workDir: string, userPath: string): string {
+  const resolved = path.resolve(workDir, userPath);
+  const normalizedWorkDir = path.resolve(workDir);
+
+  if (resolved !== normalizedWorkDir && !resolved.startsWith(normalizedWorkDir + path.sep)) {
+    throw new Error(
+      `Path traversal blocked: "${userPath}" resolves to "${resolved}" which is outside the workspace "${normalizedWorkDir}"`
+    );
+  }
+  return resolved;
+}
+
 // ── Configuration ─────────────────────────────────────────────────────────────
 
 export interface ToolExecutorConfig {
@@ -674,7 +693,7 @@ export class ToolExecutor {
 
       if (!pdfPath) throw new Error("extract_pdf requires a 'path' argument");
 
-      const resolvedPath = path.resolve(this.workDir, pdfPath);
+      const resolvedPath = resolveAndValidatePath(this.workDir, pdfPath);
 
       // Check file exists
       try {
@@ -785,7 +804,7 @@ export class ToolExecutor {
 
     // ── run_tests ──
     this.handlers.set("run_tests", async (args) => {
-      const projectPath = path.resolve(this.workDir, (args["projectPath"] as string) ?? ".");
+      const projectPath = resolveAndValidatePath(this.workDir, (args["projectPath"] as string) ?? ".");
       const testCommand = (args["testCommand"] as string) ?? this.detectTestCommand(projectPath);
 
       const [cmd, ...cmdArgs] = testCommand.split(/\s+/);
@@ -817,7 +836,7 @@ export class ToolExecutor {
 
     // ── lint_code ──
     this.handlers.set("lint_code", async (args) => {
-      const projectPath = path.resolve(this.workDir, (args["projectPath"] as string) ?? ".");
+      const projectPath = resolveAndValidatePath(this.workDir, (args["projectPath"] as string) ?? ".");
       const lintCommand = this.detectLintCommand(projectPath);
 
       const [cmd, ...cmdArgs] = lintCommand.split(/\s+/);
@@ -851,7 +870,7 @@ export class ToolExecutor {
       const dockerfile = (args["dockerfile"] as string) ?? "Dockerfile";
       const tag = (args["tag"] as string) ?? "hivemind-build:latest";
 
-      const resolvedDockerfile = path.resolve(this.workDir, dockerfile);
+      const resolvedDockerfile = resolveAndValidatePath(this.workDir, dockerfile);
       const context = path.dirname(resolvedDockerfile);
 
       const result = await runCommand(
@@ -989,7 +1008,7 @@ export class ToolExecutor {
 
       if (!source) throw new Error("analyze_logs requires a 'source' argument");
 
-      const resolvedPath = path.resolve(this.workDir, source);
+      const resolvedPath = resolveAndValidatePath(this.workDir, source);
 
       // Check if it's a file path
       try {
@@ -1062,7 +1081,7 @@ export class ToolExecutor {
       switch (scanType) {
         case "deps": {
           // Run npm audit for dependency vulnerabilities
-          const projectPath = path.resolve(this.workDir, target === "all" ? "." : target);
+          const projectPath = resolveAndValidatePath(this.workDir, target === "all" ? "." : target);
           const auditResult = await runCommand("npm", ["audit", "--json"], {
             cwd: projectPath,
             timeoutMs: 60_000,

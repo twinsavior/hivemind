@@ -6,7 +6,7 @@ import type { LLMProvider, CompletionOptions, CompletionResponse, StreamChunk, E
 import { getMessageText } from './llm.js';
 import { SessionManager, extractSessionId } from './session-manager.js';
 import type { AgentPermissions } from './trust.js';
-import { SAFE_DEFAULT_TOOL_LIST } from './trust.js';
+import { SAFE_DEFAULT_TOOL_LIST, TrustLevel } from './trust.js';
 
 /**
  * Claude Code CLI provider — full tool use, streaming, persistent sessions.
@@ -37,7 +37,7 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
     this.sessions = new SessionManager({ maxTasksPerSession: 20 });
   }
 
-  async complete(options: CompletionOptions & { permissions?: AgentPermissions }): Promise<CompletionResponse> {
+  async complete(options: CompletionOptions & { permissions?: AgentPermissions; trustLevel?: TrustLevel }): Promise<CompletionResponse> {
     const systemMsg = options.messages.find(m => m.role === 'system');
     const userMessages = options.messages
       .filter(m => m.role !== 'system')
@@ -46,7 +46,8 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
 
     const agentId = options.requestId || 'default';
     const systemText = systemMsg ? getMessageText(systemMsg) : undefined;
-    const result = await this.execClaude(userMessages, systemText, agentId, options.permissions);
+    const trustLevel = options.trustLevel ?? TrustLevel.OWNER;
+    const result = await this.execClaude(userMessages, systemText, agentId, options.permissions, trustLevel);
 
     return {
       content: result.text,
@@ -61,7 +62,7 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
    * Handles auto-summarization when context is running low.
    */
   async completeStreaming(
-    options: CompletionOptions & { agentId?: string; permissions?: AgentPermissions; signal?: AbortSignal },
+    options: CompletionOptions & { agentId?: string; permissions?: AgentPermissions; trustLevel?: TrustLevel; signal?: AbortSignal },
     onToken: (data: { text: string; type: 'text' | 'action' | 'done' | 'status' }) => void
   ): Promise<CompletionResponse> {
     const systemMsg = options.messages.find(m => m.role === 'system');
@@ -88,7 +89,8 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
         '\n\n## Session Context (carried over from previous session)\n' + carryover;
     }
 
-    const result = await this.execClaudeStreaming(userMessages, effectiveSystemPrompt, agentId, onToken, options.permissions, options.signal);
+    const trustLevel = options.trustLevel ?? TrustLevel.OWNER;
+    const result = await this.execClaudeStreaming(userMessages, effectiveSystemPrompt, agentId, onToken, options.permissions, trustLevel, options.signal);
 
     // Emit context usage for UI
     const usage = this.sessions.getContextUsagePercent(agentId);
@@ -150,10 +152,10 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
   }
 
   /** Non-streaming execution with session support and auto-retry on stale sessions */
-  private execClaude(prompt: string, systemPrompt: string | undefined, agentId: string, permissions?: AgentPermissions, _isRetry = false): Promise<{ text: string; raw: string }> {
+  private execClaude(prompt: string, systemPrompt: string | undefined, agentId: string, permissions?: AgentPermissions, trustLevel: TrustLevel = TrustLevel.OWNER, _isRetry = false): Promise<{ text: string; raw: string }> {
     return new Promise((resolve, reject) => {
       const resumeId = this.sessions.getResumeId(agentId);
-      const args = buildArgs(prompt, systemPrompt, 'stream-json', resumeId, this.model, permissions);
+      const args = buildArgs(prompt, systemPrompt, 'stream-json', resumeId, this.model, permissions, trustLevel);
 
       const proc = spawn(this.claudePath, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -183,7 +185,7 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
             // Auto-retry once without --resume if this was a stale session failure
             if (!_isRetry && resumeId) {
               console.log(`[Claude] Agent ${agentId}: stale session detected, auto-retrying without --resume`);
-              resolve(this.execClaude(prompt, systemPrompt, agentId, permissions, true));
+              resolve(this.execClaude(prompt, systemPrompt, agentId, permissions, trustLevel, true));
               return;
             }
           }
@@ -204,14 +206,15 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
     agentId: string,
     onToken: (data: { text: string; type: 'text' | 'action' | 'done' | 'status' }) => void,
     permissions?: AgentPermissions,
+    trustLevel: TrustLevel = TrustLevel.OWNER,
     signal?: AbortSignal,
     _isRetry = false,
   ): Promise<{ text: string; raw: string; tokenUsage?: { input: number; output: number; cached: number } | null; aborted?: boolean }> {
     return new Promise((resolve, reject) => {
       const resumeId = this.sessions.getResumeId(agentId);
-      const args = buildArgs(prompt, systemPrompt, 'stream-json', resumeId, this.model, permissions);
+      const args = buildArgs(prompt, systemPrompt, 'stream-json', resumeId, this.model, permissions, trustLevel);
 
-      console.log(`[Claude] Agent ${agentId}: ${resumeId ? `resuming session ${resumeId.slice(0, 8)}...` : 'new session'}`);
+      console.log(`[Claude] Agent ${agentId}: ${resumeId ? `resuming session ${resumeId.slice(0, 8)}...` : 'new session'} [trust=${trustLevel}]`);
 
       const proc = spawn(this.claudePath, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -375,7 +378,7 @@ export class ClaudeCodeProvider extends EventEmitter implements LLMProvider {
             if (!_isRetry && resumeId) {
               console.log(`[Claude] Agent ${agentId}: stale session detected, auto-retrying without --resume`);
               onToken({ text: 'Session expired, retrying...', type: 'status' });
-              resolve(this.execClaudeStreaming(prompt, systemPrompt, agentId, onToken, permissions, signal, true));
+              resolve(this.execClaudeStreaming(prompt, systemPrompt, agentId, onToken, permissions, trustLevel, signal, true));
               return;
             }
           }
@@ -453,20 +456,32 @@ function detectMcpConfig(): string | null {
   return cachedMcpConfig;
 }
 
-function buildArgs(prompt: string, systemPrompt: string | undefined, format: string, resumeSessionId?: string | null, model?: string, permissions?: AgentPermissions): string[] {
+function buildArgs(prompt: string, systemPrompt: string | undefined, format: string, resumeSessionId?: string | null, model?: string, permissions?: AgentPermissions, trustLevel: TrustLevel = TrustLevel.OWNER): string[] {
   const args = [
     '-p', prompt,
     '--output-format', format,
     '--verbose',
-    '--dangerously-skip-permissions',
     '--max-turns', '50',       // Allow more turns for complex multi-step tasks
   ];
 
-  // Only restrict tools if permissions explicitly specify a whitelist.
-  // With --dangerously-skip-permissions, omitting --allowedTools gives full access
-  // (Bash, Edit, Write, Read, Glob, Grep, WebSearch, WebFetch, MCP tools, etc.)
-  if (permissions?.allowedTools?.length) {
-    args.push('--allowedTools', permissions.allowedTools.join(','));
+  // SECURITY: Only grant full tool access (--dangerously-skip-permissions) for
+  // OWNER and TRUSTED trust levels. UNTRUSTED sources (connectors, unauthenticated)
+  // get a restricted read-only tool allowlist and never get --dangerously-skip-permissions.
+  const isTrusted = trustLevel === TrustLevel.OWNER || trustLevel === TrustLevel.TRUSTED;
+
+  if (isTrusted) {
+    args.push('--dangerously-skip-permissions');
+    // Further restrict tools if permissions specify a whitelist
+    if (permissions?.allowedTools?.length) {
+      args.push('--allowedTools', permissions.allowedTools.join(','));
+    }
+  } else {
+    // UNTRUSTED: use the explicit allowlist (safe defaults if none provided).
+    // Without --dangerously-skip-permissions, the CLI will only allow these tools.
+    const allowedTools = permissions?.allowedTools?.length
+      ? permissions.allowedTools
+      : SAFE_DEFAULT_TOOL_LIST;
+    args.push('--allowedTools', allowedTools.join(','));
   }
   if (model) {
     args.push('--model', model);

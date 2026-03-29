@@ -186,6 +186,13 @@ export class SkillLoader {
   async loadFile(filePath: string): Promise<SkillDefinition | null> {
     try {
       const content = await readFile(filePath, "utf-8");
+
+      // Silently skip markdown files that don't have YAML frontmatter —
+      // these are documentation, READMEs, changelogs, etc., not skill definitions.
+      if (!FRONTMATTER_RE.test(content)) {
+        return null;
+      }
+
       const skill = parseSkillFile(filePath, content);
 
       // Skip if content hasn't changed (same hash already registered)
@@ -223,7 +230,10 @@ export class SkillLoader {
     }
 
     // Directories to skip when scanning for skills
-    const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".next", "__pycache__"]);
+    const SKIP_DIRS = new Set([
+      "node_modules", ".git", "dist", "build", ".next", "__pycache__",
+      "references", "examples", "docs", "test", "tests", ".claude",
+    ]);
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);

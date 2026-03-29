@@ -16,7 +16,7 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/twinsavior/hivemind?include_prereleases&label=version)](https://github.com/twinsavior/hivemind/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/twinsavior/hivemind/ci.yml?branch=main&label=build)](https://github.com/twinsavior/hivemind/actions)
-[![Tests](https://img.shields.io/badge/tests-550_passing-brightgreen)](https://github.com/twinsavior/hivemind)
+[![Tests](https://img.shields.io/badge/tests-575_passing-brightgreen)](https://github.com/twinsavior/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/twinsavior/hivemind)](https://github.com/twinsavior/hivemind/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/twinsavior/hivemind/total)](https://github.com/twinsavior/hivemind/releases)
@@ -66,7 +66,7 @@ Everything runs locally on your machine. Your data never leaves your computer. N
 ## ✨ Features
 
 ### Seller Operations
-- **Email automation** — Parses purchase confirmations, shipment tracking, and seller alerts from 15+ retailers (Amazon, Walmart, eBay, Target, Costco, etc.) via Gmail OAuth or IMAP
+- **Email automation** — Parses purchase confirmations, shipment tracking, and seller alerts from 15+ retailers (Amazon, Walmart, eBay, Target, Costco, etc.) via Gmail OAuth or IMAP. Multi-account support with validated connections and encrypted credential storage
 - **Marketplace APIs** — Connects to Amazon SP-API, Walmart Seller Center, and eBay REST APIs for orders, inventory, FBA shipments, and account health
 - **Financial tracking** — SimpleFIN Bridge integration syncs bank/credit card transactions, auto-categorizes spend (sourcing, prep, shipping, fees)
 - **Profitability calculator** — Per-item ROI across Amazon, Walmart, and eBay using exact fee lookups
@@ -122,7 +122,7 @@ HIVEMIND
 │   └── cli/              # CLI entry point, commands, onboarding
 ├── desktop/              # Electron app, chat UI, operations views
 ├── skills/               # Built-in skills (marketplace experts, runbooks, tools)
-└── tests/                # Vitest test suites (550 tests)
+└── tests/                # Vitest test suites (575 tests)
 ```
 
 **Databases:**
@@ -183,7 +183,7 @@ Connect HIVEMIND to your Discord server through Settings > Connectors. The setup
 pnpm install          # Install dependencies
 pnpm dev              # Start dev mode (hot-reload via tsx)
 pnpm build            # Build TypeScript
-pnpm test             # Run tests (550 tests, Vitest)
+pnpm test             # Run tests (575 tests, Vitest)
 pnpm typecheck        # Type-check
 ```
 
@@ -198,7 +198,7 @@ pnpm typecheck        # Type-check
 | Database | SQLite via better-sqlite3 |
 | HTTP Server | Express 4 |
 | Real-time | WebSocket (ws) |
-| Desktop | Electron 33 |
+| Desktop | Electron 35 |
 | Email | Gmail API + IMAP |
 | Testing | Vitest |
 

@@ -13,7 +13,7 @@ Thank you for your interest in contributing to HIVEMIND. This guide covers every
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 20
+- [Node.js](https://nodejs.org/) >= 22
 - [pnpm](https://pnpm.io/) v10 or later
 - Git
 
@@ -46,6 +46,9 @@ hivemind/
 │   ├── agents/         # BaseAgent + 5 specialized agents
 │   ├── skills/         # Skill loader, registry, executor
 │   ├── memory/         # SQLite store, L0/L1/L2 hierarchy, context manager
+│   ├── modules/
+│   │   ├── email/      # Gmail/IMAP parsing, 15+ retailer templates, pipeline
+│   │   └── discord/    # Discord setup wizard + config writer
 │   ├── connectors/     # Slack, Discord, Telegram, webhook connectors
 │   ├── dashboard/      # Express + WebSocket server
 │   └── cli/            # CLI entry point, commands, onboarding

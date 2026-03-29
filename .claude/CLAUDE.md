@@ -27,7 +27,7 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 - **Key files:** `pipeline.ts` (orchestration), `flag-engine.ts` (email matching), `retailer-templates.ts` (15 retailers), `scheduler.ts` (background polling), `routes.ts` (Express router), `db.ts` (SQLite CRUD)
 - **API routes** lazy-loaded at `/api/email/*` on the dashboard Express server (in `server.ts`)
 - **Event bus:** `emailBus` emits `email:purchase`, `email:seller-alert`, `email:pipeline-complete`. Forwarded to dashboard WebSocket bus in `commands.ts`.
-- **Tests:** 170 flag engine tests in `tests/modules/email/flag-engine.test.ts`
+- **Tests:** 170 flag engine tests in `tests/modules/email/flag-engine.test.ts`, 25 route/auth tests in `tests/modules/email/email-routes.test.ts` and `gmail-oauth.test.ts`
 
 ## Security Model
 - **Trust levels:** OWNER (CLI, authenticated dashboard), TRUSTED (allow-listed users), UNTRUSTED (connectors, unauthenticated)
@@ -71,7 +71,7 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 ## Key Commands
 - `pnpm dev` — Start development mode
 - `pnpm build` — Build (main + email module)
-- `pnpm test` — Run tests (Vitest, 550 tests across 13 files)
+- `pnpm test` — Run tests (Vitest, 575 tests across 15 files)
 - `pnpm typecheck` — Type-check main project
 - `npx tsc -p tsconfig.email.json --noEmit` — Type-check email module
 - `cd desktop && npm run build:mac` — Build macOS .dmg

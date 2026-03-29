@@ -1,5 +1,3 @@
-<!-- /autoplan restore point: /Users/saul/.gstack/projects/hivemind/main-autoplan-restore-20260325-163256.md -->
-
 # HIVEMIND E-Commerce Seller Gap Analysis
 
 **Objective:** Ensure an Amazon, Walmart, or eBay arbitrage seller from the Buy Box / FlipAlert community can install HIVEMIND and get immediate, tangible value.

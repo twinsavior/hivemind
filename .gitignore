@@ -44,6 +44,9 @@ pnpm-debug.log*
 *.pid
 *.seed
 
+# Claude Code user memory (contains personal preferences)
+.claude/memory/
+
 # Temporary
 tmp/
 temp/

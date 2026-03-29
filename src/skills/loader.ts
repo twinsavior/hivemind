@@ -204,6 +204,12 @@ export class SkillLoader {
       this.registry.register(skill);
       return skill;
     } catch (err) {
+      // Silently skip files that have frontmatter but don't match HIVEMIND's
+      // skill schema (e.g. Claude Code skills, gstack skills, docs with YAML).
+      // Only report genuine I/O or unexpected errors.
+      if (err instanceof SkillValidationError) {
+        return null;
+      }
       this.onError(err as Error);
       return null;
     }

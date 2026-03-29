@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
 import { timingSafeEqual } from 'node:crypto';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { TrustLevel, type TaskSource, trustGate } from '../core/trust.js';
 import {
   buildWorkspaceReviewContext,
@@ -1506,7 +1507,6 @@ app.get('/api/config', (_req, res) => {
     if (!fs.existsSync(configPath)) {
       return res.json({});
     }
-    const { parse: parseYaml } = require('yaml');
     const raw = fs.readFileSync(configPath, 'utf-8');
     const parsed = parseYaml(raw) ?? {};
     res.json(parsed);
@@ -1519,7 +1519,6 @@ app.get('/api/config', (_req, res) => {
 app.post('/api/config', (req, res) => {
   try {
     const configPath = path.join(activeWorkDir, 'hivemind.yaml');
-    const { parse: parseYaml, stringify: stringifyYaml } = require('yaml');
 
     // Read existing config (preserve fields the UI doesn't manage)
     let existing: Record<string, unknown> = {};

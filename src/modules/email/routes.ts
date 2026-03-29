@@ -14,7 +14,7 @@ import {
   getAllRules, getRule, createRule, updateRule, deleteRule,
   getAllDestinations, getDestination, createDestination, updateDestination, deleteDestination,
   getProcessedEmails,
-  getLastPipelineRun,
+  getLastPipelineRun, getRecentPipelineRuns,
   getBlockedSenders, blockSender, unblockSender,
   getOrders, getOrderStats, getOrderDailyTrend, getOrdersByRetailer,
   getPurchaseStats, getPurchaseSpendTrend, getPurchasesByRetailer,
@@ -67,7 +67,7 @@ export function createEmailRouter(): Router {
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
-  router.post('/accounts', (req: Request, res: Response) => {
+  router.post('/accounts', async (req: Request, res: Response) => {
     try {
       const { name, type, email, config, enabled } = req.body;
       if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
@@ -75,6 +75,14 @@ export function createEmailRouter(): Router {
       if (!email?.trim()) return res.status(400).json({ error: 'email is required' });
 
       const configObj = config ?? {};
+
+      // For IMAP accounts, validate the connection before saving
+      if (type === 'imap') {
+        const { host, password, port = 993, tls = true } = configObj;
+        if (!host || !password) return res.status(400).json({ error: 'IMAP accounts require host and password in config' });
+        await testImapConnection({ email: email.trim(), password, host, port, tls });
+      }
+
       for (const key of SENSITIVE_CONFIG_KEYS) {
         if (configObj[key]) configObj[key] = encrypt(configObj[key]);
       }
@@ -138,11 +146,23 @@ export function createEmailRouter(): Router {
       const accountId: string | null = statePayload['account_id'] || null;
 
       if (accountId) {
+        // Merge new tokens into existing account config, preserving client_id/client_secret
+        // needed for per-account token refresh in gmail-client.ts
+        const existingAccount = getEmailAccount(Number(accountId));
+        const existingConfig = existingAccount ? safeParseJSON(existingAccount.config, {}) : {};
+
+        // Resolve shared Google credentials for the account config
+        const clientId = getSetting('google_client_id') || process.env.GOOGLE_CLIENT_ID || '';
+        const encryptedSecret = getApiKey('google_client_secret');
+
         const configObj: Record<string, string> = {
+          ...existingConfig,
           access_token: encrypt(tokens.access_token),
           refresh_token: encrypt(tokens.refresh_token || ''),
           token_expiry: tokens.expiry_date ? String(tokens.expiry_date) : '',
           scopes: (tokens as any).scope || '',
+          client_id: clientId,
+          client_secret: encryptedSecret || existingConfig.client_secret || '',
         };
         updateEmailAccount(Number(accountId), {
           config: JSON.stringify(configObj),
@@ -217,7 +237,6 @@ export function createEmailRouter(): Router {
   router.get('/pipeline/history', (req: Request, res: Response) => {
     try {
       const limit = Math.min(Number(req.query['limit'] || 10), 50);
-      const { getRecentPipelineRuns } = require('./db.js');
       const runs = getRecentPipelineRuns(limit);
       res.json(runs);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
@@ -509,17 +528,29 @@ export function createEmailRouter(): Router {
   // ── Settings ──────────────────────────────────────────────────────────────
 
   router.get('/settings', (_req: Request, res: Response) => {
-    try { res.json(getAllSettings()); }
+    try {
+      const settings = getAllSettings();
+      // Indicate whether google_client_secret is configured without leaking it
+      const hasSecret = Boolean(getApiKey('google_client_secret'));
+      if (hasSecret) settings['google_client_secret'] = '****';
+      res.json(settings);
+    }
     catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
   router.put('/settings', (req: Request, res: Response) => {
     try {
       for (const [key, value] of Object.entries(req.body)) {
+        if (key === 'google_client_secret') {
+          // Store the secret encrypted in the api_keys table, not in plain settings
+          if (value && String(value) !== '****') {
+            setApiKey('google_client_secret', encrypt(String(value)));
+          }
+          continue;
+        }
         setSetting(key, String(value));
       }
       if (req.body.scan_interval_minutes) {
-        
         updateInterval(parseInt(String(req.body.scan_interval_minutes), 10));
       }
       res.json({ ok: true });

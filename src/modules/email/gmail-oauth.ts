@@ -1,6 +1,6 @@
 import { OAuth2Client } from 'google-auth-library';
 import { randomBytes } from 'node:crypto';
-import { getGmailAuth, setGmailAuth, getSetting, setSetting, getApiKey } from './db.js';
+import { getGmailAuth, setGmailAuth, getSetting, setSetting, getApiKey, setApiKey } from './db.js';
 import { encrypt, decrypt } from './crypto.js';
 
 const SCOPES = [
@@ -10,8 +10,28 @@ const SCOPES = [
 
 function getGoogleCredentials(): { clientId: string; clientSecret: string } {
   const clientId = getSetting('google_client_id') || process.env.GOOGLE_CLIENT_ID;
+
+  // Primary: encrypted secret in api_keys table
   const encryptedSecret = getApiKey('google_client_secret');
-  const clientSecret = encryptedSecret ? decrypt(encryptedSecret) : process.env.GOOGLE_CLIENT_SECRET;
+  let clientSecret: string | undefined;
+  if (encryptedSecret) {
+    clientSecret = decrypt(encryptedSecret);
+  }
+
+  // Migration fallback: older installs may have stored the secret as plain text in settings
+  if (!clientSecret) {
+    const legacySecret = getSetting('google_client_secret');
+    if (legacySecret && legacySecret !== '****') {
+      clientSecret = legacySecret;
+      // Migrate to encrypted storage and clean up the plain-text setting
+      setApiKey('google_client_secret', encrypt(legacySecret));
+      setSetting('google_client_secret', '');
+    }
+  }
+
+  if (!clientSecret) {
+    clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  }
 
   if (!clientId || !clientSecret) {
     throw new Error(
@@ -92,8 +112,10 @@ export function getRedirectUriForDisplay(): string {
 export function hasGoogleCredentials(): boolean {
   const clientId = getSetting('google_client_id') || process.env.GOOGLE_CLIENT_ID;
   const encryptedSecret = getApiKey('google_client_secret');
-  const clientSecret = encryptedSecret || process.env.GOOGLE_CLIENT_SECRET;
-  return !!(clientId && clientSecret);
+  // Also check legacy plain-text setting for migration compat
+  const legacySecret = getSetting('google_client_secret');
+  const hasSecret = !!(encryptedSecret || (legacySecret && legacySecret !== '****') || process.env.GOOGLE_CLIENT_SECRET);
+  return !!(clientId && hasSecret);
 }
 
 export async function exchangeCode(code: string): Promise<{

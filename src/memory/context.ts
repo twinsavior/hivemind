@@ -212,6 +212,25 @@ export class ContextManager {
     return { entries: loaded, budget: this.tokenBudget, skipped };
   }
 
+  /**
+   * Load specific memory entries into context, allocating from the
+   * EXISTING budget without resetting. Use for backfilling additional
+   * entries after loadRelevant().
+   */
+  loadEntries(entries: MemoryEntry[]): MemoryEntry[] {
+    const loaded: MemoryEntry[] = [];
+    for (const entry of entries) {
+      if (this.loadedEntries.has(entry.id)) continue;
+      if (this.tryAllocate(this.tokenBudget, entry, entry.level)) {
+        this.loadedEntries.set(entry.id, entry);
+        loaded.push(entry);
+      } else {
+        break; // Budget exhausted
+      }
+    }
+    return loaded;
+  }
+
   /** Clear all loaded entries and reset the budget. */
   reset(newBudget?: number): void {
     this.loadedEntries.clear();

@@ -8,7 +8,7 @@ import type { SkillDefinition, AgentRole } from "../../src/skills/types.js";
 
 function makeSkill(
   name: string,
-  opts: { agent?: AgentRole; tags?: string[]; triggers?: string[]; dependencies?: string[] } = {},
+  opts: { agent?: AgentRole; tags?: string[]; triggers?: string[]; dependencies?: string[]; optional?: boolean } = {},
 ): SkillDefinition {
   return {
     metadata: {
@@ -22,6 +22,7 @@ function makeSkill(
       timeout: 300,
       tags: opts.tags ?? [],
       author: "test",
+      optional: opts.optional,
     },
     instructions: `Instructions for ${name}`,
     sourcePath: `/skills/${name}.md`,
@@ -171,6 +172,67 @@ describe("SkillRegistry", () => {
       expect(s.total).toBe(3);
       expect(s.scout).toBe(2);
       expect(s.builder).toBe(1);
+    });
+  });
+
+  describe("matchSellerIntent", () => {
+    it("matches Amazon domain terms", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("what is my ASIN defect rate?");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("amazon-seller-expert");
+    });
+
+    it("matches eBay domain terms", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("ebay-seller-expert", { triggers: ["ebay seller"] }));
+
+      const result = registry.matchSellerIntent("how do I handle a VERO complaint?");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("ebay-seller-expert");
+    });
+
+    it("matches Walmart domain terms", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("walmart-seller-expert", { triggers: ["walmart seller"] }));
+
+      const result = registry.matchSellerIntent("how does WFS two-day shipping work?");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("walmart-seller-expert");
+    });
+
+    it("returns empty for non-seller queries", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("how do I make a website?");
+      expect(result.length).toBe(0);
+    });
+
+    it("matches multiple marketplaces in one query", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+      registry.register(makeSkill("ebay-seller-expert", { triggers: ["ebay seller"] }));
+
+      const result = registry.matchSellerIntent("compare FBA fees vs final value fee");
+      expect(result.length).toBe(2);
+    });
+
+    it("skips optional skills", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"], optional: true }));
+
+      const result = registry.matchSellerIntent("what is FBA?");
+      expect(result.length).toBe(0);
+    });
+
+    it("returns empty when skill is not registered", () => {
+      const registry = new SkillRegistry();
+      // Don't register any skills
+      const result = registry.matchSellerIntent("what is my ASIN defect rate?");
+      expect(result.length).toBe(0);
     });
   });
 });

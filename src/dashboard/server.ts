@@ -81,6 +81,14 @@ type WSMessage =
   | { type: 'swarm:node:update'; payload: SwarmNode }
   | { type: 'ping' };
 
+interface GroundingInfo {
+  sellerData: boolean;
+  sellerDataLabel?: string;   // e.g. "amazon + walmart" or "amazon (degraded)"
+  skills: string[];            // skill names that were loaded
+  memoryEntries: number;       // count of memory entries in context
+  degradedMarketplaces?: string[];
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 const agents = new Map<string, AgentInfo>();
@@ -581,47 +589,135 @@ async function saveTaskMemory(
   const swarm = getInjectedSwarmState();
   if (!swarm?.memoryStore || content.length < 30) return;
 
+  const store = swarm.memoryStore;
+
   try {
     const agent = swarm.agents?.get(agentId);
     const agentName = agent ? (agent as any).identity?.name || agentId : agentId;
 
-    // Create a concise L0 summary (first meaningful sentence or truncated)
-    const firstLine = content.replace(/\*\*Actions taken:\*\*[\s\S]*?\n\n/, '').trim();
-    const summary = firstLine.length > 200
-      ? firstLine.slice(0, 200).replace(/\s\S*$/, '') + '...'
-      : firstLine.split('\n')[0]?.slice(0, 200) || firstLine.slice(0, 200);
+    // Strip action blocks for cleaner content
+    const stripped = content.replace(/\*\*Actions taken:\*\*[\s\S]*?\n\n/, '').trim();
 
-    // L1 overview: first ~1500 chars of actual content (skip action blocks)
-    const overview = content
-      .replace(/\*\*Actions taken:\*\*[\s\S]*?\n\n/, '')
-      .slice(0, 1500)
-      .trim();
+    // L0 summary: first meaningful sentence or truncated (~200 chars)
+    const summary = stripped.length > 200
+      ? stripped.slice(0, 200).replace(/\s\S*$/, '') + '...'
+      : stripped.split('\n')[0]?.slice(0, 200) || stripped.slice(0, 200);
 
-    // Write L0 summary (dedup: update if same task title already exists)
+    // L1 overview: first ~1500 chars
+    const overview = stripped.slice(0, 1500).trim();
+
+    // L2 full content: capped at 8000 chars
+    const fullContent = stripped.slice(0, 8000).trim();
+
     const ns = conversationId ? `tasks.${conversationId.slice(0, 8)}` : 'tasks';
-    const l0Id = await swarm.memoryStore.writeOrUpdate({
-      namespace: ns,
-      title: taskDescription.slice(0, 100),
-      content: summary,
-      level: 0,
-      source: agentId,
-      metadata: { agentName, conversationId, timestamp: Date.now() },
-    });
+    const title = taskDescription.slice(0, 100);
+    const metadata = { agentName, conversationId, timestamp: Date.now() } as Record<string, unknown>;
 
-    // Write L1 overview linked to L0 (dedup: update if exists)
-    if (overview.length > summary.length) {
-      await swarm.memoryStore.writeOrUpdate({
-        namespace: ns,
-        title: `${taskDescription.slice(0, 80)} (overview)`,
-        content: overview,
-        level: 1,
-        parentId: l0Id,
-        source: agentId,
-        metadata: { agentName, conversationId, timestamp: Date.now() },
-      });
+    // Check for existing L0 duplicate
+    const existingL0Id = store.findDuplicate(ns, title, 0);
+
+    let hasL1 = false;
+    let hasL2 = false;
+
+    if (!existingL0Id) {
+      // ── New entry ──────────────────────────────────────────────────
+      if (stripped.length > 1500) {
+        // Content is large enough to warrant full hierarchy
+        await store.writeHierarchy({
+          namespace: ns,
+          title,
+          summary,
+          overview,
+          fullContent,
+          metadata,
+          source: agentId,
+        });
+        hasL1 = true;
+        hasL2 = true;
+      } else {
+        // Small content: L0 + L1 only (no point duplicating into L2)
+        const l0Id = await store.write({
+          namespace: ns,
+          title,
+          content: summary,
+          level: 0,
+          source: agentId,
+          metadata,
+        });
+        if (overview.length > summary.length) {
+          await store.write({
+            namespace: ns,
+            title: `${taskDescription.slice(0, 80)} (overview)`,
+            content: overview,
+            level: 1,
+            parentId: l0Id,
+            source: agentId,
+            metadata,
+          });
+          hasL1 = true;
+        }
+      }
+    } else {
+      // ── Duplicate: update in place ─────────────────────────────────
+      await store.update(existingL0Id, { content: summary, metadata });
+
+      // Find and update/create L1
+      const l0Children = store.getChildren(existingL0Id);
+      const existingL1 = l0Children.find((c: any) => c.level === 1);
+
+      if (existingL1) {
+        await store.update(existingL1.id, { content: overview, metadata });
+        hasL1 = true;
+
+        // Find and update/create L2 if content is large enough
+        if (stripped.length > 1500) {
+          const l1Children = store.getChildren(existingL1.id);
+          const existingL2 = l1Children.find((c: any) => c.level === 2);
+
+          if (existingL2) {
+            await store.update(existingL2.id, { content: fullContent, metadata });
+          } else {
+            await store.write({
+              namespace: ns,
+              title: `${taskDescription.slice(0, 80)} (full)`,
+              content: fullContent,
+              level: 2,
+              parentId: existingL1.id,
+              source: agentId,
+              metadata,
+            });
+          }
+          hasL2 = true;
+        }
+      } else if (overview.length > summary.length) {
+        // No L1 exists yet — create it
+        const newL1Id = await store.write({
+          namespace: ns,
+          title: `${taskDescription.slice(0, 80)} (overview)`,
+          content: overview,
+          level: 1,
+          parentId: existingL0Id,
+          source: agentId,
+          metadata,
+        });
+        hasL1 = true;
+
+        if (stripped.length > 1500) {
+          await store.write({
+            namespace: ns,
+            title: `${taskDescription.slice(0, 80)} (full)`,
+            content: fullContent,
+            level: 2,
+            parentId: newL1Id,
+            source: agentId,
+            metadata,
+          });
+          hasL2 = true;
+        }
+      }
     }
 
-    console.log(`[Memory] Saved task: "${taskDescription.slice(0, 60)}" (${summary.length} + ${overview.length} tokens) by ${agentName}`);
+    console.log(`[Memory] Saved task: L0${hasL1 ? '+L1' : ''}${hasL2 ? '+L2' : ''} "${taskDescription.slice(0, 60)}" by ${agentName}`);
   } catch (err) {
     console.error('[Memory] Failed to save task:', err);
   }
@@ -694,7 +790,11 @@ async function loadProjectKnowledge(description: string): Promise<string> {
       }
     } else if (skillRegistry?.matchTriggers) {
       // Background trigger matching — increased limit for trigger-matched skills
-      const matched = skillRegistry.matchTriggers(description);
+      let matched = skillRegistry.matchTriggers(description);
+      // Fallback: try seller-domain intent matching for natural seller questions
+      if (matched.length === 0 && skillRegistry.matchSellerIntent) {
+        matched = skillRegistry.matchSellerIntent(description);
+      }
       for (const skill of matched.slice(0, 3)) { // Max 3 skills per task
         context += `\n\n## Skill: ${skill.metadata.name}\n${skill.instructions.slice(0, 12000)}`;
       }
@@ -719,22 +819,9 @@ async function loadMemoryContext(taskDescription: string): Promise<string> {
     // This ensures task-relevant context always gets priority over bulk loading.
     await ctx.loadRelevant(taskDescription, { limit: 10 });
 
-    // Step 2: Fill remaining budget with recent L0 summaries from known namespaces.
-    // Cap at 50 most recent to prevent unbounded growth from swamping the budget.
-    const recentSummaries = swarm.memoryStore.listByNamespace('tasks', 0 /* L0 */)
-      .slice(0, 50);
-
-    for (const entry of recentSummaries) {
-      if (ctx.getBudget().remaining < entry.tokenCount) break;
-      if (!ctx.isLoaded(entry.id)) {
-        // Use load() with a single-entry namespace to respect budget
-        try {
-          await ctx.load({ namespaces: [entry.namespace], budget: ctx.getBudget().remaining + ctx.getBudget().used });
-        } catch {
-          break; // Budget exhausted
-        }
-      }
-    }
+    // Step 2: Fill remaining budget with recent L0 summaries
+    const recentSummaries = swarm.memoryStore.listByNamespace('tasks', 0).slice(0, 50);
+    ctx.loadEntries(recentSummaries.filter((e: any) => !ctx.isLoaded(e.id)));
 
     const rendered = ctx.renderContext();
     if (rendered.length > 10) {
@@ -760,7 +847,20 @@ async function loadSellerContext(): Promise<string> {
     const connected = svc.getConnectedMarketplaces();
     if (connected.length > 0) {
       const briefing = await svc.getDailyBriefing();
-      lines.push('## Seller Business Context (live data)');
+
+      // Dynamic header based on marketplace health
+      const healthStatus = svc.getHealthStatus();
+      const degradedMPs = Object.values(healthStatus).filter(h => h.connected && !h.healthy);
+      if (degradedMPs.length === 0) {
+        lines.push('## Seller Business Context (live data)');
+      } else {
+        const names = degradedMPs.map(h => h.marketplace).join(', ');
+        lines.push(`## Seller Business Context (partial data -- ${names} unavailable)`);
+        for (const h of degradedMPs) {
+          lines.push(`WARNING: ${h.marketplace} data unavailable: ${h.lastError || 'unknown error'}`);
+        }
+      }
+
       lines.push(`Date: ${briefing.date}`);
       lines.push(`Connected marketplaces: ${connected.join(', ')}`);
       lines.push(`Orders (24h): ${briefing.totalOrders} | Revenue: $${briefing.totalRevenue.toFixed(2)}`);
@@ -830,6 +930,10 @@ async function loadSellerContext(): Promise<string> {
   }
 
   if (lines.length === 0) return '';
+
+  // Grounding honesty instruction — agents must be transparent about data sources
+  lines.push('\n\nIMPORTANT: If marketplace data is partial or unavailable, explicitly state which data sources are missing. Never present absence of data as a real business fact. If providing general guidance rather than account-specific advice, say so clearly.');
+
   return '\n\n' + lines.join('\n');
 }
 
@@ -975,11 +1079,18 @@ app.get('/api/onboarding/providers', async (_req, res) => {
 app.post('/api/profile', (req, res) => {
   try {
     const draft = normalizeProfile(req.body ?? {});
-    const profile = saveProfile(draft);
+    const savedProfile = saveProfile(draft);
+
+    // Refresh in-memory agent prompts so the new profile takes effect immediately
+    const swarm = getInjectedSwarmState();
+    if (swarm?.refreshPrompts) {
+      swarm.refreshPrompts(savedProfile);
+    }
+
     res.json({
       ok: true,
-      profile,
-      firstTaskSuggestion: buildFirstTaskSuggestion(profile),
+      profile: savedProfile,
+      firstTaskSuggestion: buildFirstTaskSuggestion(savedProfile),
     });
   } catch (error) {
     res.status(500).json({
@@ -1590,7 +1701,14 @@ import { getMarketplaceService } from '../core/marketplace/index.js';
 app.get('/api/seller/status', (_req, res) => {
   try {
     const svc = getMarketplaceService();
-    res.json(svc.getConnectionStatus());
+    // Return both connection status and health status for richer UI display
+    const connectionStatus = svc.getConnectionStatus();
+    const healthStatus = svc.getHealthStatus();
+    const merged: Record<string, any> = {};
+    for (const mp of ['amazon', 'walmart', 'ebay'] as const) {
+      merged[mp] = { ...connectionStatus[mp], ...healthStatus[mp] };
+    }
+    res.json(merged);
   } catch (err: unknown) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
   }
@@ -2531,6 +2649,44 @@ async function coordinateRequest(ws: WebSocket, description: string, taskId?: st
     loadSellerContext(),
   ]);
 
+  // Build grounding info to tell the UI what data/skills backed this response
+  const grounding: GroundingInfo = {
+    sellerData: !!(sellerContext && sellerContext.length > 20),
+    skills: [],
+    memoryEntries: 0,
+  };
+
+  // Extract loaded skill names from project knowledge
+  if (projectKnowledge) {
+    const skillMatches = projectKnowledge.matchAll(/## (?:Skill|Reference): ([\w-]+)/g);
+    for (const m of skillMatches) if (m[1]) grounding.skills.push(m[1]);
+  }
+
+  // Count memory entries
+  if (memoryContext) {
+    grounding.memoryEntries = (memoryContext.match(/### /g) || []).length;
+  }
+
+  // Check marketplace health for seller data label
+  if (grounding.sellerData) {
+    try {
+      const svc = (globalThis as any).__marketplaceService || swarm?.marketplaceService;
+      if (svc?.getHealthStatus) {
+        const health = svc.getHealthStatus();
+        const degraded: string[] = [];
+        const labels: string[] = [];
+        for (const [mp, h] of Object.entries(health) as any) {
+          if (h.connected) {
+            labels.push(h.healthy ? mp : `${mp} (degraded)`);
+            if (!h.healthy) degraded.push(mp);
+          }
+        }
+        grounding.sellerDataLabel = labels.join(' + ');
+        if (degraded.length > 0) grounding.degradedMarketplaces = degraded;
+      }
+    } catch {}
+  }
+
   // Nova also gets KNOWLEDGE_SYSTEM.md so she knows how to maintain docs
   let knowledgeRules = '';
   try {
@@ -3007,13 +3163,13 @@ async function coordinateRequest(ws: WebSocket, description: string, taskId?: st
           }
         );
 
-        ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId: 'nova-1', content: synthesisContent || cleanText }));
+        ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId: 'nova-1', content: synthesisContent || cleanText, grounding }));
       } else {
-        ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId: 'nova-1', content: cleanText }));
+        ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId: 'nova-1', content: cleanText, grounding }));
       }
     } else {
       // No delegations — Nova handled it directly
-      ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId: 'nova-1', content: sanitizeAgentOutput(novaFullResponse) }));
+      ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId: 'nova-1', content: sanitizeAgentOutput(novaFullResponse), grounding }));
     }
 
     // Send context usage for Nova
@@ -3150,6 +3306,41 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
       + (projectKnowledge || '')
       + (memContext ? `\n\n## Prior Context from Memory\n${memContext}` : '')
       + (agentSellerCtx || '');
+
+    // Build grounding info to tell the UI what data/skills backed this response
+    const grounding: GroundingInfo = {
+      sellerData: !!(agentSellerCtx && agentSellerCtx.length > 20),
+      skills: [],
+      memoryEntries: 0,
+    };
+
+    if (projectKnowledge) {
+      const skillMatches = projectKnowledge.matchAll(/## (?:Skill|Reference): ([\w-]+)/g);
+      for (const m of skillMatches) if (m[1]) grounding.skills.push(m[1]);
+    }
+
+    if (memContext) {
+      grounding.memoryEntries = (memContext.match(/### /g) || []).length;
+    }
+
+    if (grounding.sellerData) {
+      try {
+        const svc = (globalThis as any).__marketplaceService || swarm?.marketplaceService;
+        if (svc?.getHealthStatus) {
+          const health = svc.getHealthStatus();
+          const degraded: string[] = [];
+          const labels: string[] = [];
+          for (const [mp, h] of Object.entries(health) as any) {
+            if (h.connected) {
+              labels.push(h.healthy ? mp : `${mp} (degraded)`);
+              if (!h.healthy) degraded.push(mp);
+            }
+          }
+          grounding.sellerDataLabel = labels.join(' + ');
+          if (degraded.length > 0) grounding.degradedMarketplaces = degraded;
+        }
+      } catch {}
+    }
 
     // Find the best provider: prefer claude-code or codex (streaming + tools), then default
     const availableProviders = llm?.listProviders?.() ?? [];
@@ -3325,7 +3516,7 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
       bus.emit('agent:update', dashAgent);
     }
 
-    ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId, content: finalContent }));
+    ws.send(JSON.stringify({ type: 'task:complete', taskId: id, agentId, content: finalContent, grounding }));
     return finalContent;
   } catch (err) {
     taskFollowups.delete(id);

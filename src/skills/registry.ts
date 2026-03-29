@@ -136,6 +136,51 @@ export class SkillRegistry {
   }
 
   // -----------------------------------------------------------------------
+  // Seller domain intent matching
+  // -----------------------------------------------------------------------
+
+  /** Domain-specific seller terms that map to marketplace expert skills. */
+  private static readonly SELLER_DOMAIN_TERMS: Record<string, string[]> = {
+    'amazon-seller-expert': [
+      'asin', 'fnsku', 'fba', 'fbm', 'buy box', 'buybox', 'a-to-z', 'a to z',
+      'stranded inventory', 'suppressed listing', 'inbound shipment', 'removal order',
+      'long-term storage', 'account health rating', 'order defect rate', 'odr',
+      'late shipment rate', 'valid tracking rate', 'ip complaint', 'plan of action',
+      'product authenticity', 'safety complaint', 'hazmat', 'gated category', 'ungated',
+      'sponsored products', 'sponsored brands', 'amazon ppc', 'seller central',
+    ],
+    'walmart-seller-expert': [
+      'wfs', 'walmart fulfillment', 'walmart connect', 'pro seller badge',
+      'item setup', 'content status', 'unpublished item', 'seller scorecard',
+      'two-day shipping', 'walmart api', 'walmart seller center',
+    ],
+    'ebay-seller-expert': [
+      'vero', 'below standard', 'top rated seller', 'above standard',
+      'item not as described', 'inad', 'final value fee', 'fvf',
+      'promoted listing', 'seller hub', 'managed payments',
+      'global shipping program', 'resolution center', 'unpaid item',
+      'best offer', 'auction format',
+    ],
+  };
+
+  /**
+   * Match seller-domain intent using a broader term dictionary.
+   * Fallback when matchTriggers() doesn't find exact phrase matches.
+   */
+  matchSellerIntent(prompt: string): SkillDefinition[] {
+    const lower = prompt.toLowerCase();
+    const matched = new Set<string>();
+    for (const [skillName, terms] of Object.entries(SkillRegistry.SELLER_DOMAIN_TERMS)) {
+      if (terms.some(term => lower.includes(term))) {
+        matched.add(skillName);
+      }
+    }
+    return [...matched]
+      .map(name => this.get(name))
+      .filter((s): s is SkillDefinition => s !== undefined && !s.metadata.optional);
+  }
+
+  // -----------------------------------------------------------------------
   // Dependency resolution
   // -----------------------------------------------------------------------
 

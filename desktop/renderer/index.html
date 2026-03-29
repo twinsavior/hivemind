@@ -934,6 +934,45 @@
       font-weight: 600;
     }
 
+    .grounding-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+      margin-bottom: 2px;
+    }
+    .grounding-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.4;
+      opacity: 0.85;
+    }
+    .grounding-chip.seller-data {
+      background: rgba(34, 197, 94, 0.12);
+      color: #22c55e;
+    }
+    .grounding-chip.seller-degraded {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+    }
+    .grounding-chip.skill {
+      background: rgba(99, 102, 241, 0.12);
+      color: #6366f1;
+    }
+    .grounding-chip.memory {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+    }
+    .grounding-chip.general {
+      background: rgba(107, 114, 128, 0.12);
+      color: #9ca3af;
+    }
+
     .message-text {
       font-size: 14px;
       line-height: 1.5;
@@ -4415,6 +4454,8 @@
       // ── Amazon Card ──────────────────────────────────────────────────
       const amzConnected = status.amazon?.connected;
       const amzDate = status.amazon?.connectedAt;
+      const amzHealthy = status.amazon?.healthy !== false;
+      const amzLastError = status.amazon?.lastError;
       const amzGuide = mpGuideOpen.amazon;
 
       const amazonCard = `<div class="mp-card ${amzConnected ? 'connected' : ''}">
@@ -4424,12 +4465,18 @@
             <div class="mp-title">Amazon Seller Central</div>
             <div class="mp-what">See your orders, FBA shipments, inventory levels, and account health alerts — all inside HIVEMIND.</div>
           </div>
-          ${amzConnected ? `<div class="mp-badge">✓ Connected${amzDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(amzDate).toLocaleDateString() + '</span>' : ''}</div>` : ''}
+          ${amzConnected ? (amzHealthy
+            ? `<div class="mp-badge">✓ Connected${amzDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(amzDate).toLocaleDateString() + '</span>' : ''}</div>`
+            : `<div class="mp-badge" style="background:rgba(234,179,8,0.15);color:#eab308;">⚠ API Issues${amzDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(amzDate).toLocaleDateString() + '</span>' : ''}</div>`)
+          : ''}
         </div>
         ${amzConnected ? `
-          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;align-items:center;gap:12px;">
-            <span style="font-size:13px;color:var(--text-muted);">Your Amazon account is connected and pulling live data.</span>
-            <button class="mp-disconnect-btn" id="mp-disconnect-amazon" style="margin-left:auto;">Disconnect</button>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:13px;color:var(--text-muted);">${amzHealthy ? 'Your Amazon account is connected and pulling live data.' : 'Connected · API issues detected'}</span>
+              <button class="mp-disconnect-btn" id="mp-disconnect-amazon" style="margin-left:auto;">Disconnect</button>
+            </div>
+            ${!amzHealthy && amzLastError ? '<div style="font-size:12px;color:#eab308;opacity:0.8;">' + amzLastError + '</div>' : ''}
           </div>
         ` : `
           ${!amzGuide ? `
@@ -4491,6 +4538,8 @@
       // ── Walmart Card ─────────────────────────────────────────────────
       const wmtConnected = status.walmart?.connected;
       const wmtDate = status.walmart?.connectedAt;
+      const wmtHealthy = status.walmart?.healthy !== false;
+      const wmtLastError = status.walmart?.lastError;
       const wmtGuide = mpGuideOpen.walmart;
 
       const walmartCard = `<div class="mp-card ${wmtConnected ? 'connected' : ''}">
@@ -4500,12 +4549,18 @@
             <div class="mp-title">Walmart Marketplace</div>
             <div class="mp-what">See your Walmart items, orders, inventory, and returns inside HIVEMIND.</div>
           </div>
-          ${wmtConnected ? `<div class="mp-badge">✓ Connected${wmtDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(wmtDate).toLocaleDateString() + '</span>' : ''}</div>` : ''}
+          ${wmtConnected ? (wmtHealthy
+            ? `<div class="mp-badge">✓ Connected${wmtDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(wmtDate).toLocaleDateString() + '</span>' : ''}</div>`
+            : `<div class="mp-badge" style="background:rgba(234,179,8,0.15);color:#eab308;">⚠ API Issues${wmtDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(wmtDate).toLocaleDateString() + '</span>' : ''}</div>`)
+          : ''}
         </div>
         ${wmtConnected ? `
-          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;align-items:center;gap:12px;">
-            <span style="font-size:13px;color:var(--text-muted);">Your Walmart account is connected and pulling live data.</span>
-            <button class="mp-disconnect-btn" id="mp-disconnect-walmart" style="margin-left:auto;">Disconnect</button>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:13px;color:var(--text-muted);">${wmtHealthy ? 'Your Walmart account is connected and pulling live data.' : 'Connected · API issues detected'}</span>
+              <button class="mp-disconnect-btn" id="mp-disconnect-walmart" style="margin-left:auto;">Disconnect</button>
+            </div>
+            ${!wmtHealthy && wmtLastError ? '<div style="font-size:12px;color:#eab308;opacity:0.8;">' + wmtLastError + '</div>' : ''}
           </div>
         ` : `
           ${!wmtGuide ? `
@@ -4551,6 +4606,8 @@
       // ── eBay Card ────────────────────────────────────────────────────
       const ebayConnected = status.ebay?.connected;
       const ebayDate = status.ebay?.connectedAt;
+      const ebayHealthy = status.ebay?.healthy !== false;
+      const ebayLastError = status.ebay?.lastError;
       const ebayGuide = mpGuideOpen.ebay;
 
       const ebayCard = `<div class="mp-card ${ebayConnected ? 'connected' : ''}">
@@ -4560,12 +4617,18 @@
             <div class="mp-title">eBay</div>
             <div class="mp-what">See your eBay listings, orders, seller metrics, and financial transactions inside HIVEMIND.</div>
           </div>
-          ${ebayConnected ? `<div class="mp-badge">✓ Connected${ebayDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(ebayDate).toLocaleDateString() + '</span>' : ''}</div>` : ''}
+          ${ebayConnected ? (ebayHealthy
+            ? `<div class="mp-badge">✓ Connected${ebayDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(ebayDate).toLocaleDateString() + '</span>' : ''}</div>`
+            : `<div class="mp-badge" style="background:rgba(234,179,8,0.15);color:#eab308;">⚠ API Issues${ebayDate ? '<br><span style="font-size:11px;color:var(--text-muted);">' + new Date(ebayDate).toLocaleDateString() + '</span>' : ''}</div>`)
+          : ''}
         </div>
         ${ebayConnected ? `
-          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;align-items:center;gap:12px;">
-            <span style="font-size:13px;color:var(--text-muted);">Your eBay account is connected and pulling live data.</span>
-            <button class="mp-disconnect-btn" id="mp-disconnect-ebay" style="margin-left:auto;">Disconnect</button>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:13px;color:var(--text-muted);">${ebayHealthy ? 'Your eBay account is connected and pulling live data.' : 'Connected · API issues detected'}</span>
+              <button class="mp-disconnect-btn" id="mp-disconnect-ebay" style="margin-left:auto;">Disconnect</button>
+            </div>
+            ${!ebayHealthy && ebayLastError ? '<div style="font-size:12px;color:#eab308;opacity:0.8;">' + ebayLastError + '</div>' : ''}
           </div>
         ` : `
           ${!ebayGuide ? `
@@ -5366,7 +5429,7 @@
       } else {
         // Restore saved messages
         for (const msg of conv.messages) {
-          addMessageToDOM(msg.type, msg.content, msg.agentId, msg.savedFiles, undefined, msg.actions);
+          addMessageToDOM(msg.type, msg.content, msg.agentId, msg.savedFiles, undefined, msg.actions, msg.grounding);
         }
       }
 
@@ -6192,8 +6255,37 @@
       return addMessageToDOM(type, content, agentId, savedFiles, displayHtml);
     }
 
+    /** Build grounding chip bar showing what data/skills/memory backed an AI response */
+    function buildGroundingBar(grounding) {
+      if (!grounding) return '';
+      const chips = [];
+
+      if (grounding.sellerData) {
+        if (grounding.degradedMarketplaces?.length) {
+          chips.push('<span class="grounding-chip seller-degraded">Partial seller data</span>');
+        } else {
+          const label = grounding.sellerDataLabel || 'marketplace';
+          chips.push(`<span class="grounding-chip seller-data">Live ${escapeHtml(label)} data</span>`);
+        }
+      }
+
+      for (const skill of (grounding.skills || [])) {
+        chips.push(`<span class="grounding-chip skill">${escapeHtml(skill)}</span>`);
+      }
+
+      if (grounding.memoryEntries > 0) {
+        chips.push(`<span class="grounding-chip memory">Memory (${grounding.memoryEntries})</span>`);
+      }
+
+      if (chips.length === 0) {
+        chips.push('<span class="grounding-chip general">General guidance</span>');
+      }
+
+      return `<div class="grounding-bar">${chips.join('')}</div>`;
+    }
+
     /** Add message to DOM only (used for restoring conversations) */
-    function addMessageToDOM(type, content, agentId, savedFiles, displayHtml, actions) {
+    function addMessageToDOM(type, content, agentId, savedFiles, displayHtml, actions, grounding) {
       const msg = document.createElement('div');
       msg.className = 'message';
 
@@ -6224,11 +6316,14 @@
           </div>`;
       }
 
+      const groundingHtml = (!isUser && grounding) ? buildGroundingBar(grounding) : '';
+
       msg.innerHTML = `
         <div class="message-row">
           <div class="message-avatar ${avatarClass}">${avatarLetter}</div>
           <div class="message-content">
             <div class="message-sender">${senderName} ${badge}</div>
+            ${groundingHtml}
             <div class="message-text">${renderedContent}</div>
             ${filesHtml}
           </div>
@@ -6663,6 +6758,15 @@
                 const actionsHtml = finalActions.length ? renderActionsDropdown(finalActions) : '';
                 streamingTextEl.innerHTML = actionsHtml + renderMarkdown(finalContent);
                 highlightCodeBlocks(streamingTextEl);
+
+                // Inject grounding bar above the message text (after sender line)
+                if (msg.grounding && streamingMsgEl) {
+                  const senderEl = streamingMsgEl.querySelector('.message-sender');
+                  if (senderEl) {
+                    senderEl.insertAdjacentHTML('afterend', buildGroundingBar(msg.grounding));
+                  }
+                }
+
                 streamingMsgEl = null;
                 streamingTextEl = null;
                 streamBuffer = '';
@@ -6679,7 +6783,7 @@
               if (taskConvId && finalContent) {
                 const conv = conversations.find(c => c.id === taskConvId);
                 if (conv) {
-                  conv.messages.push({ type: 'ai', content: finalContent, agentId: msg.agentId, actions: finalActions.length ? finalActions : undefined });
+                  conv.messages.push({ type: 'ai', content: finalContent, agentId: msg.agentId, actions: finalActions.length ? finalActions : undefined, grounding: msg.grounding || undefined });
                   updateConversationTitle(conv);
                   saveConversations();
                 }

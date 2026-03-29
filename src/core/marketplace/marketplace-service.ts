@@ -16,6 +16,8 @@ import type {
   AccountHealthNotification,
   MarketplaceSummary,
   DailyBriefing,
+  MarketplaceHealth,
+  BriefingCoverage,
 } from './types.js';
 
 export class MarketplaceService {
@@ -23,8 +25,32 @@ export class MarketplaceService {
   private walmart: WalmartAPI | null = null;
   private ebay: EbayAPI | null = null;
 
+  private healthMap = new Map<string, {
+    lastSuccessAt: string | null;
+    lastErrorAt: string | null;
+    lastError: string | null;
+  }>();
+
   constructor() {
     this.initializeClients();
+  }
+
+  private recordSuccess(mp: MarketplaceType): void {
+    this.healthMap.set(mp, {
+      ...this.healthMap.get(mp),
+      lastSuccessAt: new Date().toISOString(),
+      lastErrorAt: this.healthMap.get(mp)?.lastErrorAt ?? null,
+      lastError: this.healthMap.get(mp)?.lastError ?? null,
+    });
+  }
+
+  private recordFailure(mp: MarketplaceType, error: string): void {
+    this.healthMap.set(mp, {
+      ...this.healthMap.get(mp),
+      lastSuccessAt: this.healthMap.get(mp)?.lastSuccessAt ?? null,
+      lastErrorAt: new Date().toISOString(),
+      lastError: error,
+    });
   }
 
   /** Re-initialize clients from stored credentials. */
@@ -68,7 +94,31 @@ export class MarketplaceService {
     };
   }
 
-  // ── Connect / Disconnect ─────────────────────────────────────────────────
+  /** Get health status for all marketplaces, combining connection + API health tracking. */
+  getHealthStatus(): Record<string, MarketplaceHealth> {
+    const connectionStatus = this.getConnectionStatus();
+    const result: Record<string, MarketplaceHealth> = {};
+
+    for (const mp of ['amazon', 'walmart', 'ebay'] as MarketplaceType[]) {
+      const conn = connectionStatus[mp];
+      const health = this.healthMap.get(mp);
+      const lastSuccess = health?.lastSuccessAt ? new Date(health.lastSuccessAt).getTime() : null;
+      const lastError = health?.lastErrorAt ? new Date(health.lastErrorAt).getTime() : null;
+
+      result[mp] = {
+        marketplace: mp,
+        connected: conn.connected,
+        healthy: conn.connected && (!lastError || (lastSuccess !== null && lastSuccess > lastError)),
+        lastSuccessAt: health?.lastSuccessAt ?? null,
+        lastErrorAt: health?.lastErrorAt ?? null,
+        lastError: health?.lastError ?? null,
+        dataFreshnessMs: lastSuccess ? Date.now() - lastSuccess : null,
+      };
+    }
+    return result;
+  }
+
+  // ── Connect / Disconnect ───────���─────────────────────────────────────────
 
   /** Connect Amazon with SP-API credentials. */
   async connectAmazon(clientId: string, clientSecret: string, refreshToken: string, region: 'na' | 'eu' | 'fe' = 'na'): Promise<{ success: boolean; error?: string; sellerId?: string }> {
@@ -174,22 +224,25 @@ export class MarketplaceService {
 
     if (this.amazon) {
       promises.push(
-        this.amazon.getOrders(since).then(o => { orders.push(...o); }).catch(err => {
+        this.amazon.getOrders(since).then(o => { orders.push(...o); this.recordSuccess('amazon'); }).catch(err => {
           console.warn('[Marketplace] Amazon orders fetch failed:', err.message);
+          this.recordFailure('amazon', err.message);
         }),
       );
     }
     if (this.walmart) {
       promises.push(
-        this.walmart.getOrders(since).then(o => { orders.push(...o); }).catch(err => {
+        this.walmart.getOrders(since).then(o => { orders.push(...o); this.recordSuccess('walmart'); }).catch(err => {
           console.warn('[Marketplace] Walmart orders fetch failed:', err.message);
+          this.recordFailure('walmart', err.message);
         }),
       );
     }
     if (this.ebay) {
       promises.push(
-        this.ebay.getOrders().then(o => { orders.push(...o); }).catch(err => {
+        this.ebay.getOrders().then(o => { orders.push(...o); this.recordSuccess('ebay'); }).catch(err => {
           console.warn('[Marketplace] eBay orders fetch failed:', err.message);
+          this.recordFailure('ebay', err.message);
         }),
       );
     }
@@ -205,15 +258,17 @@ export class MarketplaceService {
 
     if (this.amazon) {
       promises.push(
-        this.amazon.getInventorySummaries().then(items => { inventory.push(...items); }).catch(err => {
+        this.amazon.getInventorySummaries().then(items => { inventory.push(...items); this.recordSuccess('amazon'); }).catch(err => {
           console.warn('[Marketplace] Amazon inventory fetch failed:', err.message);
+          this.recordFailure('amazon', err.message);
         }),
       );
     }
     if (this.ebay) {
       promises.push(
-        this.ebay.getInventoryItems().then(items => { inventory.push(...items); }).catch(err => {
+        this.ebay.getInventoryItems().then(items => { inventory.push(...items); this.recordSuccess('ebay'); }).catch(err => {
           console.warn('[Marketplace] eBay inventory fetch failed:', err.message);
+          this.recordFailure('ebay', err.message);
         }),
       );
     }
@@ -226,9 +281,13 @@ export class MarketplaceService {
   async getFBAShipments(): Promise<FBAShipment[]> {
     if (!this.amazon) return [];
     try {
-      return await this.amazon.getInboundShipments();
+      const result = await this.amazon.getInboundShipments();
+      this.recordSuccess('amazon');
+      return result;
     } catch (err: unknown) {
-      console.warn('[Marketplace] FBA shipments fetch failed:', err instanceof Error ? err.message : err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[Marketplace] FBA shipments fetch failed:', message);
+      this.recordFailure('amazon', message);
       return [];
     }
   }
@@ -240,8 +299,9 @@ export class MarketplaceService {
 
     if (this.amazon) {
       promises.push(
-        this.amazon.getAccountHealth().then(a => { alerts.push(...a); }).catch(err => {
+        this.amazon.getAccountHealth().then(a => { alerts.push(...a); this.recordSuccess('amazon'); }).catch(err => {
           console.warn('[Marketplace] Amazon health fetch failed:', err.message);
+          this.recordFailure('amazon', err.message);
         }),
       );
     }
@@ -300,6 +360,19 @@ export class MarketplaceService {
       });
     }
 
+    // Build coverage info from health tracking
+    const coverage: BriefingCoverage = { responded: [], failed: [] };
+    for (const mp of connected) {
+      const health = this.healthMap.get(mp);
+      const lastSuccess = health?.lastSuccessAt ? new Date(health.lastSuccessAt).getTime() : null;
+      const lastError = health?.lastErrorAt ? new Date(health.lastErrorAt).getTime() : null;
+      if (lastError && (!lastSuccess || lastError > lastSuccess)) {
+        coverage.failed.push({ marketplace: mp, error: health?.lastError ?? 'Unknown error' });
+      } else {
+        coverage.responded.push(mp);
+      }
+    }
+
     return {
       date: new Date().toISOString().split('T')[0]!,
       summaries,
@@ -308,6 +381,7 @@ export class MarketplaceService {
       activeShipments,
       alerts,
       suggestedActions,
+      coverage,
     };
   }
 

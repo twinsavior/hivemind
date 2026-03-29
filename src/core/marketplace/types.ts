@@ -180,6 +180,21 @@ export interface MarketplaceSummary {
   alerts: AccountHealthNotification[];
 }
 
+export interface MarketplaceHealth {
+  marketplace: MarketplaceType;
+  connected: boolean;
+  healthy: boolean;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  lastError: string | null;
+  dataFreshnessMs: number | null;
+}
+
+export interface BriefingCoverage {
+  responded: MarketplaceType[];
+  failed: Array<{ marketplace: MarketplaceType; error: string }>;
+}
+
 export interface DailyBriefing {
   date: string;
   summaries: MarketplaceSummary[];
@@ -188,6 +203,7 @@ export interface DailyBriefing {
   activeShipments: number;
   alerts: AccountHealthNotification[];
   suggestedActions: string[];
+  coverage?: BriefingCoverage;
 }
 
 // ── Error Types ──────────────────────────────────────────────────────────────

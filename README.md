@@ -14,9 +14,9 @@
 [![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.10/HIVEMIND-1.0.0-beta.10-arm64.dmg)
 [![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.10/HIVEMIND-Setup-1.0.0-beta.10.exe)
 
-[![GitHub Release](https://img.shields.io/github/v/release/twinsavior/hivemind?include_prereleases&label=version)](https://github.com/twinsavior/hivemind/releases)
+[![version](https://img.shields.io/badge/version-v1.0.0--beta.10-blue)](https://github.com/twinsavior/hivemind/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/twinsavior/hivemind/ci.yml?branch=main&label=build)](https://github.com/twinsavior/hivemind/actions)
-[![Tests](https://img.shields.io/badge/tests-613_passing-brightgreen)](https://github.com/twinsavior/hivemind)
+[![Tests](https://img.shields.io/badge/tests-621_passing-brightgreen)](https://github.com/twinsavior/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/twinsavior/hivemind)](https://github.com/twinsavior/hivemind/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/twinsavior/hivemind/total)](https://github.com/twinsavior/hivemind/releases)

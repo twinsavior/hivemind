@@ -234,5 +234,77 @@ describe("SkillRegistry", () => {
       const result = registry.matchSellerIntent("what is my ASIN defect rate?");
       expect(result.length).toBe(0);
     });
+
+    // Suspension, appeal, and account restriction coverage
+    it("matches 'Amazon suspended me, what do I do?'", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("Amazon suspended me, what do I do?");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("amazon-seller-expert");
+    });
+
+    it("matches 'My account got restricted'", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("My account got restricted");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("amazon-seller-expert");
+    });
+
+    it("matches 'I need to appeal a deactivation'", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("I need to appeal a deactivation");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("amazon-seller-expert");
+    });
+
+    it("matches 'my seller account suspended' without marketplace name", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("my seller account suspended, need help with reinstatement");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("amazon-seller-expert");
+    });
+
+    it("matches walmart suspension phrasing", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("walmart-seller-expert", { triggers: ["walmart seller"] }));
+
+      const result = registry.matchSellerIntent("Walmart suspended my account");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("walmart-seller-expert");
+    });
+
+    it("matches ebay restriction phrasing", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("ebay-seller-expert", { triggers: ["ebay seller"] }));
+
+      const result = registry.matchSellerIntent("eBay restricted my selling limits");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("ebay-seller-expert");
+    });
+
+    it("matches 'performance notification' for Amazon", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("I got a performance notification, what should I do?");
+      expect(result.length).toBe(1);
+      expect(result[0].metadata.name).toBe("amazon-seller-expert");
+    });
+
+    it("matches 'inauthentic complaint' for Amazon", () => {
+      const registry = new SkillRegistry();
+      registry.register(makeSkill("amazon-seller-expert", { triggers: ["amazon seller"] }));
+
+      const result = registry.matchSellerIntent("how do I respond to an inauthentic complaint?");
+      expect(result.length).toBe(1);
+    });
   });
 });

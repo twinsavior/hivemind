@@ -148,11 +148,24 @@ export class SkillRegistry {
       'late shipment rate', 'valid tracking rate', 'ip complaint', 'plan of action',
       'product authenticity', 'safety complaint', 'hazmat', 'gated category', 'ungated',
       'sponsored products', 'sponsored brands', 'amazon ppc', 'seller central',
+      // Suspension, appeal, and account restriction terms
+      'amazon suspended', 'amazon deactivated', 'amazon restricted',
+      'seller account suspended', 'account deactivated', 'account restricted',
+      'got suspended', 'got deactivated', 'got restricted', 'been suspended',
+      'been deactivated', 'been restricted', 'is suspended', 'was suspended',
+      'suspended me', 'deactivated my', 'restricted my',
+      'appeal', 'reinstatement', 'plan of action', 'poa',
+      'performance notification', 'section 3', 'funds on hold', 'reserve',
+      'listing removed', 'listing suppressed', 'brand registry',
+      'intellectual property', 'counterfeit', 'inauthentic',
     ],
     'walmart-seller-expert': [
       'wfs', 'walmart fulfillment', 'walmart connect', 'pro seller badge',
       'item setup', 'content status', 'unpublished item', 'seller scorecard',
       'two-day shipping', 'walmart api', 'walmart seller center',
+      // Suspension and account terms
+      'walmart suspended', 'walmart deactivated', 'walmart restricted',
+      'partner profile', 'walmart appeal', 'trust and safety',
     ],
     'ebay-seller-expert': [
       'vero', 'below standard', 'top rated seller', 'above standard',
@@ -160,6 +173,9 @@ export class SkillRegistry {
       'promoted listing', 'seller hub', 'managed payments',
       'global shipping program', 'resolution center', 'unpaid item',
       'best offer', 'auction format',
+      // Suspension and account terms
+      'ebay suspended', 'ebay restricted', 'mc011', 'mc113',
+      'ebay appeal', 'selling limits', 'account limitation',
     ],
   };
 

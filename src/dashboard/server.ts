@@ -848,17 +848,27 @@ async function loadSellerContext(): Promise<string> {
     if (connected.length > 0) {
       const briefing = await svc.getDailyBriefing();
 
-      // Dynamic header based on marketplace health
+      // Dynamic header based on marketplace health (tri-state: healthy / degraded / unverified)
       const healthStatus = svc.getHealthStatus();
-      const degradedMPs = Object.values(healthStatus).filter(h => h.connected && !h.healthy);
-      if (degradedMPs.length === 0) {
-        lines.push('## Seller Business Context (live data)');
-      } else {
+      const connectedHealth = Object.values(healthStatus).filter(h => h.connected);
+      const degradedMPs = connectedHealth.filter(h => h.state === 'degraded');
+      const unverifiedMPs = connectedHealth.filter(h => h.state === 'unverified');
+      const healthyMPs = connectedHealth.filter(h => h.state === 'healthy');
+
+      if (degradedMPs.length > 0) {
         const names = degradedMPs.map(h => h.marketplace).join(', ');
         lines.push(`## Seller Business Context (partial data -- ${names} unavailable)`);
         for (const h of degradedMPs) {
           lines.push(`WARNING: ${h.marketplace} data unavailable: ${h.lastError || 'unknown error'}`);
         }
+      } else if (unverifiedMPs.length > 0 && healthyMPs.length === 0) {
+        lines.push('## Seller Business Context (awaiting first sync)');
+        lines.push('NOTE: Marketplace credentials are stored but no live data has been fetched yet in this session. Data below may be stale or empty.');
+      } else if (unverifiedMPs.length > 0) {
+        const names = unverifiedMPs.map(h => h.marketplace).join(', ');
+        lines.push(`## Seller Business Context (live data -- ${names} awaiting sync)`);
+      } else {
+        lines.push('## Seller Business Context (live data)');
       }
 
       lines.push(`Date: ${briefing.date}`);
@@ -2670,20 +2680,24 @@ async function coordinateRequest(ws: WebSocket, description: string, taskId?: st
   // Check marketplace health for seller data label
   if (grounding.sellerData) {
     try {
-      const svc = (globalThis as any).__marketplaceService || swarm?.marketplaceService;
-      if (svc?.getHealthStatus) {
-        const health = svc.getHealthStatus();
-        const degraded: string[] = [];
-        const labels: string[] = [];
-        for (const [mp, h] of Object.entries(health) as any) {
-          if (h.connected) {
-            labels.push(h.healthy ? mp : `${mp} (degraded)`);
-            if (!h.healthy) degraded.push(mp);
+      const svc = getMarketplaceService();
+      const health = svc.getHealthStatus();
+      const degraded: string[] = [];
+      const labels: string[] = [];
+      for (const [mp, h] of Object.entries(health) as [string, any][]) {
+        if (h.connected) {
+          if (h.state === 'unverified') {
+            labels.push(`${mp} (awaiting sync)`);
+          } else if (h.state === 'degraded') {
+            labels.push(`${mp} (degraded)`);
+            degraded.push(mp);
+          } else {
+            labels.push(mp);
           }
         }
-        grounding.sellerDataLabel = labels.join(' + ');
-        if (degraded.length > 0) grounding.degradedMarketplaces = degraded;
       }
+      grounding.sellerDataLabel = labels.join(' + ');
+      if (degraded.length > 0) grounding.degradedMarketplaces = degraded;
     } catch {}
   }
 
@@ -3325,20 +3339,24 @@ async function handleStreamingTask(ws: WebSocket, description: string, agentId?:
 
     if (grounding.sellerData) {
       try {
-        const svc = (globalThis as any).__marketplaceService || swarm?.marketplaceService;
-        if (svc?.getHealthStatus) {
-          const health = svc.getHealthStatus();
-          const degraded: string[] = [];
-          const labels: string[] = [];
-          for (const [mp, h] of Object.entries(health) as any) {
-            if (h.connected) {
-              labels.push(h.healthy ? mp : `${mp} (degraded)`);
-              if (!h.healthy) degraded.push(mp);
+        const svc = getMarketplaceService();
+        const health = svc.getHealthStatus();
+        const degraded: string[] = [];
+        const labels: string[] = [];
+        for (const [mp, h] of Object.entries(health) as [string, any][]) {
+          if (h.connected) {
+            if (h.state === 'unverified') {
+              labels.push(`${mp} (awaiting sync)`);
+            } else if (h.state === 'degraded') {
+              labels.push(`${mp} (degraded)`);
+              degraded.push(mp);
+            } else {
+              labels.push(mp);
             }
           }
-          grounding.sellerDataLabel = labels.join(' + ');
-          if (degraded.length > 0) grounding.degradedMarketplaces = degraded;
         }
+        grounding.sellerDataLabel = labels.join(' + ');
+        if (degraded.length > 0) grounding.degradedMarketplaces = degraded;
       } catch {}
     }
 

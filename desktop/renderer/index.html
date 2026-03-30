@@ -4470,7 +4470,8 @@
       // ── Amazon Card ──────────────────────────────────────────────────
       const amzConnected = status.amazon?.connected;
       const amzDate = status.amazon?.connectedAt;
-      const amzHealthy = status.amazon?.healthy !== false;
+      const amzState = status.amazon?.state || (status.amazon?.healthy !== false ? 'healthy' : 'degraded');
+      const amzHealthy = amzState === 'healthy';
       const amzLastError = status.amazon?.lastError;
       const amzGuide = mpGuideOpen.amazon;
 
@@ -4489,7 +4490,7 @@
         ${amzConnected ? `
           <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;flex-direction:column;gap:8px;">
             <div style="display:flex;align-items:center;gap:12px;">
-              <span style="font-size:13px;color:var(--text-muted);">${amzHealthy ? 'Your Amazon account is connected and pulling live data.' : 'Connected · API issues detected'}</span>
+              <span style="font-size:13px;color:var(--text-muted);">${amzState === 'healthy' ? 'Your Amazon account is connected and pulling live data.' : amzState === 'unverified' ? 'Connected · Awaiting first sync' : 'Connected · API issues detected'}</span>
               <button class="mp-disconnect-btn" id="mp-disconnect-amazon" style="margin-left:auto;">Disconnect</button>
             </div>
             ${!amzHealthy && amzLastError ? '<div style="font-size:12px;color:#eab308;opacity:0.8;">' + amzLastError + '</div>' : ''}
@@ -4554,7 +4555,8 @@
       // ── Walmart Card ─────────────────────────────────────────────────
       const wmtConnected = status.walmart?.connected;
       const wmtDate = status.walmart?.connectedAt;
-      const wmtHealthy = status.walmart?.healthy !== false;
+      const wmtState = status.walmart?.state || (status.walmart?.healthy !== false ? 'healthy' : 'degraded');
+      const wmtHealthy = wmtState === 'healthy';
       const wmtLastError = status.walmart?.lastError;
       const wmtGuide = mpGuideOpen.walmart;
 
@@ -4573,7 +4575,7 @@
         ${wmtConnected ? `
           <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;flex-direction:column;gap:8px;">
             <div style="display:flex;align-items:center;gap:12px;">
-              <span style="font-size:13px;color:var(--text-muted);">${wmtHealthy ? 'Your Walmart account is connected and pulling live data.' : 'Connected · API issues detected'}</span>
+              <span style="font-size:13px;color:var(--text-muted);">${wmtState === 'healthy' ? 'Your Walmart account is connected and pulling live data.' : wmtState === 'unverified' ? 'Connected · Awaiting first sync' : 'Connected · API issues detected'}</span>
               <button class="mp-disconnect-btn" id="mp-disconnect-walmart" style="margin-left:auto;">Disconnect</button>
             </div>
             ${!wmtHealthy && wmtLastError ? '<div style="font-size:12px;color:#eab308;opacity:0.8;">' + wmtLastError + '</div>' : ''}
@@ -4622,7 +4624,8 @@
       // ── eBay Card ────────────────────────────────────────────────────
       const ebayConnected = status.ebay?.connected;
       const ebayDate = status.ebay?.connectedAt;
-      const ebayHealthy = status.ebay?.healthy !== false;
+      const ebayState = status.ebay?.state || (status.ebay?.healthy !== false ? 'healthy' : 'degraded');
+      const ebayHealthy = ebayState === 'healthy';
       const ebayLastError = status.ebay?.lastError;
       const ebayGuide = mpGuideOpen.ebay;
 
@@ -4641,7 +4644,7 @@
         ${ebayConnected ? `
           <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border,#333);display:flex;flex-direction:column;gap:8px;">
             <div style="display:flex;align-items:center;gap:12px;">
-              <span style="font-size:13px;color:var(--text-muted);">${ebayHealthy ? 'Your eBay account is connected and pulling live data.' : 'Connected · API issues detected'}</span>
+              <span style="font-size:13px;color:var(--text-muted);">${ebayState === 'healthy' ? 'Your eBay account is connected and pulling live data.' : ebayState === 'unverified' ? 'Connected · Awaiting first sync' : 'Connected · API issues detected'}</span>
               <button class="mp-disconnect-btn" id="mp-disconnect-ebay" style="margin-left:auto;">Disconnect</button>
             </div>
             ${!ebayHealthy && ebayLastError ? '<div style="font-size:12px;color:#eab308;opacity:0.8;">' + ebayLastError + '</div>' : ''}
@@ -6277,10 +6280,12 @@
       const chips = [];
 
       if (grounding.sellerData) {
+        const label = grounding.sellerDataLabel || 'marketplace';
         if (grounding.degradedMarketplaces?.length) {
           chips.push('<span class="grounding-chip seller-degraded">Partial seller data</span>');
+        } else if (label.includes('awaiting sync')) {
+          chips.push(`<span class="grounding-chip seller-degraded">${escapeHtml(label)}</span>`);
         } else {
-          const label = grounding.sellerDataLabel || 'marketplace';
           chips.push(`<span class="grounding-chip seller-data">Live ${escapeHtml(label)} data</span>`);
         }
       }

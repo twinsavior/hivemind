@@ -180,9 +180,14 @@ export interface MarketplaceSummary {
   alerts: AccountHealthNotification[];
 }
 
+export type MarketplaceHealthState = 'healthy' | 'degraded' | 'unverified';
+
 export interface MarketplaceHealth {
   marketplace: MarketplaceType;
   connected: boolean;
+  /** Tri-state: 'healthy' = at least one successful fetch, 'degraded' = recent error, 'unverified' = connected but no fetch yet */
+  state: MarketplaceHealthState;
+  /** Compat: true only when state === 'healthy' */
   healthy: boolean;
   lastSuccessAt: string | null;
   lastErrorAt: string | null;

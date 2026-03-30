@@ -189,26 +189,42 @@ async function ensureNativeModules(nodeBin, nodeModulesDir) {
     mainWindow.webContents.send('server-status', 'rebuilding');
   }
 
-  try {
-    const npmBin = path.join(path.dirname(nodeBin), 'npm');
-    const rebuildCmd = `"${npmBin}" rebuild better-sqlite3 --prefix "${nodeModulesDir}/.."`;
-    await execAsync(rebuildCmd, { timeout: 60000, cwd: nodeModulesDir });
-    await fs.promises.writeFile(markerFile, currentNodeVersion);
-    console.log(`[HIVEMIND] Native modules rebuilt for ${currentNodeVersion}`);
-  } catch (err) {
-    console.error('[HIVEMIND] Native module rebuild failed:', err.message);
-    // Try npx as fallback (npm might not be co-located with node)
+  // The resources dir contains node_modules/ at its root — rebuild from there.
+  // This matches what works manually: cd /Applications/HIVEMIND.app/Contents/Resources && npm rebuild better-sqlite3
+  const resourcesDir = path.dirname(nodeModulesDir);
+
+  // Try multiple ways to find npm (nvm, fnm, homebrew, system)
+  const npmCandidates = [
+    path.join(path.dirname(nodeBin), 'npm'),  // co-located with node (nvm/fnm)
+    '/opt/homebrew/bin/npm',
+    '/usr/local/bin/npm',
+  ];
+
+  for (const npmBin of npmCandidates) {
     try {
-      await execAsync(`npx --yes node-gyp rebuild --directory="${path.join(nodeModulesDir, 'better-sqlite3')}"`, {
-        timeout: 90000,
-        env: { ...process.env, npm_config_nodedir: '' },
-      });
+      await fs.promises.access(npmBin);
+      console.log(`[HIVEMIND] Using npm at: ${npmBin}`);
+      const rebuildCmd = `"${npmBin}" rebuild better-sqlite3`;
+      await execAsync(rebuildCmd, { timeout: 90000, cwd: resourcesDir });
       await fs.promises.writeFile(markerFile, currentNodeVersion);
-      console.log(`[HIVEMIND] Native modules rebuilt via npx for ${currentNodeVersion}`);
-    } catch (e2) {
-      console.error('[HIVEMIND] npx rebuild also failed:', e2.message);
-      // Continue anyway — the server will surface the error with a clear message
+      console.log(`[HIVEMIND] Native modules rebuilt for ${currentNodeVersion}`);
+      return;
+    } catch (err) {
+      console.warn(`[HIVEMIND] Rebuild with ${npmBin} failed:`, err.message);
     }
+  }
+
+  // Last resort: try shell-resolved npm (picks up PATH from login shell)
+  try {
+    const shellBin = process.env.SHELL || '/bin/zsh';
+    await execAsync(`${shellBin} -lc 'npm rebuild better-sqlite3'`, {
+      timeout: 90000, cwd: resourcesDir,
+    });
+    await fs.promises.writeFile(markerFile, currentNodeVersion);
+    console.log(`[HIVEMIND] Native modules rebuilt via shell npm for ${currentNodeVersion}`);
+  } catch (err) {
+    console.error('[HIVEMIND] All rebuild attempts failed:', err.message);
+    // Continue anyway — the server will surface the error with a clear message
   }
 }
 

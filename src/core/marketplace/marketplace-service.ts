@@ -105,10 +105,24 @@ export class MarketplaceService {
       const lastSuccess = health?.lastSuccessAt ? new Date(health.lastSuccessAt).getTime() : null;
       const lastError = health?.lastErrorAt ? new Date(health.lastErrorAt).getTime() : null;
 
+      // Tri-state: unverified → healthy → degraded
+      let state: 'healthy' | 'degraded' | 'unverified';
+      if (!conn.connected) {
+        state = 'unverified';
+      } else if (lastSuccess === null && lastError === null) {
+        // Connected but no API call has been made yet in this process
+        state = 'unverified';
+      } else if (lastError && (lastSuccess === null || lastError > lastSuccess)) {
+        state = 'degraded';
+      } else {
+        state = 'healthy';
+      }
+
       result[mp] = {
         marketplace: mp,
         connected: conn.connected,
-        healthy: conn.connected && (!lastError || (lastSuccess !== null && lastSuccess > lastError)),
+        state,
+        healthy: state === 'healthy',
         lastSuccessAt: health?.lastSuccessAt ?? null,
         lastErrorAt: health?.lastErrorAt ?? null,
         lastError: health?.lastError ?? null,

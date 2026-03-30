@@ -20,10 +20,11 @@ user-invocable: false
 - Parent-child relationships: L0 entry → L1 children → L2 children
 
 ### Context Manager (`src/memory/context.ts`)
-- `load(request)` — Phase 1: L0 summaries for namespaces, Phase 2: expand to L1/L2
+- `loadRelevant(query)` — Semantic/keyword search, respects budget. Called FIRST for task relevance.
+- `loadEntries(entries)` — Allocates from the EXISTING budget without resetting. Used for backfilling recent summaries after `loadRelevant()`.
+- `load(request)` — Phase 1: L0 summaries for namespaces, Phase 2: expand to L1/L2. **Caution:** creates a new budget — don't use in a loop after `loadRelevant()`.
 - `drill(entryId, targetLevel)` — Expand a loaded entry to deeper level
 - `evict(targetFreeTokens)` — Frees tokens by evicting L2 first, then L1. Never auto-evicts L0.
-- `loadRelevant(query)` — Semantic/keyword search, respects budget
 - `renderContext()` — Builds `<memory>` XML block grouped by namespace, sorted by level
 
 ### Token Budget
@@ -37,16 +38,20 @@ user-invocable: false
 ```typescript
 saveTaskMemory(taskDescription, agentId, content, conversationId)
 ```
-- Creates L0 summary (first 200 chars) + L1 overview (first 1500 chars)
-- Namespaced to conversation
+- Creates full L0+L1+L2 hierarchy via `writeHierarchy()` for content >1500 chars
+- L0: summary (~200 chars), L1: overview (~1500 chars), L2: full detail (capped at 8000 chars)
+- Falls back to L0+L1 only for short content
+- Deduplicates via `findDuplicate()` + `writeOrUpdate()`
+- Namespaced to conversation (`tasks.${conversationId.slice(0,8)}`)
 - Called after task completion (non-blocking)
 
 ### Loading (in `server.ts`)
 ```typescript
 loadMemoryContext(taskDescription)
 ```
-- Loads L0 summaries from all namespaces
-- Runs keyword search against the task description
+- **Search-first**: `ctx.loadRelevant(query, {limit: 10})` — most relevant memories first
+- **Backfill**: `ctx.loadEntries(recentSummaries)` — recent L0s fill remaining budget
+- Both phases share one `ContextManager` budget (4096 tokens) — no reset between them
 - Returns rendered `<memory>` block for system prompt injection
 
 ## Current Limitations

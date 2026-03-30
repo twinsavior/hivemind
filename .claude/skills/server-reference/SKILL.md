@@ -35,7 +35,7 @@ The hub for all agent orchestration. Express + WebSocket server on configurable 
 
 ### Server → Client
 - `task:token` — Streaming token (`{ taskId, text, tokenType: 'text'|'action'|'done'|'status', agentId? }`)
-- `task:complete` — Task finished (`{ taskId, result }`)
+- `task:complete` — Task finished (`{ taskId, result, grounding? }`)
 - `task:error` — Task failed
 - `task:question` — Interactive question for the user (`{ taskId, header, question, options }`)
 - `swarm:metrics` — Periodic metrics broadcast
@@ -72,9 +72,25 @@ The hub for all agent orchestration. Express + WebSocket server on configurable 
 - SPA catch-all `app.get('*')` — Skips `/api/` and `/ws` paths via `next()`, so later API routes work
 
 ## Memory Integration
-- `loadMemoryContext(query)` — Loads L0 summaries + semantic search results before each task
-- `saveTaskMemory(description, agentId, content, conversationId)` — Saves L0 summary + L1 overview after task completes
+- `loadMemoryContext(query)` — Search-first: `loadRelevant()` + `loadEntries()` backfill, 4096-token budget. Shared budget across both phases.
+- `saveTaskMemory(description, agentId, content, conversationId)` — Saves L0+L1+L2 hierarchy via `writeHierarchy()` for content >1500 chars. Deduplicates existing entries.
 - Both are non-blocking (fire-and-forget on save, awaited on load)
+
+## Seller Context & Marketplace Health
+- `loadSellerContext()` — Fetches daily briefing via `getDailyBriefing()`, builds markdown context block
+- Labels dynamically: "Seller Business Context (live data)" when all healthy, "partial data" when degraded
+- `getHealthStatus()` returns per-marketplace `{ connected, healthy, lastSuccessAt, lastError, dataFreshnessMs }`
+- Degraded marketplaces listed with warning in the context block
+
+## Grounding Metadata
+- `GroundingInfo` type: `{ sellerData, sellerDataLabel?, skills[], memoryEntries, degradedMarketplaces? }`
+- Built after context loading in both `coordinateRequest()` and `handleStreamingTask()`
+- Included in `task:complete` WebSocket message
+- Desktop UI renders as colored chips (green=live data, yellow=degraded, indigo=skill, amber=memory, gray=general)
+
+## Profile Refresh
+- `POST /api/profile` calls `swarm.refreshPrompts(savedProfile)` to hot-patch all agent system prompts
+- No server restart needed — next message uses updated personality, names, and context
 
 ## Follow-up Handling
 - Follow-ups stored in `taskFollowups` Map (keyed by taskId)

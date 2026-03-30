@@ -174,14 +174,9 @@ async function loadMemoryContext(taskDescription: string): Promise<string> {
   await ctx.loadRelevant(taskDescription, { limit: 10 });
 
   // Step 2: Fill remaining budget with recent L0 summaries (max 50).
-  // This provides broad context without swamping the budget.
+  // Uses loadEntries() to allocate from the EXISTING budget — no reset.
   const recentSummaries = memoryStore.listByNamespace("tasks", Level.L0).slice(0, 50);
-  for (const entry of recentSummaries) {
-    if (ctx.getBudget().remaining < entry.tokenCount) break;
-    if (!ctx.isLoaded(entry.id)) {
-      // Load into context, budget-permitting
-    }
-  }
+  ctx.loadEntries(recentSummaries.filter(e => !ctx.isLoaded(e.id)));
 
   // Step 3: Render as XML for the system prompt
   return ctx.renderContext();

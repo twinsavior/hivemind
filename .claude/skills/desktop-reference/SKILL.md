@@ -41,6 +41,17 @@ When `task:token` arrives with a different `agentId` than `lastAgentId`:
 - Inserts a markdown separator: `---\n**Agent Name** \`Provider\`\n\n`
 - Provider badge: Builder/Sentinel show "Codex", others show "Claude"
 - Updates `lastAgentId` on the running task
+- Agent names come from the dynamic profile (`profile.agents[agentId].name`), not hardcoded. Keep the renderer's `agentMeta` map in sync with `applyProfile()`.
+
+## Grounding Chips
+On `task:complete`, if `msg.grounding` is present:
+- Renders a `.grounding-bar` below the sender name with colored chips:
+  - Green (`.seller-data`): "📊 Live {marketplace} data"
+  - Yellow (`.seller-degraded`): "⚠️ Partial seller data"
+  - Indigo (`.skill`): "📖 {skill-name}" for each loaded skill
+  - Amber (`.memory`): "🧠 Memory ({N})" when memory entries were used
+  - Gray (`.general`): "💡 General guidance" when no data sources present
+- Grounding saved to conversation history for restore on page reload
 
 ## Attachments
 - `pendingAttachments` array holds files selected via drag-drop or file picker

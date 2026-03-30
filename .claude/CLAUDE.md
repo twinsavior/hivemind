@@ -11,7 +11,8 @@ HIVEMIND is an open-source autonomous agent swarm platform for the Buy Box / Fli
 - `src/agents/` — BaseAgent (cognitive loop) + LLMAgent + 5 specialized agents
 - `src/memory/` — SQLite store with L0/L1/L2 hierarchy, ContextManager
 - `src/dashboard/` — Express + WebSocket server, task orchestration hub, config persistence
-- `src/cli/` — CLI entry point, agent init, system prompts
+- `src/shared/` — HivemindProfile type, `buildAgentPrompts()` (dynamic prompt generation from profile), profile I/O
+- `src/cli/` — CLI entry point, agent init, onboarding
 - `src/modules/email/` — Email parsing module (see below)
 - `src/modules/discord/` — Discord setup wizard API routes + config writer
 - `src/connectors/` — Platform connectors (Discord, Slack, Telegram, Webhook) + ConnectorManager
@@ -57,6 +58,12 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 10. **Trust enforcement for connector tasks.** UNTRUSTED connector sources get restricted tool permissions (`--allowedTools` with read-only list), restricted context (no seller data, no memory, no metrics), and a trust boundary in the system prompt. Owner IDs in `security.ownerIds` must be valid 17-20 digit Discord snowflakes.
 11. **Port is configurable via `HIVEMIND_DASHBOARD_PORT`.** CLI, server, desktop main.js, and renderer all read this env var. Default: 4000. Never hardcode port values.
 12. **SPA catch-all skips `/api/*` paths.** The `app.get('*')` fallback in server.ts passes through to `next()` for `/api/` and `/ws` paths so later-registered API routes still work.
+13. **System prompts are built from the profile, not hardcoded.** Wrong: edit AGENT_PREAMBLE or NOVA_PROMPT in `commands.ts`. Right: edit `buildAgentPrompts()` in `src/shared/profile.ts`. Prompts are rebuilt live when profile is saved via `refreshPrompts()`. The old static const blocks no longer exist.
+14. **Marketplace "connected" ≠ "healthy".** Wrong: trust `getConnectionStatus()`. Right: use `getHealthStatus()` which tracks per-marketplace API success/failure. `loadSellerContext()` labels data as "live" or "partial" based on actual health.
+15. **Seller skill routing has two tiers.** Primary: `matchTriggers()` (exact substring). Fallback: `matchSellerIntent()` (55+ domain terms like ASIN, FBA, VERO, WFS). If you add new seller terms, update `SELLER_DOMAIN_TERMS` in `src/skills/registry.ts`.
+16. **Chat responses include grounding metadata.** `task:complete` messages carry a `grounding` object with `{ sellerData, skills[], memoryEntries, degradedMarketplaces }`. The desktop UI renders these as colored chips.
+17. **Memory saves L0+L1+L2 hierarchy for meaningful tasks.** Wrong: assume only L0+L1 exist. Right: `saveTaskMemory()` uses `writeHierarchy()` for content >1500 chars, creating L2 with full detail (capped at 8000 chars).
+18. **Memory budget is shared across load phases.** `loadRelevant()` + `loadEntries()` operate on the same `ContextManager` budget. Never call `ctx.load()` in a loop with `budget: total` — use `loadEntries()` instead.
 
 ## Desktop App (`desktop/`)
 - **Electron 35** with electron-builder 26 for cross-platform builds

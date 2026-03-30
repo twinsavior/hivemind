@@ -306,7 +306,11 @@ async function detectCommandProvider(
 
 async function runCommand(command: string, args: string[], timeoutMs: number): Promise<string> {
   return await new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+    // On macOS, GUI apps don't inherit shell PATH (nvm/fnm paths missing).
+    // Run through a login shell so the user's full PATH is available.
+    const shellBin = process.env['SHELL'] || '/bin/zsh';
+    const fullCmd = `${command} ${args.map(a => `'${a}'`).join(' ')}`;
+    const child = spawn(shellBin, ['-lc', fullCmd], { stdio: ["ignore", "pipe", "pipe"] });
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
       reject(new Error("Timed out"));

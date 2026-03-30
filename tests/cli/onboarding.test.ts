@@ -437,9 +437,10 @@ describe("detectProviderStatuses", () => {
   });
 
   it("detects both providers as installed", async () => {
-    mockedSpawn.mockImplementation((command: string) => {
-      if (command === "claude") return mockSpawnResult("claude-code 1.0.0", 0);
-      if (command === "codex") return mockSpawnResult("codex 0.5.0", 0);
+    mockedSpawn.mockImplementation((_shell: string, args: string[]) => {
+      const cmd = Array.isArray(args) ? args.join(' ') : '';
+      if (cmd.includes("claude")) return mockSpawnResult("claude-code 1.0.0", 0);
+      if (cmd.includes("codex")) return mockSpawnResult("codex 0.5.0", 0);
       return mockSpawnResult("", 1);
     });
 

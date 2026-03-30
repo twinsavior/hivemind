@@ -3115,33 +3115,18 @@
             <div style="display:flex;gap:14px;align-items:flex-start;">
               <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">2</div>
               <div style="flex:1;">
-                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Install Claude Code</div>
-                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">Open <strong>Terminal</strong> on your Mac (search for "Terminal" in Spotlight) and paste this command:</div>
-                <div style="margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border,#444);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
-                  <code style="flex:1;font-size:13px;color:#a5b4fc;word-break:break-all;">npm i -g @anthropic-ai/claude-code</code>
-                  <button id="ob-copy-install" style="padding:4px 10px;font-size:11px;border-radius:4px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;flex-shrink:0;">Copy</button>
-                </div>
-                <div style="font-size:12px;color:var(--text-muted,#777);margin-top:6px;">Don't have npm? <a href="https://nodejs.org" target="_blank" rel="noopener" style="color:var(--accent);">Install Node.js first</a> (pick the LTS version), then try again.</div>
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Log in with your Claude account</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;margin-bottom:10px;">Click the button below. Your browser will open to log in with Claude. Once done, come back here.</div>
+                <button id="ob-claude-login" style="padding:12px 28px;font-size:14px;border-radius:8px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;font-weight:600;">Log in with Claude →</button>
+                <div id="ob-claude-login-status" style="font-size:13px;margin-top:8px;"></div>
               </div>
             </div>
 
             <div style="display:flex;gap:14px;align-items:flex-start;">
               <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">3</div>
               <div style="flex:1;">
-                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Log in to Claude</div>
-                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;">In the same Terminal window, paste this command. It will open a browser window to log in with your Claude account:</div>
-                <div style="margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border,#444);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
-                  <code style="flex:1;font-size:13px;color:#a5b4fc;">claude login</code>
-                  <button id="ob-copy-login" style="padding:4px 10px;font-size:11px;border-radius:4px;background:var(--accent,#7c5cff);color:#fff;border:none;cursor:pointer;flex-shrink:0;">Copy</button>
-                </div>
-              </div>
-            </div>
-
-            <div style="display:flex;gap:14px;align-items:flex-start;">
-              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent,#7c5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">4</div>
-              <div style="flex:1;">
-                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Come back here and click "Check Connection"</div>
-                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;margin-bottom:10px;">Once you've logged in, click the button below and we'll verify everything is working.</div>
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary,#eee);margin-bottom:6px;">Verify the connection</div>
+                <div style="font-size:13px;color:var(--text-muted,#aaa);line-height:1.5;margin-bottom:10px;">After logging in, click below to confirm everything is working.</div>
                 <button id="ob-check-claude" style="padding:10px 24px;font-size:14px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;font-weight:600;">Check Connection</button>
                 <div id="ob-claude-status" style="font-size:13px;margin-top:8px;"></div>
               </div>
@@ -3460,19 +3445,26 @@
       }
 
       if (step === 'tools') {
-        // Copy buttons
-        const copyInstall = document.getElementById('ob-copy-install');
-        if (copyInstall) copyInstall.addEventListener('click', () => {
-          navigator.clipboard.writeText('npm i -g @anthropic-ai/claude-code');
-          copyInstall.textContent = 'Copied!';
-          setTimeout(() => { copyInstall.textContent = 'Copy'; }, 2000);
+        // "Log in with Claude" button — triggers claude auth login via the server
+        const loginBtn = document.getElementById('ob-claude-login');
+        if (loginBtn) loginBtn.addEventListener('click', async () => {
+          const statusEl = document.getElementById('ob-claude-login-status');
+          loginBtn.disabled = true; loginBtn.textContent = 'Opening browser...';
+          if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted);">A browser window should open. Log in with your Claude account, then come back here.</span>';
+          try {
+            const res = await fetch(_baseHttp + '/api/onboarding/claude-login', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+              if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✓ Login started! Complete it in your browser, then click Check Connection below.</span>';
+            } else {
+              if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">' + escapeHtml(data.error || 'Could not start login. Try again.') + '</span>';
+            }
+          } catch {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Server not ready yet. Wait a moment and try again.</span>';
+          }
+          loginBtn.disabled = false; loginBtn.textContent = 'Log in with Claude →';
         });
-        const copyLogin = document.getElementById('ob-copy-login');
-        if (copyLogin) copyLogin.addEventListener('click', () => {
-          navigator.clipboard.writeText('claude login');
-          copyLogin.textContent = 'Copied!';
-          setTimeout(() => { copyLogin.textContent = 'Copy'; }, 2000);
-        });
+        // Codex copy button (optional section)
         const copyCodex = document.getElementById('ob-copy-codex');
         if (copyCodex) copyCodex.addEventListener('click', () => {
           navigator.clipboard.writeText('npm i -g @openai/codex');
@@ -3485,7 +3477,7 @@
           const statusEl = document.getElementById('ob-claude-status');
           checkBtn.disabled = true; checkBtn.textContent = 'Checking...';
           try {
-            // Re-fetch providers to see if Claude is now installed
+            // Re-fetch providers to see if Claude is now authenticated
             const res = await fetch(_baseHttp + '/api/onboarding/providers');
             if (res.ok) {
               const data = await res.json();
@@ -3493,12 +3485,11 @@
               const claude = obState.providers.find(p => p.id === 'claude-code');
               if (claude && claude.installed) {
                 if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✓ Claude is connected! Click Continue.</span>';
-                // Re-render to show the success state
                 setTimeout(() => obRenderStep(), 1500);
                 return;
               }
             }
-            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Claude wasn\'t detected yet. Make sure you ran both commands in Terminal, then try again.</span>';
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Claude not detected yet. Click "Log in with Claude" above first, complete the login in your browser, then try again.</span>';
             checkBtn.disabled = false; checkBtn.textContent = 'Check Connection';
           } catch {
             if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Couldn\'t check — server may still be starting up. Try again in a moment.</span>';

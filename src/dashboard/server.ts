@@ -1086,6 +1086,33 @@ app.get('/api/onboarding/providers', async (_req, res) => {
   }
 });
 
+// Trigger Claude Code OAuth login (opens browser — no terminal needed)
+app.post('/api/onboarding/claude-login', async (_req, res) => {
+  try {
+    const { spawn: spawnChild } = await import('node:child_process');
+    const shellBin = process.env['SHELL'] || '/bin/zsh';
+    // Run through login shell so nvm/fnm paths are available
+    const child = spawnChild(shellBin, ['-lc', 'claude auth login --claudeai'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true,
+    });
+    // Don't wait for completion — the login flow is interactive (opens browser)
+    // Just confirm the process spawned successfully
+    child.unref();
+    let errOutput = '';
+    child.stderr?.on('data', (chunk: Buffer) => { errOutput += chunk.toString(); });
+    // Give it a moment to see if it fails immediately
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (child.exitCode !== null && child.exitCode !== 0) {
+      res.json({ success: false, error: errOutput.trim() || 'Claude login process exited unexpectedly' });
+    } else {
+      res.json({ success: true });
+    }
+  } catch (error) {
+    res.json({ success: false, error: error instanceof Error ? error.message : 'Failed to start login' });
+  }
+});
+
 app.post('/api/profile', (req, res) => {
   try {
     const draft = normalizeProfile(req.body ?? {});

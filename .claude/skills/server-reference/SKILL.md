@@ -78,19 +78,29 @@ The hub for all agent orchestration. Express + WebSocket server on configurable 
 
 ## Seller Context & Marketplace Health
 - `loadSellerContext()` — Fetches daily briefing via `getDailyBriefing()`, builds markdown context block
-- Labels dynamically: "Seller Business Context (live data)" when all healthy, "partial data" when degraded
-- `getHealthStatus()` returns per-marketplace `{ connected, healthy, lastSuccessAt, lastError, dataFreshnessMs }`
-- Degraded marketplaces listed with warning in the context block
+- **Tri-state health**: `state: 'unverified' | 'healthy' | 'degraded'`
+  - Unverified = credentials stored, no API call yet this session
+  - Healthy = at least one successful fetch, no recent error
+  - Degraded = recent API error after connection
+- Labels dynamically: "live data" (healthy), "partial data" (degraded), "awaiting first sync" (unverified)
+- `getHealthStatus()` returns per-marketplace `{ connected, state, healthy, lastSuccessAt, lastError, dataFreshnessMs }`
+- Grounding reads health via `getMarketplaceService()` (NOT `globalThis.__marketplaceService`)
 
 ## Grounding Metadata
 - `GroundingInfo` type: `{ sellerData, sellerDataLabel?, skills[], memoryEntries, degradedMarketplaces? }`
 - Built after context loading in both `coordinateRequest()` and `handleStreamingTask()`
+- `sellerDataLabel` includes state: "amazon" (healthy), "amazon (degraded)", "amazon (awaiting sync)"
 - Included in `task:complete` WebSocket message
-- Desktop UI renders as colored chips (green=live data, yellow=degraded, indigo=skill, amber=memory, gray=general)
+- Desktop UI renders as colored chips (green=live data, yellow=degraded/unverified, indigo=skill, amber=memory, gray=general)
 
 ## Profile Refresh
 - `POST /api/profile` calls `swarm.refreshPrompts(savedProfile)` to hot-patch all agent system prompts
 - No server restart needed — next message uses updated personality, names, and context
+
+## Onboarding Login
+- `POST /api/onboarding/claude-login` — spawns `claude auth login --claudeai` through login shell, opens browser for OAuth
+- No terminal needed — replaces the old "copy npm install command" flow
+- Uses `$SHELL -lc` wrapper so nvm/fnm paths are available in GUI app context
 
 ## Follow-up Handling
 - Follow-ups stored in `taskFollowups` Map (keyed by taskId)

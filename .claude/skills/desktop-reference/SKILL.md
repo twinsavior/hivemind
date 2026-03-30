@@ -17,9 +17,11 @@ Electron 35 app with a vanilla HTML/JS chat UI. No React, no framework.
 1. `app.whenReady()` → `createWindow()` → `startHivemindServer()`
 2. `findNode()` — async, checks nvm/fnm/homebrew/system paths via `fs.promises`
 3. `setupPackagedEnvironment()` — async, creates `~/.hivemind/` dirs and default config
-4. Spawns the server process, waits for health check
-5. `loadFile('renderer/index.html', { query: { port } })` — passes port via query param
-6. Auto-updater checks GitHub Releases on launch + every 4h
+4. `ensureNativeModules()` — auto-rebuilds `better-sqlite3` if user's Node version differs from CI build (Node 22). Cached in `~/.hivemind/.native-module-version`.
+5. Spawns the server process with `HIVEMIND_RESOURCES_PATH` env var (for bundled Claude Code CLI discovery), waits for "Dashboard running" in stdout
+6. `loadFile('renderer/index.html', { query: { port } })` — passes port via query param
+7. Auto-updater checks GitHub Releases on launch + every 4h
+8. If server doesn't start in 60s, resolves anyway — renderer shows troubleshooting after 15 retries
 
 ## Port Handling
 - `HIVEMIND_PORT = Number(process.env.HIVEMIND_DASHBOARD_PORT) || 4000`

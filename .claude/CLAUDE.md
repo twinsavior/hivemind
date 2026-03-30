@@ -64,11 +64,20 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 16. **Chat responses include grounding metadata.** `task:complete` messages carry a `grounding` object with `{ sellerData, skills[], memoryEntries, degradedMarketplaces }`. The desktop UI renders these as colored chips.
 17. **Memory saves L0+L1+L2 hierarchy for meaningful tasks.** Wrong: assume only L0+L1 exist. Right: `saveTaskMemory()` uses `writeHierarchy()` for content >1500 chars, creating L2 with full detail (capped at 8000 chars).
 18. **Memory budget is shared across load phases.** `loadRelevant()` + `loadEntries()` operate on the same `ContextManager` budget. Never call `ctx.load()` in a loop with `budget: total` — use `loadEntries()` instead.
+19. **Marketplace health is tri-state, not boolean.** `state: 'unverified' | 'healthy' | 'degraded'`. Unverified = credentials stored but no API call yet this session. Never claim "live data" when state is unverified. The `healthy` boolean field still exists for compat but use `state` for new code.
+20. **macOS GUI apps don't inherit shell PATH.** Wrong: `spawn('claude', ['--version'])`. Right: `spawn(shell, ['-lc', 'claude --version'])`. Electron apps launched from Finder/Dock don't see nvm/fnm paths. Both `runCommand()` in onboarding.ts and `findNode()` in main.js use login-shell wrappers.
+21. **Claude Code CLI is bundled in the desktop app.** `desktop/server-deps/package.json` includes `@anthropic-ai/claude-code`. `findClaudeBinary()` checks `HIVEMIND_RESOURCES_PATH/node_modules/@anthropic-ai/claude-code/cli.js` first. Users don't need to `npm install -g` it.
+22. **Native module version must match user's Node.** `ensureNativeModules()` in main.js auto-rebuilds `better-sqlite3` when the user's Node version differs from CI's (Node 22). Cached in `~/.hivemind/.native-module-version`.
+23. **Onboarding login is GUI-only.** `POST /api/onboarding/claude-login` spawns `claude auth login --claudeai` through a login shell. Opens the user's browser for OAuth. No terminal needed. The old "copy npm install command" flow is removed.
+24. **The cofounder prompt encourages [ASK_USER].** Nova's system prompt has a "When to Ask" section with specific guidance — ambiguous requests, marketplace-unspecified questions, judgment calls affecting money. Don't remove this; it's a product trust feature.
 
 ## Desktop App (`desktop/`)
 - **Electron 35** with electron-builder 26 for cross-platform builds
 - `main.js` detects `app.isPackaged` — packaged mode runs compiled JS from `process.resourcesPath/server/`, dev mode runs tsx on TypeScript source
-- `main.js` is fully async — `findNode()`, `setupPackagedEnvironment()`, `showErrorDialog()` all use `fs.promises` and async APIs
+- `main.js` is fully async — `findNode()`, `setupPackagedEnvironment()`, `ensureNativeModules()`, `showErrorDialog()` all use `fs.promises` and async APIs
+- **Claude Code CLI bundled** in `desktop/server-deps/` — no global npm install needed. `HIVEMIND_RESOURCES_PATH` env var tells the server where to find it.
+- **Auto-rebuild native modules** — `ensureNativeModules()` detects Node version mismatch and runs `npm rebuild better-sqlite3` on first launch. Cached per Node version.
+- **Zero-terminal onboarding** — "Log in with Claude" button triggers `claude auth login` via server API, opens browser for OAuth. No Terminal commands.
 - Port passed to renderer via `loadFile` query param (`?port=...`), renderer reads with `URLSearchParams`
 - Platform-aware: uses `/usr/bin/arch -arm64` on macOS, direct `node` on Windows
 - Build: `pnpm build` (server + email) → `cd desktop && npm run build:mac` (or `build:win`)
@@ -78,7 +87,7 @@ Extracted from the standalone Email Parsing app. Pure Node.js, zero Next.js depe
 ## Key Commands
 - `pnpm dev` — Start development mode
 - `pnpm build` — Build (main + email module)
-- `pnpm test` — Run tests (Vitest, 613 tests across 17 files)
+- `pnpm test` — Run tests (Vitest, 621 tests across 17 files)
 - `pnpm typecheck` — Type-check main project
 - `npx tsc -p tsconfig.email.json --noEmit` — Type-check email module
 - `cd desktop && npm run build:mac` — Build macOS .dmg

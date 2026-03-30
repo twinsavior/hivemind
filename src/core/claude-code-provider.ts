@@ -632,6 +632,7 @@ export async function verifyClaudeCode(): Promise<{ ok: boolean; error?: string;
   if (directResult.ok) return directResult;
 
   // Fallback: try through login shell (picks up nvm/fnm PATH on macOS GUI apps)
+  console.log('[Claude] Direct spawn failed, trying login shell fallback...');
   return new Promise((resolve) => {
     const shellBin = process.env['SHELL'] || '/bin/zsh';
     const proc = spawn(shellBin, ['-lc', 'claude --version'], {
@@ -639,10 +640,21 @@ export async function verifyClaudeCode(): Promise<{ ok: boolean; error?: string;
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
+    let stderr = '';
     proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
+    proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
     proc.on('close', (code) => {
-      resolve(code === 0 ? { ok: true, path: 'claude' } : { ok: false, error: 'CLI not found via login shell' });
+      if (code === 0) {
+        console.log('[Claude] Found via login shell:', stdout.trim());
+        resolve({ ok: true, path: 'claude' });
+      } else {
+        console.warn('[Claude] Login shell fallback failed (code', code, '):', stderr.trim());
+        resolve({ ok: false, error: 'CLI not found via login shell' });
+      }
     });
-    proc.on('error', () => resolve({ ok: false, error: 'CLI not installed' }));
+    proc.on('error', (err) => {
+      console.warn('[Claude] Login shell spawn error:', err.message);
+      resolve({ ok: false, error: 'CLI not installed' });
+    });
   });
 }

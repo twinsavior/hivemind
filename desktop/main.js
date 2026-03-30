@@ -309,6 +309,19 @@ async function startHivemindServer() {
       spawnEnv.NODE_PATH = path.join(process.resourcesPath, 'node_modules');
       // Tell the server where bundled dependencies live (for Claude Code CLI discovery)
       spawnEnv.HIVEMIND_RESOURCES_PATH = process.resourcesPath;
+
+      // macOS GUI apps have a minimal PATH that misses nvm/fnm/homebrew.
+      // Resolve the full login shell PATH so the server can find claude CLI.
+      try {
+        const shellBin = process.env.SHELL || '/bin/zsh';
+        const { stdout: shellPath } = await execAsync(`${shellBin} -lc 'echo $PATH'`, { timeout: 5000 });
+        if (shellPath.trim()) {
+          spawnEnv.PATH = shellPath.trim();
+          console.log('[HIVEMIND] Resolved login shell PATH:', spawnEnv.PATH.slice(0, 120) + '...');
+        }
+      } catch (e) {
+        console.warn('[HIVEMIND] Could not resolve login shell PATH:', e.message);
+      }
     }
 
     hivemindProcess = spawn(spawnCmd, spawnArgs, {

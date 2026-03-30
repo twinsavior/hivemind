@@ -189,13 +189,29 @@ async function ensureNativeModules(nodeBin, nodeModulesDir) {
     mainWindow.webContents.send('server-status', 'rebuilding');
   }
 
-  // The resources dir contains node_modules/ at its root — rebuild from there.
-  // This matches what works manually: cd /Applications/HIVEMIND.app/Contents/Resources && npm rebuild better-sqlite3
   const resourcesDir = path.dirname(nodeModulesDir);
+  const sqliteDir = path.join(nodeModulesDir, 'better-sqlite3');
+  const nodeVer = currentNodeVersion.replace(/^v/, ''); // e.g. "24.14.1"
 
-  // Try multiple ways to find npm (nvm, fnm, homebrew, system)
+  // Strategy 1: Use prebuild-install to DOWNLOAD a prebuilt binary (no compiler needed)
+  // This is the preferred path — works without Xcode/build tools
+  const prebuildBin = path.join(nodeModulesDir, 'prebuild-install', 'bin.js');
+  try {
+    await fs.promises.access(prebuildBin);
+    console.log(`[HIVEMIND] Trying prebuild-install for Node ${nodeVer}...`);
+    await execAsync(`"${nodeBin}" "${prebuildBin}" --target ${nodeVer} --runtime node --arch ${process.arch}`, {
+      timeout: 30000, cwd: sqliteDir,
+    });
+    await fs.promises.writeFile(markerFile, currentNodeVersion);
+    console.log(`[HIVEMIND] Downloaded prebuilt better-sqlite3 for Node ${nodeVer}`);
+    return;
+  } catch (err) {
+    console.warn(`[HIVEMIND] prebuild-install failed (may not have prebuilt for Node ${nodeVer}):`, err.message);
+  }
+
+  // Strategy 2: npm rebuild (needs C++ compiler / Xcode command line tools)
   const npmCandidates = [
-    path.join(path.dirname(nodeBin), 'npm'),  // co-located with node (nvm/fnm)
+    path.join(path.dirname(nodeBin), 'npm'),
     '/opt/homebrew/bin/npm',
     '/usr/local/bin/npm',
   ];
@@ -203,9 +219,8 @@ async function ensureNativeModules(nodeBin, nodeModulesDir) {
   for (const npmBin of npmCandidates) {
     try {
       await fs.promises.access(npmBin);
-      console.log(`[HIVEMIND] Using npm at: ${npmBin}`);
-      const rebuildCmd = `"${npmBin}" rebuild better-sqlite3`;
-      await execAsync(rebuildCmd, { timeout: 90000, cwd: resourcesDir });
+      console.log(`[HIVEMIND] Trying npm rebuild at: ${npmBin}`);
+      await execAsync(`"${npmBin}" rebuild better-sqlite3`, { timeout: 90000, cwd: resourcesDir });
       await fs.promises.writeFile(markerFile, currentNodeVersion);
       console.log(`[HIVEMIND] Native modules rebuilt for ${currentNodeVersion}`);
       return;
@@ -214,17 +229,14 @@ async function ensureNativeModules(nodeBin, nodeModulesDir) {
     }
   }
 
-  // Last resort: try shell-resolved npm (picks up PATH from login shell)
+  // Strategy 3: shell-resolved npm (login shell PATH)
   try {
     const shellBin = process.env.SHELL || '/bin/zsh';
-    await execAsync(`${shellBin} -lc 'npm rebuild better-sqlite3'`, {
-      timeout: 90000, cwd: resourcesDir,
-    });
+    await execAsync(`${shellBin} -lc 'npm rebuild better-sqlite3'`, { timeout: 90000, cwd: resourcesDir });
     await fs.promises.writeFile(markerFile, currentNodeVersion);
     console.log(`[HIVEMIND] Native modules rebuilt via shell npm for ${currentNodeVersion}`);
   } catch (err) {
     console.error('[HIVEMIND] All rebuild attempts failed:', err.message);
-    // Continue anyway — the server will surface the error with a clear message
   }
 }
 

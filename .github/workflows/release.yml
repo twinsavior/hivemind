@@ -51,8 +51,6 @@ jobs:
 
       - name: Create server runtime dependencies
         run: |
-          mkdir -p desktop/server-deps
-          cp package.json desktop/server-deps/
           cd desktop/server-deps
           npm install --omit=dev
           npm rebuild better-sqlite3
@@ -95,7 +93,7 @@ jobs:
               draft: false,
               prerelease: isPrerelease,
               name: tag,
-              body: `## HIVEMIND ${tag}\n\nDownload the desktop app below:\n- **macOS**: Download the \`.dmg\` file, open it, drag HIVEMIND to Applications\n- **Windows**: Download the \`.exe\` installer, run it\n\n### Prerequisites\n- [Node.js 22+](https://nodejs.org/)\n- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code): \`npm install -g @anthropic-ai/claude-code\``,
+              body: `## HIVEMIND ${tag}\n\nDownload the desktop app below:\n- **macOS**: Download the \`.dmg\` file, open it, drag HIVEMIND to Applications\n- **Windows**: Download the \`.exe\` installer, run it\n\n### Prerequisites\n- [Node.js 22+](https://nodejs.org/) (GUI installer, no terminal needed)\n\nClaude Code CLI is bundled inside the app — no separate install required.`,
             });
 
             console.log('Published release ' + tag + ' (id: ' + draft.id + ') with ' + draft.assets.length + ' assets');

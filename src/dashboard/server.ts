@@ -1340,7 +1340,7 @@ app.post('/api/tasks', async (req, res) => {
       const available = [...swarm.agents.keys()];
       console.error(`[TASK] Agent "${agentId}" not found. swarm.agents has ${available.length} entries: ${available.join(', ')}`);
       if (available.length === 0) {
-        res.status(503).json({ error: 'No LLM provider configured. Set up Claude Code CLI, Anthropic API, OpenAI API, or Ollama to enable agents.' });
+        res.status(503).json({ error: 'No AI provider detected. If you just logged in with Claude, close and reopen HIVEMIND to connect.' });
       } else {
         res.status(404).json({ error: `Agent "${agentId}" not found. Available: ${available.join(', ')}` });
       }

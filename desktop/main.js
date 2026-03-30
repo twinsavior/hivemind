@@ -165,6 +165,53 @@ async function copyDirAsync(src, dest) {
   }
 }
 
+/**
+ * Ensure native Node modules (better-sqlite3) match the user's Node version.
+ * The app bundles modules built for Node 22 (CI), but the user may have a
+ * different version. On first launch (or after Node upgrade), rebuild once.
+ */
+async function ensureNativeModules(nodeBin, nodeModulesDir) {
+  const markerFile = path.join(HIVEMIND_HOME, '.native-module-version');
+  let currentNodeVersion = '';
+  try {
+    const { stdout } = await execAsync(`"${nodeBin}" --version`, { timeout: 5000 });
+    currentNodeVersion = stdout.trim(); // e.g. "v23.1.0"
+  } catch { return; } // Can't detect — skip, let it fail naturally
+
+  // Check if we already rebuilt for this Node version
+  try {
+    const marker = await fs.promises.readFile(markerFile, 'utf-8');
+    if (marker.trim() === currentNodeVersion) return; // Already matching
+  } catch { /* no marker yet — need to rebuild */ }
+
+  console.log(`[HIVEMIND] Rebuilding native modules for ${currentNodeVersion}...`);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('server-status', 'rebuilding');
+  }
+
+  try {
+    const npmBin = path.join(path.dirname(nodeBin), 'npm');
+    const rebuildCmd = `"${npmBin}" rebuild better-sqlite3 --prefix "${nodeModulesDir}/.."`;
+    await execAsync(rebuildCmd, { timeout: 60000, cwd: nodeModulesDir });
+    await fs.promises.writeFile(markerFile, currentNodeVersion);
+    console.log(`[HIVEMIND] Native modules rebuilt for ${currentNodeVersion}`);
+  } catch (err) {
+    console.error('[HIVEMIND] Native module rebuild failed:', err.message);
+    // Try npx as fallback (npm might not be co-located with node)
+    try {
+      await execAsync(`npx --yes node-gyp rebuild --directory="${path.join(nodeModulesDir, 'better-sqlite3')}"`, {
+        timeout: 90000,
+        env: { ...process.env, npm_config_nodedir: '' },
+      });
+      await fs.promises.writeFile(markerFile, currentNodeVersion);
+      console.log(`[HIVEMIND] Native modules rebuilt via npx for ${currentNodeVersion}`);
+    } catch (e2) {
+      console.error('[HIVEMIND] npx rebuild also failed:', e2.message);
+      // Continue anyway — the server will surface the error with a clear message
+    }
+  }
+}
+
 async function startHivemindServer() {
   return new Promise(async (resolve, reject) => {
     serverErrors = [];
@@ -211,6 +258,9 @@ async function startHivemindServer() {
       // Setup ~/.hivemind/ environment
       const configPath = await setupPackagedEnvironment();
       cwd = HIVEMIND_HOME;
+
+      // Rebuild native modules if Node version changed since last build
+      await ensureNativeModules(nodeBin, nodeModulesDir);
 
       if (process.platform === 'darwin') {
         spawnCmd = '/usr/bin/arch';

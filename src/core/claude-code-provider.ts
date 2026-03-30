@@ -585,13 +585,37 @@ function findClaudeBinary(): string {
     } catch { /* fall through */ }
   }
 
-  // 3. Global system install (fallback)
+  // 3. Common nvm/fnm/homebrew/system paths (macOS GUI apps don't inherit shell PATH)
+  const home = process.env['HOME'] ?? '/Users/' + (process.env['USER'] ?? 'user');
+  const globalPaths = [
+    path.join(home, '.nvm/versions/node'),   // nvm
+    path.join(home, 'Library/Application Support/fnm/node-versions'), // fnm
+  ];
+  for (const nodeDir of globalPaths) {
+    try {
+      const versions = fs.readdirSync(nodeDir).sort().reverse();
+      for (const v of versions) {
+        const binDir = nodeDir.includes('fnm') ? path.join(nodeDir, v, 'installation', 'bin') : path.join(nodeDir, v, 'bin');
+        const claudeBin = path.join(binDir, 'claude');
+        if (fs.existsSync(claudeBin)) return claudeBin;
+      }
+    } catch { /* skip */ }
+  }
+
+  // 4. Standard system paths
+  for (const p of ['/opt/homebrew/bin/claude', '/usr/local/bin/claude', '/usr/bin/claude']) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 5. Bare command name (relies on PATH — may fail in GUI apps)
   return 'claude';
 }
 
 export async function verifyClaudeCode(): Promise<{ ok: boolean; error?: string; path?: string }> {
   const claudePath = findClaudeBinary();
-  return new Promise((resolve) => {
+
+  // Try direct spawn first
+  const directResult = await new Promise<{ ok: boolean; error?: string; path?: string }>((resolve) => {
     const proc = spawn(claudePath, ['--version'], {
       timeout: 5000,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -601,6 +625,23 @@ export async function verifyClaudeCode(): Promise<{ ok: boolean; error?: string;
     proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
     proc.on('close', (code) => {
       resolve(code === 0 ? { ok: true, path: claudePath } : { ok: false, error: 'CLI not found or not authenticated' });
+    });
+    proc.on('error', () => resolve({ ok: false, error: 'CLI not installed' }));
+  });
+
+  if (directResult.ok) return directResult;
+
+  // Fallback: try through login shell (picks up nvm/fnm PATH on macOS GUI apps)
+  return new Promise((resolve) => {
+    const shellBin = process.env['SHELL'] || '/bin/zsh';
+    const proc = spawn(shellBin, ['-lc', 'claude --version'], {
+      timeout: 8000,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
+    proc.on('close', (code) => {
+      resolve(code === 0 ? { ok: true, path: 'claude' } : { ok: false, error: 'CLI not found via login shell' });
     });
     proc.on('error', () => resolve({ ok: false, error: 'CLI not installed' }));
   });

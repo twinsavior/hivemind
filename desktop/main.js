@@ -480,7 +480,11 @@ function setupAutoUpdater() {
 }
 
 ipcMain.handle('install-update', () => {
+  // Force quit after a short delay — quitAndInstall sometimes fails silently on macOS
   autoUpdater.quitAndInstall(false, true);
+  setTimeout(() => {
+    app.exit(0);
+  }, 1000);
 });
 
 ipcMain.handle('check-for-update', async () => {

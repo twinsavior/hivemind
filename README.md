@@ -27,45 +27,39 @@
 
 ## Get Started
 
-### Prerequisites (required for ALL install methods)
+### 1. Install Node.js (one-time)
 
-HIVEMIND uses Claude as its brain. You need [Node.js](https://nodejs.org/) 22+ and the Claude Code CLI:
+HIVEMIND needs [Node.js](https://nodejs.org/) to run. Download the installer — no terminal needed:
 
-```bash
-npm install -g @anthropic-ai/claude-code
-```
+👉 **[Download Node.js](https://nodejs.org/)** (click the big green button, run the installer)
 
-Then run `claude` once to authenticate with your Anthropic account.
+> Already have it? You're good. HIVEMIND will tell you if it's missing.
 
-> **Stuck on "Starting your swarm"?** This almost always means `claude` isn't installed or isn't on your PATH. Run `claude --version` in your terminal to check.
+### 2. Download HIVEMIND
+
+- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-1.0.0-beta.7-arm64.dmg) → open it → drag HIVEMIND to Applications
+  - First launch: right-click the app → Open (macOS requires this for unsigned apps)
+- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-Setup-1.0.0-beta.7.exe) → run it → done
+
+### 3. Launch and Go
+
+Open HIVEMIND. The onboarding wizard walks you through everything — your name, your AI co-founder's personality, and connecting your seller accounts. That's it. No terminal, no commands.
+
+> **Stuck on "Starting your swarm"?** Install Node.js from the link above and restart the app.
 
 ---
 
-### Option A: Download the Desktop App (easiest)
-
-1. **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-1.0.0-beta.7-arm64.dmg) → open it → drag HIVEMIND to Applications
-   - First launch: right-click the app → Open (macOS requires this for unsigned apps)
-2. **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-Setup-1.0.0-beta.7.exe) → run it → done
-3. Launch HIVEMIND. The onboarding wizard walks you through everything.
-
-### Option B: Run from Source
+### Run from Source (for developers)
 
 ```bash
-# 1. Clone and install
 git clone https://github.com/twinsavior/hivemind.git
 cd hivemind
 pnpm install        # requires pnpm 10+ (npm install -g pnpm)
-
-# 2. Build the server
 pnpm build
-
-# 3. Run the desktop app
-cd desktop
-npm install
-npm start
+cd desktop && npm install && npm start
 ```
 
-> **Build tools needed:** macOS: `xcode-select --install` · Linux: `apt install build-essential python3` · Windows: install Visual Studio Build Tools
+> **Build tools needed:** macOS: `xcode-select --install` · Linux: `apt install build-essential python3` · Windows: Visual Studio Build Tools
 
 ---
 

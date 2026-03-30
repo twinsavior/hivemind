@@ -553,6 +553,21 @@ function cleanEnv(): NodeJS.ProcessEnv {
 }
 
 function findClaudeBinary(): string {
+  // 1. Bundled with Electron app (zero-install for end users)
+  const bundledPaths = [
+    // Packaged Electron: process.resourcesPath/node_modules/@anthropic-ai/claude-code/cli.js
+    process.env['HIVEMIND_RESOURCES_PATH']
+      ? path.join(process.env['HIVEMIND_RESOURCES_PATH'], 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
+      : '',
+    // Local dev: node_modules/@anthropic-ai/claude-code/cli.js
+    path.join(process.cwd(), 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js'),
+  ].filter(Boolean);
+
+  for (const p of bundledPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 2. macOS Claude desktop app installation
   const appSupportDir = path.join(
     process.env['HOME'] ?? '/Users/' + (process.env['USER'] ?? 'user'),
     'Library/Application Support/Claude/claude-code'
@@ -570,6 +585,7 @@ function findClaudeBinary(): string {
     } catch { /* fall through */ }
   }
 
+  // 3. Global system install (fallback)
   return 'claude';
 }
 

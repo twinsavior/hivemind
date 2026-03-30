@@ -172,9 +172,17 @@ async function startHivemindServer() {
     // ── Validate Node.js ──
     const nodeBin = await findNode();
     if (!nodeBin) {
-      const msg = 'Node.js is required but was not found.\n\nPlease install Node.js 22+ from https://nodejs.org/ and relaunch HIVEMIND.';
-      await showErrorDialog('Node.js Not Found', msg);
-      reject(new Error(msg));
+      const { response } = await dialog.showMessageBox({
+        type: 'warning',
+        title: 'Node.js Required',
+        message: 'HIVEMIND needs Node.js to run.\n\nClick "Download" to open the Node.js installer (no terminal needed), then restart HIVEMIND.',
+        buttons: ['Download Node.js', 'Cancel'],
+        defaultId: 0,
+      });
+      if (response === 0) {
+        shell.openExternal('https://nodejs.org/');
+      }
+      reject(new Error('Node.js not found'));
       return;
     }
 
@@ -233,6 +241,8 @@ async function startHivemindServer() {
     const spawnEnv = { ...process.env, FORCE_COLOR: '0' };
     if (app.isPackaged) {
       spawnEnv.NODE_PATH = path.join(process.resourcesPath, 'node_modules');
+      // Tell the server where bundled dependencies live (for Claude Code CLI discovery)
+      spawnEnv.HIVEMIND_RESOURCES_PATH = process.resourcesPath;
     }
 
     hivemindProcess = spawn(spawnCmd, spawnArgs, {

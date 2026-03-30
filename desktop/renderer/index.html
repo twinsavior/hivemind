@@ -2900,10 +2900,10 @@
       if (obRetryCount >= 15) {
         obRenderLoadingState(
           'Having trouble starting',
-          'The server hasn\'t come online yet. Common fixes:\n\n' +
-          '1. Install Claude Code CLI: npm install -g @anthropic-ai/claude-code\n' +
-          '2. Run "claude" once in your terminal to authenticate\n' +
-          '3. Make sure Node.js 22+ is installed (node --version)\n\n' +
+          'The server hasn\'t come online yet. This usually means Node.js is not installed.\n\n' +
+          '1. Download Node.js from https://nodejs.org (click the big green button)\n' +
+          '2. Run the installer — no terminal needed\n' +
+          '3. Restart HIVEMIND\n\n' +
           'The app will keep trying in the background.'
         );
       }

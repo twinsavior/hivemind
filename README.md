@@ -25,27 +25,47 @@
 
 ---
 
-## Get Started in 3 Steps
+## Get Started
 
-### 1. Download HIVEMIND
+### Prerequisites (required for ALL install methods)
 
-- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-1.0.0-beta.7-arm64.dmg) → open it → drag HIVEMIND to Applications
-  - First launch: right-click the app → Open (macOS requires this for unsigned apps)
-- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-Setup-1.0.0-beta.7.exe) → run it → done
-
-### 2. Install Claude Code CLI
-
-HIVEMIND uses Claude as its brain. Install the CLI once:
+HIVEMIND uses Claude as its brain. You need [Node.js](https://nodejs.org/) 22+ and the Claude Code CLI:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
 
-> Don't have Node.js? [Download it here](https://nodejs.org/) (LTS version), then run the command above.
+Then run `claude` once to authenticate with your Anthropic account.
 
-### 3. Open HIVEMIND
+> **Stuck on "Starting your swarm"?** This almost always means `claude` isn't installed or isn't on your PATH. Run `claude --version` in your terminal to check.
 
-Launch the app. The onboarding wizard walks you through everything — your name, your co-founder's personality, and connecting your tools. That's it.
+---
+
+### Option A: Download the Desktop App (easiest)
+
+1. **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-1.0.0-beta.7-arm64.dmg) → open it → drag HIVEMIND to Applications
+   - First launch: right-click the app → Open (macOS requires this for unsigned apps)
+2. **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.7/HIVEMIND-Setup-1.0.0-beta.7.exe) → run it → done
+3. Launch HIVEMIND. The onboarding wizard walks you through everything.
+
+### Option B: Run from Source
+
+```bash
+# 1. Clone and install
+git clone https://github.com/twinsavior/hivemind.git
+cd hivemind
+pnpm install        # requires pnpm 10+ (npm install -g pnpm)
+
+# 2. Build the server
+pnpm build
+
+# 3. Run the desktop app
+cd desktop
+npm install
+npm start
+```
+
+> **Build tools needed:** macOS: `xcode-select --install` · Linux: `apt install build-essential python3` · Windows: install Visual Studio Build Tools
 
 ---
 
@@ -130,28 +150,6 @@ HIVEMIND
 | `finance.db` | Bank accounts, transactions, pipeline batches |
 
 ---
-
-## 🔧 Build from Source
-
-For developers who want to contribute or run from source:
-
-**Prerequisites:** Node.js 22+, pnpm 10+, and a C/C++ toolchain for native modules (`better-sqlite3`).
-On macOS run `xcode-select --install`; on Ubuntu/Debian `apt install build-essential python3`.
-
-```bash
-# 1. Clone and install
-git clone https://github.com/twinsavior/hivemind.git
-cd hivemind
-pnpm install
-
-# 2. Build the server (includes email module)
-pnpm build
-
-# 3. Run the desktop app in dev mode
-cd desktop
-npm install
-npm start
-```
 
 ---
 

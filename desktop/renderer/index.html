@@ -3484,6 +3484,12 @@
               const status = await window.hivemind.claudeAuthStatus();
               if (status.loggedIn) {
                 if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✓ Claude is connected! Click Continue.</span>';
+                // Update provider state so re-render shows "Continue" instead of "Skip"
+                if (!obState.providers.find(p => p.id === 'claude-code')) {
+                  obState.providers.push({ id: 'claude-code', installed: true, detail: 'Authenticated', label: 'Claude Code CLI' });
+                } else {
+                  obState.providers.find(p => p.id === 'claude-code').installed = true;
+                }
                 // Also refresh provider cache if server is up
                 fetch(_baseHttp + '/api/onboarding/providers').catch(() => {});
                 setTimeout(() => obRenderStep(), 1500);

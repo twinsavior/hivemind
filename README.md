@@ -11,10 +11,10 @@
 
 ### Your AI co-founder for Amazon, Walmart & eBay selling
 
-[![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.11/HIVEMIND-1.0.0-beta.11-arm64.dmg)
-[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.11/HIVEMIND-Setup-1.0.0-beta.11.exe)
+[![Download for Mac](https://img.shields.io/badge/Download_for_Mac-.dmg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.12/HIVEMIND-1.0.0-beta.12-arm64.dmg)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.12/HIVEMIND-Setup-1.0.0-beta.12.exe)
 
-[![version](https://img.shields.io/badge/version-v1.0.0--beta.11-blue)](https://github.com/twinsavior/hivemind/releases)
+[![version](https://img.shields.io/badge/version-v1.0.0--beta.12-blue)](https://github.com/twinsavior/hivemind/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/twinsavior/hivemind/ci.yml?branch=main&label=build)](https://github.com/twinsavior/hivemind/actions)
 [![Tests](https://img.shields.io/badge/tests-621_passing-brightgreen)](https://github.com/twinsavior/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -37,9 +37,9 @@ HIVEMIND needs [Node.js](https://nodejs.org/) to run. Download the installer —
 
 ### 2. Download HIVEMIND
 
-- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.11/HIVEMIND-1.0.0-beta.11-arm64.dmg) → open it → drag HIVEMIND to Applications
+- **Mac**: [Download the .dmg](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.12/HIVEMIND-1.0.0-beta.12-arm64.dmg) → open it → drag HIVEMIND to Applications
   - First launch: right-click the app → Open (macOS requires this for unsigned apps)
-- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.11/HIVEMIND-Setup-1.0.0-beta.11.exe) → run it → done
+- **Windows**: [Download the .exe](https://github.com/twinsavior/hivemind/releases/download/v1.0.0-beta.12/HIVEMIND-Setup-1.0.0-beta.12.exe) → run it → done
 
 ### 3. Launch and Go
 

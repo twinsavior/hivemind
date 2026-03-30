@@ -3445,22 +3445,24 @@
       }
 
       if (step === 'tools') {
-        // "Log in with Claude" button — triggers claude auth login via the server
+        // "Log in with Claude" button — triggers claude auth login via Electron IPC (no server needed)
         const loginBtn = document.getElementById('ob-claude-login');
         if (loginBtn) loginBtn.addEventListener('click', async () => {
           const statusEl = document.getElementById('ob-claude-login-status');
           loginBtn.disabled = true; loginBtn.textContent = 'Opening browser...';
           if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted);">A browser window should open. Log in with your Claude account, then come back here.</span>';
           try {
-            const res = await fetch(_baseHttp + '/api/onboarding/claude-login', { method: 'POST' });
-            const data = await res.json();
-            if (data.success) {
+            // Use IPC to main process — works even when server isn't running
+            const result = window.hivemind?.claudeLogin
+              ? await window.hivemind.claudeLogin()
+              : await fetch(_baseHttp + '/api/onboarding/claude-login', { method: 'POST' }).then(r => r.json());
+            if (result.success) {
               if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✓ Login started! Complete it in your browser, then click Check Connection below.</span>';
             } else {
-              if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">' + escapeHtml(data.error || 'Could not start login. Try again.') + '</span>';
+              if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">' + escapeHtml(result.error || 'Could not start login. Try again.') + '</span>';
             }
-          } catch {
-            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Server not ready yet. Wait a moment and try again.</span>';
+          } catch (e) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Could not start login: ' + escapeHtml(e.message || 'unknown error') + '</span>';
           }
           loginBtn.disabled = false; loginBtn.textContent = 'Log in with Claude →';
         });
@@ -3471,13 +3473,24 @@
           copyCodex.textContent = 'Copied!';
           setTimeout(() => { copyCodex.textContent = 'Copy'; }, 2000);
         });
-        // Check connection button
+        // Check connection button — uses IPC first (no server needed), falls back to server API
         const checkBtn = document.getElementById('ob-check-claude');
         if (checkBtn) checkBtn.addEventListener('click', async () => {
           const statusEl = document.getElementById('ob-claude-status');
           checkBtn.disabled = true; checkBtn.textContent = 'Checking...';
           try {
-            // Re-fetch providers to see if Claude is now authenticated
+            // Primary: check via Electron IPC (works without server)
+            if (window.hivemind?.claudeAuthStatus) {
+              const status = await window.hivemind.claudeAuthStatus();
+              if (status.loggedIn) {
+                if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✓ Claude is connected! Click Continue.</span>';
+                // Also refresh provider cache if server is up
+                fetch(_baseHttp + '/api/onboarding/providers').catch(() => {});
+                setTimeout(() => obRenderStep(), 1500);
+                return;
+              }
+            }
+            // Fallback: check via server API
             const res = await fetch(_baseHttp + '/api/onboarding/providers');
             if (res.ok) {
               const data = await res.json();
@@ -3492,7 +3505,7 @@
             if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Claude not detected yet. Click "Log in with Claude" above first, complete the login in your browser, then try again.</span>';
             checkBtn.disabled = false; checkBtn.textContent = 'Check Connection';
           } catch {
-            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Couldn\'t check — server may still be starting up. Try again in a moment.</span>';
+            if (statusEl) statusEl.innerHTML = '<span style="color:#fca5a5;">Couldn\'t verify. Click "Log in with Claude" above first, then try again.</span>';
             checkBtn.disabled = false; checkBtn.textContent = 'Check Connection';
           }
         });

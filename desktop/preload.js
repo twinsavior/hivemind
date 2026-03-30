@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('hivemind', {
   saveAttachment: (name, base64Data) => ipcRenderer.invoke('save-attachment', { name, base64Data }),
   browseImages: () => ipcRenderer.invoke('browse-images'),
 
+  // Claude auth (works without server running)
+  claudeLogin: () => ipcRenderer.invoke('claude-login'),
+  claudeAuthStatus: () => ipcRenderer.invoke('claude-auth-status'),
+
   // Auto-update
   onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_e, data) => callback(data)),
   installUpdate: () => ipcRenderer.invoke('install-update'),

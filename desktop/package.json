@@ -1,6 +1,6 @@
 {
   "name": "hivemind-desktop",
-  "version": "1.0.0-beta.10",
+  "version": "1.0.0-beta.11",
   "description": "HIVEMIND Desktop – AI-powered operations manager for Amazon, Walmart & eBay sellers",
   "main": "main.js",
   "private": true,

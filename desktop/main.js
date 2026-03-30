@@ -492,6 +492,40 @@ ipcMain.handle('check-for-update', async () => {
   }
 });
 
+// ── Claude Auth (works without server running) ──────────────────────────────
+
+ipcMain.handle('claude-login', async () => {
+  try {
+    const shellBin = process.env.SHELL || '/bin/zsh';
+    const child = spawn(shellBin, ['-lc', 'claude auth login --claudeai'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true,
+    });
+    child.unref();
+    let errOutput = '';
+    child.stderr.on('data', (chunk) => { errOutput += chunk.toString(); });
+    // Wait briefly to catch immediate failures
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (child.exitCode !== null && child.exitCode !== 0) {
+      return { success: false, error: errOutput.trim() || 'Login process failed' };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('claude-auth-status', async () => {
+  try {
+    const shellBin = process.env.SHELL || '/bin/zsh';
+    const { stdout } = await execAsync(`${shellBin} -lc 'claude auth status'`, { timeout: 10000 });
+    const status = JSON.parse(stdout.trim());
+    return { loggedIn: status.loggedIn === true, detail: stdout.trim() };
+  } catch {
+    return { loggedIn: false };
+  }
+});
+
 // ── IPC Handlers ─────────────────────────────────────────────────────────────
 
 ipcMain.handle('send-task', async (_event, { description, agentId }) => {

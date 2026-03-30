@@ -2892,8 +2892,21 @@
       if (profile.cofounder?.emoji) obState.cofounderEmoji = profile.cofounder.emoji;
     }
 
+    let obRetryCount = 0;
     function obQueueRetry() {
       if (obServerRetryTimer) return;
+      obRetryCount++;
+      // After 15 retries (~18 seconds), show a helpful diagnostic instead of spinning forever
+      if (obRetryCount >= 15) {
+        obRenderLoadingState(
+          'Having trouble starting',
+          'The server hasn\'t come online yet. Common fixes:\n\n' +
+          '1. Install Claude Code CLI: npm install -g @anthropic-ai/claude-code\n' +
+          '2. Run "claude" once in your terminal to authenticate\n' +
+          '3. Make sure Node.js 22+ is installed (node --version)\n\n' +
+          'The app will keep trying in the background.'
+        );
+      }
       obServerRetryTimer = setTimeout(() => {
         obServerRetryTimer = null;
         obInit();
@@ -2950,11 +2963,13 @@
       const root = document.getElementById('desktop-onboarding-root');
       if (!root) return;
       root.classList.remove('hidden');
+      const detailHtml = escapeHtml(detail).replace(/\n/g, '<br>');
+      const label = obRetryCount >= 15 ? 'Troubleshooting' : 'Starting Up';
       root.innerHTML = `
         <div class="ob-card">
-          <div class="ob-step-label">Starting Up</div>
+          <div class="ob-step-label">${label}</div>
           <div class="ob-title">${escapeHtml(message)}</div>
-          <div class="ob-subtitle">${escapeHtml(detail)}</div>
+          <div class="ob-subtitle" style="text-align:left;white-space:pre-wrap;font-family:inherit;">${detailHtml}</div>
         </div>`;
     }
 
@@ -3892,6 +3907,7 @@
         if (!res.ok) throw new Error('Server unavailable');
         const data = await res.json();
         obState.waitingForServer = false;
+        obRetryCount = 0;
         obSetError();
 
         const forceOnboarding = new URLSearchParams(window.location.search).has('onboarding');

@@ -49,7 +49,29 @@ async function findNode() {
     for (const v of versions) candidates.push(path.join(fnmDir, v, 'installation', 'bin', 'node'));
   } catch { /* skip */ }
 
+  // macOS / Linux standard paths
   candidates.push('/opt/homebrew/bin/node', '/usr/local/bin/node', '/usr/bin/node');
+
+  // Windows standard paths
+  if (process.platform === 'win32') {
+    const progFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    const progFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+    candidates.push(
+      path.join(progFiles, 'nodejs', 'node.exe'),
+      path.join(progFilesX86, 'nodejs', 'node.exe'),
+      path.join(process.env.APPDATA || '', '..', 'Local', 'Programs', 'nodejs', 'node.exe'),
+    );
+    // Also check nvm-windows
+    const nvmHome = process.env.NVM_HOME;
+    if (nvmHome) {
+      try {
+        const versions = await fs.promises.readdir(nvmHome).catch(() => []);
+        for (const v of versions.filter(d => /^v?\d/.test(d)).sort().reverse()) {
+          candidates.push(path.join(nvmHome, v, 'node.exe'));
+        }
+      } catch { /* skip */ }
+    }
+  }
 
   for (const candidate of candidates) {
     try {
@@ -58,11 +80,17 @@ async function findNode() {
     } catch { /* skip */ }
   }
 
-  // Last resort: try to find it via shell
+  // Last resort: try to find it via shell (macOS/Linux) or where (Windows)
   try {
-    const shellBin = process.env.SHELL || '/bin/zsh';
-    const { stdout } = await execAsync(`${shellBin} -lc 'which node'`, { timeout: 5000 });
-    return stdout.trim() || null;
+    if (process.platform === 'win32') {
+      const { stdout } = await execAsync('where node', { timeout: 5000 });
+      const first = stdout.trim().split('\n')[0]?.trim();
+      return first || null;
+    } else {
+      const shellBin = process.env.SHELL || '/bin/zsh';
+      const { stdout } = await execAsync(`${shellBin} -lc 'which node'`, { timeout: 5000 });
+      return stdout.trim() || null;
+    }
   } catch { return null; }
 }
 
@@ -322,14 +350,23 @@ async function startHivemindServer() {
       // Tell the server where bundled dependencies live (for Claude Code CLI discovery)
       spawnEnv.HIVEMIND_RESOURCES_PATH = process.resourcesPath;
 
-      // macOS GUI apps have a minimal PATH that misses nvm/fnm/homebrew.
+      // GUI apps have a minimal PATH that misses nvm/fnm/homebrew.
       // Resolve the full login shell PATH so the server can find claude CLI.
       try {
-        const shellBin = process.env.SHELL || '/bin/zsh';
-        const { stdout: shellPath } = await execAsync(`${shellBin} -lc 'echo $PATH'`, { timeout: 5000 });
-        if (shellPath.trim()) {
-          spawnEnv.PATH = shellPath.trim();
-          console.log('[HIVEMIND] Resolved login shell PATH:', spawnEnv.PATH.slice(0, 120) + '...');
+        if (process.platform === 'win32') {
+          // Windows: PATH is inherited from the system environment, generally fine
+          // But ensure nodejs dir is on PATH
+          const nodeDir = path.dirname(nodeBin);
+          if (!spawnEnv.PATH?.includes(nodeDir)) {
+            spawnEnv.PATH = nodeDir + ';' + (spawnEnv.PATH || '');
+          }
+        } else {
+          const shellBin = process.env.SHELL || '/bin/zsh';
+          const { stdout: shellPath } = await execAsync(`${shellBin} -lc 'echo $PATH'`, { timeout: 5000 });
+          if (shellPath.trim()) {
+            spawnEnv.PATH = shellPath.trim();
+            console.log('[HIVEMIND] Resolved login shell PATH:', spawnEnv.PATH.slice(0, 120) + '...');
+          }
         }
       } catch (e) {
         console.warn('[HIVEMIND] Could not resolve login shell PATH:', e.message);
